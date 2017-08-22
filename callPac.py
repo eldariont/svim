@@ -15,6 +15,7 @@ def parseArguments(args):
 
 
 def parseAlignmentFile(file_path, mode = 'r'):
+    """Parses SAM and BAM files and returns two dictionaries: dict of reads (list of alignments for each read) and dict for mapping between chrID and ChrName"""
     sam = pysam.AlignmentFile(file_path, mode)
 
     alns = sam.fetch()
@@ -158,7 +159,7 @@ print("INFO: Alignment parsing finished", file=sys.stderr)
 insertion_output = open(options.temp_dir + '/ins.bed', 'w')
 deletion_output = open(options.temp_dir + '/del.bed', 'w')
 inversion_output = open(options.temp_dir + '/inv.bed', 'w')
-tail_diff_output = open(options.temp_dir + '/tail_diff.tsv', 'w')
+#tail_diff_output = open(options.temp_dir + '/tail_diff.tsv', 'w')
 
 for read in left_aln_dict.keys():
     read_id = read.split("_")[1]
@@ -205,43 +206,43 @@ for read in left_aln_dict.keys():
         if reference_dist > 0:
             individual_dist = original_length - right_q_end - (span - left_q_start)
             percent_shift = (individual_dist - reference_dist) / float(original_length)
-            print("{0}\t{1}\t{2}\t{3}".format(left_chrId, right_ref_end, left_ref_start, percent_shift), file=tail_diff_output);
+            #print("{0}\t{1}\t{2}\t{3}".format(left_chrId, right_ref_end, left_ref_start, percent_shift), file=tail_diff_output);
 
             if percent_shift > 0.1:
                 insertion_size_estimate = individual_dist - reference_dist - (0.04 * original_length)
-                print("Insertion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(right_ref_end, left_ref_start, left_chrId, insertion_size_estimate), file=sys.stderr)
+                #print("Insertion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(right_ref_end, left_ref_start, left_chrId, insertion_size_estimate), file=sys.stderr)
                 if insertion_size_estimate < 10000:
                     if not full_aln is None:
                         full_aln_left_shift = abs((right_q_start - full_q_start) - (right_ref_start - full_ref_start))
                         full_aln_right_shift = abs((left_ref_end + (span - left_q_end)) - (full_ref_end + (original_length - full_q_end)))
-                        print("Read {0} ins1: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
+                        #print("Read {0} ins1: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
                         if full_aln_left_shift < 10 and full_aln_right_shift < 10:
                             #print("CIGAR string: {0}".format(full_aln.cigarstring), file=sys.stderr)
                             candidates = parseCigarTuples(full_aln.cigartuples, insertion_size_estimate, 'ins')
                             if len(candidates) == 1:
                                 pos, length = candidates[0]
                                 print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=insertion_output)
-                                print("Precise start, end, length: {0} - {1} : {2}".format(full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stderr)
+                                print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
                                 continue
-                    print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, right_ref_end, left_ref_start, insertion_size_estimate), file=insertion_output)
+                    #print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, right_ref_end, left_ref_start, insertion_size_estimate), file=insertion_output)
 
             if percent_shift < 0:
                 deletion_size_estimate = reference_dist - individual_dist + (0.04 * original_length)
-                print("Deletion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(right_ref_end, left_ref_start, left_chrId, deletion_size_estimate), file=sys.stderr)
+                #print("Deletion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(right_ref_end, left_ref_start, left_chrId, deletion_size_estimate), file=sys.stderr)
                 if deletion_size_estimate < 10000:
                     if not full_aln is None:
                         full_aln_left_shift = abs((right_q_start - full_q_start) - (right_ref_start - full_ref_start))
                         full_aln_right_shift = abs((left_ref_end + (span - left_q_end)) - (full_ref_end + (original_length - full_q_end)))
-                        print("Read {0} del1: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
+                        #print("Read {0} del1: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
                         if full_aln_left_shift < 10 and full_aln_right_shift < 10:
                             #print("CIGAR string: {0}".format(full_aln.cigarstring), file=sys.stderr)
                             candidates = parseCigarTuples(full_aln.cigartuples, deletion_size_estimate, 'del')
                             if len(candidates) == 1:
                                 pos, length = candidates[0]
                                 print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=deletion_output)
-                                print("Precise start, end, length: {0} - {1} : {2}".format(full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stderr)
+                                print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
                                 continue
-                    print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, right_ref_end, left_ref_start, deletion_size_estimate), file=deletion_output)
+                    #print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, right_ref_end, left_ref_start, deletion_size_estimate), file=deletion_output)
         else:
             pass #Todo
     elif not left_aln.is_reverse and not right_aln.is_reverse:
@@ -249,49 +250,49 @@ for read in left_aln_dict.keys():
         if reference_dist > 0:
             individual_dist = original_length - left_q_end - (span - right_q_start)
             percent_shift = (individual_dist - reference_dist) / float(original_length)
-            print("{0}\t{1}\t{2}\t{3}".format(left_chrId, left_ref_end, right_ref_start, percent_shift), file=tail_diff_output);
+            #print("{0}\t{1}\t{2}\t{3}".format(left_chrId, left_ref_end, right_ref_start, percent_shift), file=tail_diff_output);
 
             if percent_shift > 0.2:
                 insertion_size_estimate = individual_dist - reference_dist - (0.04 * original_length)
-                print("Insertion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(left_ref_end, right_ref_start, left_chrId, insertion_size_estimate), file=sys.stderr)
+                #print("Insertion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(left_ref_end, right_ref_start, left_chrId, insertion_size_estimate), file=sys.stderr)
                 if insertion_size_estimate < 10000:
                     if not full_aln is None:
                         full_aln_left_shift = abs((left_q_start - full_q_start) - (left_ref_start - full_ref_start))
                         full_aln_right_shift = abs((right_ref_end + (span - right_q_end)) - (full_ref_end + (original_length - full_q_end)))
-                        print("Read {0} ins2: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
+                        #print("Read {0} ins2: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
                         if full_aln_left_shift < 10 and full_aln_right_shift < 10:
                             #print("CIGAR string: {0}".format(full_aln.cigarstring), file=sys.stderr)
                             candidates = parseCigarTuples(full_aln.cigartuples, insertion_size_estimate, 'ins')
                             if len(candidates) == 1:
                                 pos, length = candidates[0]
                                 print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=insertion_output)
-                                print("Precise start, end, length: {0} - {1} : {2}".format(full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stderr)
+                                print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
                                 continue
-                    print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, left_ref_end, right_ref_start, insertion_size_estimate), file=insertion_output)
+                    #print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, left_ref_end, right_ref_start, insertion_size_estimate), file=insertion_output)
 
 
             if percent_shift < -0.1:
                 deletion_size_estimate = reference_dist - individual_dist + (0.04 * original_length)
-                print("Deletion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(left_ref_end, right_ref_start, left_chrId, deletion_size_estimate), file=sys.stderr)
+                #print("Deletion detected between {0} and {1} on {2} (estimated size: {3} bps)".format(left_ref_end, right_ref_start, left_chrId, deletion_size_estimate), file=sys.stderr)
                 if deletion_size_estimate < 10000:
                     if not full_aln is None:
                         full_aln_left_shift = abs((left_q_start - full_q_start) - (left_ref_start - full_ref_start))
                         full_aln_right_shift = abs((right_ref_end + (span - right_q_end)) - (full_ref_end + (original_length - full_q_end)))
-                        print("Read {0} del2: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
+                        #print("Read {0} del2: left shift: {1} right shift: {2}".format(read_id, full_aln_left_shift, full_aln_right_shift), file=sys.stderr)
                         if full_aln_left_shift < 10 and full_aln_right_shift < 10:
                             #print("CIGAR string: {0}".format(full_aln.cigarstring), file=sys.stderr)
                             candidates = parseCigarTuples(full_aln.cigartuples, deletion_size_estimate, 'del')
                             if len(candidates) == 1:
                                 pos, length = candidates[0]
                                 print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=deletion_output)
-                                print("Precise start, end, length: {0} - {1} : {2}".format(full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stderr)
+                                print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_chrId, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
                                 continue
-                    print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, left_ref_end, right_ref_start, deletion_size_estimate), file=deletion_output)
+                    #print("{0}\t{1}\t{2}\t{3}\timprecise".format(left_chrId, left_ref_end, right_ref_start, deletion_size_estimate), file=deletion_output)
         else:
             pass #Todo
     elif left_aln.is_reverse and not right_aln.is_reverse:
-        print("Inversion detected between {0} and {1} on {2}".format(left_chrId, left_ref_start, right_ref_end), file=sys.stderr)
+        print("Inversion detected between {0} and {1} on {2}".format(left_chrId, left_ref_start, right_ref_end), file=sys.stdout)
         print("{0}\t{1}\t{2}".format(left_chrId, left_ref_start, right_ref_end), file=inversion_output)
     else:
-        print("Inversion detected between {0} and {1} on {2}".format(left_chrId, left_ref_start, right_ref_end), file=sys.stderr)
+        print("Inversion detected between {0} and {1} on {2}".format(left_chrId, left_ref_start, right_ref_end), file=sys.stdout)
         print("{0}\t{1}\t{2}".format(left_chrId, left_ref_start, right_ref_end), file=inversion_output)
