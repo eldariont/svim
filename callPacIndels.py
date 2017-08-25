@@ -61,6 +61,23 @@ def hausdorffDistance(indel1, indel2):
         return float("inf")
 
 
+def gowdaDidayDistance(indel1, indel2, largestIndelSize):
+    if indel1[0] == indel2[0] and indel1[3] == indel2[3]:
+        distPos = abs(indel1[1] - indel2[1]) / float(largestIndelSize)
+        span1 = abs(indel1[2] - indel1[1])
+        span2 = abs(indel2[2] - indel2[1])
+        spanTotal = abs(max(indel1[2], indel2[2]) - min(indel1[1], indel2[1]))
+        distSpan = abs(span1 - span2) / float(spanTotal)
+        if indel1[2] <= indel2[1] or indel2[2] <= indel1[1]:
+            inter = 0
+        else:
+            inter = min(indel1[2], indel2[2]) - max(indel1[1], indel2[1])
+        distContent = (span1 + span2 - 2 * inter) / float(spanTotal)
+        return distPos + distSpan + distContent
+    else:
+        return float("inf")
+
+
 def formPartitions(largeIndels, maxDelta = 150):
     #sort indels by their chromosome and mean
     sortedIndels = sorted(largeIndels, key=lambda indel: (indel[3], indel[0], ( indel[1] + indel[2] ) / 2 ))
@@ -79,13 +96,13 @@ def formPartitions(largeIndels, maxDelta = 150):
     return partitions
 
 
-def clustersFromPartitions(partitions, maxDelta = 150):
+def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
     clusters = set()
     for partition in partitions:
         for i1 in range(len(partition)):
             currentCluster = []
             for i2 in range(len(partition)):
-                if i1 == i2 or hausdorffDistance(partition[i1], partition[i2]) <= maxDelta:
+                if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) <= maxDelta:
                     currentCluster.append(partition[i2])
             clusters.add(tuple(elem for elem in currentCluster))
     return list(clusters)
@@ -160,6 +177,7 @@ insertion_output = open(options.temp_dir + '/ins.bed', 'w')
 deletion_output = open(options.temp_dir + '/del.bed', 'w')
 
 largeIndels = []
+largestIndelSize = -1
 
 for read in full_aln_dict.keys():
     read_id = read.split("_")[1]
@@ -177,11 +195,13 @@ for read in full_aln_dict.keys():
         indels = findIndelsInCigarTuples(full_aln.cigartuples)
         for pos, l, typ in indels:
             largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
+            if l > largestIndelSize:
+                largestIndelSize = l
     except IndexError:
         full_aln = None
 
 partitions = formPartitions(largeIndels)
-rawClusters = clustersFromPartitions(partitions)
+rawClusters = clustersFromPartitions(partitions, largestIndelSize)
 clusters = consolidateClusters(rawClusters)
 
 for typ, chr, start, end, support in clusters:
