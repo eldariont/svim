@@ -108,6 +108,41 @@ def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
     return list(clusters)
 
 
+def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 0.5):
+    clusters_full = []
+    for partition in partitions:
+        connectionGraph = []
+        for i1 in range(len(partition)):
+            currentRow = []
+            for i2 in range(len(partition)):
+                if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) > maxDelta:
+                    currentRow.append(0)
+                else:
+                    currentRow.append(1)
+            connectionGraph.append(currentRow)
+        clusters_indices = bronKerboschClustering([], list(range(len(partition))), [], connectionGraph)
+        for cluster in clusters_indices:
+            clusters_full.append([partition[index] for index in cluster])
+    return clusters_full
+
+
+def bronKerboschClustering(R, P, X, g):
+    if not any((P, X)):
+        yield R
+    for v in P[:]:
+        R_v = R + [v]
+        P_v = [v1 for v1 in P if v1 in N(v, g)]
+        X_v = [v1 for v1 in X if v1 in N(v, g)]
+        for r in bronKerboschClustering(R_v, P_v, X_v, g):
+            yield r
+        P.remove(v)
+        X.append(v)
+
+
+def N(v, g):
+    return [i for i, n_v in enumerate(g[v]) if n_v]
+
+
 def consolidateClusters(clusters):
     consolidatedClusters = []
     for cluster in clusters:
@@ -201,11 +236,13 @@ for read in full_aln_dict.keys():
         full_aln = None
 
 partitions = formPartitions(largeIndels)
-rawClusters = clustersFromPartitions(partitions, largestIndelSize)
+print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
+rawClusters = clustersFromPartitions2(partitions, largestIndelSize)
+print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
 clusters = consolidateClusters(rawClusters)
 
 for typ, chr, start, end, support in clusters:
     if typ == 'ins':
         print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, support), file = insertion_output)
-    if typ == 'del':
+    if typ == 'del' and support > 1:
         print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, support), file = deletion_output)
