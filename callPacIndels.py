@@ -62,20 +62,23 @@ def hausdorffDistance(indel1, indel2):
 
 
 def gowdaDidayDistance(indel1, indel2, largestIndelSize):
-    if indel1[0] == indel2[0] and indel1[3] == indel2[3]:
-        distPos = abs(indel1[1] - indel2[1]) / float(largestIndelSize)
-        span1 = abs(indel1[2] - indel1[1])
-        span2 = abs(indel2[2] - indel2[1])
-        spanTotal = abs(max(indel1[2], indel2[2]) - min(indel1[1], indel2[1]))
-        distSpan = abs(span1 - span2) / float(spanTotal)
-        if indel1[2] <= indel2[1] or indel2[2] <= indel1[1]:
-            inter = 0
-        else:
-            inter = min(indel1[2], indel2[2]) - max(indel1[1], indel2[1])
-        distContent = (span1 + span2 - 2 * inter) / float(spanTotal)
-        return distPos + distSpan + distContent
-    else:
+    #different chromosomes
+    if indel1[0] != indel2[0]:
         return float("inf")
+    #different SV type
+    if indel1[3] != indel2[3]:
+        return float("inf")
+    #non-intersecting
+    if indel1[2] <= indel2[1] or indel2[2] <= indel1[1]:
+        return float("inf")
+    distPos = abs(indel1[1] - indel2[1]) / float(largestIndelSize)
+    span1 = abs(indel1[2] - indel1[1])
+    span2 = abs(indel2[2] - indel2[1])
+    spanTotal = abs(max(indel1[2], indel2[2]) - min(indel1[1], indel2[1]))
+    distSpan = abs(span1 - span2) / float(spanTotal)
+    inter = min(indel1[2], indel2[2]) - max(indel1[1], indel2[1])
+    distContent = (span1 + span2 - 2 * inter) / float(spanTotal)
+    return distPos + distSpan + distContent
 
 
 def formPartitions(largeIndels, maxDelta = 150):
