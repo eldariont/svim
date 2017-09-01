@@ -127,9 +127,13 @@ def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 0.5):
 
 
 def bronKerboschClustering(R, P, X, g):
+    """taken from https://stackoverflow.com/a/13905694"""
     if not any((P, X)):
         yield R
-    for v in P[:]:
+    else:
+        u = sorted([(numN(x, g), x) for x in P + X], key=lambda tup: tup[0], reverse=True)[0][1]
+        u_n = N(u, g)
+    for v in [elem for elem in P if elem not in u_n]:
         R_v = R + [v]
         P_v = [v1 for v1 in P if v1 in N(v, g)]
         X_v = [v1 for v1 in X if v1 in N(v, g)]
@@ -141,6 +145,10 @@ def bronKerboschClustering(R, P, X, g):
 
 def N(v, g):
     return [i for i, n_v in enumerate(g[v]) if n_v]
+
+
+def numN(v, g):
+    return sum(g[v])
 
 
 def consolidateClusters(clusters):
