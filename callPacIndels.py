@@ -160,7 +160,7 @@ def consolidateClusters(clusters):
         l = len(cluster)
         starts = [member[1] for member in cluster]
         ends = [member[2] for member in cluster]
-        consolidatedClusters.append( ( cluster[0][3], cluster[0][0], round(sum(starts) / l), round(sum(ends) / l), l ) )
+        consolidatedClusters.append( ( cluster[0][3], cluster[0][0], round(sum(starts) / l), round(sum(ends) / l), l, cluster) )
     return consolidatedClusters
 
 
@@ -221,6 +221,8 @@ print("INFO: Alignment parsing finished", file=sys.stderr)
 
 insertion_output = open(options.temp_dir + '/ins.bed', 'w')
 deletion_output = open(options.temp_dir + '/del.bed', 'w')
+partition_output = open(options.temp_dir + '/partitions.bed', 'w')
+indel_output = open(options.temp_dir + '/indels.bed', 'w')
 
 largeIndels = []
 largestIndelSize = -1
@@ -246,14 +248,21 @@ for read in full_aln_dict.keys():
     except IndexError:
         full_aln = None
 
+for chr, start, end, typ in largeIndels:
+    print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, typ), file = indel_output)
+
 partitions = formPartitions(largeIndels)
 print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
 rawClusters = clustersFromPartitions2(partitions, largestIndelSize)
 print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
 clusters = consolidateClusters(rawClusters)
+consolidatedPartitions = consolidateClusters(partitions)
 
-for typ, chr, start, end, support in clusters:
-    if typ == 'ins':
-        print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, support), file = insertion_output)
-    if typ == 'del' and support > 1:
-        print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, support), file = deletion_output)
+for typ, chr, start, end, support, members in consolidatedPartitions:
+    print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = partition_output)
+
+for typ, chr, start, end, support, members in clusters:
+    if typ == 'ins' and support > 9:
+        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = insertion_output)
+    if typ == 'del' and support > 9:
+        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = deletion_output)
