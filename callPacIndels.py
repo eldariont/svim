@@ -81,7 +81,7 @@ def gowdaDidayDistance(indel1, indel2, largestIndelSize):
     return distPos + distSpan + distContent
 
 
-def formPartitions(largeIndels, maxDelta = 150):
+def formPartitions(largeIndels, maxDelta = 5000):
     #sort indels by their chromosome and mean
     sortedIndels = sorted(largeIndels, key=lambda indel: (indel[3], indel[0], ( indel[1] + indel[2] ) / 2 ))
     partitions = []
@@ -111,7 +111,7 @@ def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
     return list(clusters)
 
 
-def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 0.5):
+def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 1):
     clusters_full = []
     for partition in partitions:
         connectionGraph = []
