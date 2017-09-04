@@ -262,7 +262,7 @@ for typ, chr, start, end, support, members in consolidatedPartitions:
     print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = partition_output)
 
 for typ, chr, start, end, support, members in clusters:
-    if typ == 'ins' and support > 9:
+    if typ == 'ins':
         print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = insertion_output)
-    if typ == 'del' and support > 9:
+    if typ == 'del':
         print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = deletion_output)
