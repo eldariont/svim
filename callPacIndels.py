@@ -16,18 +16,14 @@ def parseArguments(args):
     return parser.parse_args()
 
 
-def parseAlignmentFile(file_path, mode = 'r'):
+def parseAlignmentFile(sam, contig):
     """Parses SAM and BAM files and returns two dictionaries: dict of reads (list of alignments for each read) and dict for mapping between chrID and ChrName"""
-    sam = pysam.AlignmentFile(file_path, mode)
-
-    alns = sam.fetch()
+    alns = sam.fetch(reference = contig)
     aln_dict = defaultdict(list)
-    chrIdToName = {}
     for aln in alns:
         aln_dict[aln.query_name].append(aln)
-        if aln.reference_id >= 0 and not aln.reference_id in chrIdToName.keys():
-            chrIdToName[aln.reference_id] = sam.get_reference_name(aln.reference_id)
-    return aln_dict, chrIdToName
+        #print(aln.query_name)
+    return aln_dict
 
 
 def findIndelsInCigarTuples(tuples, minLength = 50):
@@ -174,29 +170,25 @@ if not os.path.exists(options.temp_dir):
 
 if not os.path.exists(options.temp_dir + '/full.fa'):
     full_file = open(options.temp_dir + '/full.fa', 'w')
-    write_full = True
-else:
-    write_full = False
-    print("WARNING: Temp file for full sequences exists. Skip", file=sys.stderr)
+    length_dict = {}
+    seq_nr = 0
+    for line in options.fasta:
+        if line.startswith('>'):
+            seq_nr += 1
+            read_name = line.strip()[1:]
+        else:
+            sequence = line.strip()
+            length = len(sequence)
+            length_dict[read_name] = length
 
-length_dict = {}
-seq_nr = 0
-for line in options.fasta:
-    if line.startswith('>'):
-        seq_nr += 1
-        read_name = line.strip()[1:]
-    else:
-        sequence = line.strip()
-        length = len(sequence)
-        length_dict[read_name] = length
-
-        if write_full:
             print(">" + read_name, file=full_file)
             print(sequence, file=full_file)
+    full_file.close()
+else:
+    print("WARNING: Temp file for full sequences exists. Skip", file=sys.stderr)
+
 
 options.fasta.close()
-if write_full:
-    full_file.close()
 
 print("INFO: Temporary files written", file=sys.stderr)
 
@@ -217,9 +209,8 @@ else:
 
 print("INFO: Alignment finished", file=sys.stderr)
 
-full_aln_dict, full_name_table = parseAlignmentFile(options.temp_dir + '/full_aln.chained.sorted.bam', 'rb')
-
-print("INFO: Alignment parsing finished", file=sys.stderr)
+sam = pysam.AlignmentFile(options.temp_dir + '/full_aln.chained.sorted.bam', 'rb')
+contigs = sam.references
 
 insertion_output = open(options.temp_dir + '/ins.bed', 'w')
 deletion_output = open(options.temp_dir + '/del.bed', 'w')
@@ -229,26 +220,28 @@ indel_output = open(options.temp_dir + '/indels.bed', 'w')
 largeIndels = []
 largestIndelSize = -1
 
-for read in full_aln_dict.keys():
-    read_id = read.split("_")[1]
-    original_length = length_dict[read]
+for contig in contigs:
+    print("INFO: Searching for SVs in", contig, "..", file=sys.stderr)
+    full_aln_dict = parseAlignmentFile(sam, contig)
+    for read in full_aln_dict.keys():
+        read_id = read.split("_")[1]
 
-    #Read full read alignment
-    try:
-        full_aln = full_aln_dict[read][0]
-        full_ref_start = full_aln.reference_start
-        full_ref_end = full_aln.reference_end
-        full_q_start = full_aln.query_alignment_start
-        full_q_end = full_aln.query_alignment_end
-        full_chrId = full_name_table[full_aln.reference_id]
+        #Read full read alignment
+        try:
+            full_aln = full_aln_dict[read][0]
+            full_ref_start = full_aln.reference_start
+            full_ref_end = full_aln.reference_end
+            full_q_start = full_aln.query_alignment_start
+            full_q_end = full_aln.query_alignment_end
+            full_chrId = contig
 
-        indels = findIndelsInCigarTuples(full_aln.cigartuples)
-        for pos, l, typ in indels:
-            largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
-            if l > largestIndelSize:
-                largestIndelSize = l
-    except IndexError:
-        full_aln = None
+            indels = findIndelsInCigarTuples(full_aln.cigartuples)
+            for pos, l, typ in indels:
+                largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
+                if l > largestIndelSize:
+                    largestIndelSize = l
+        except IndexError:
+            full_aln = None
 
 for chr, start, end, typ in largeIndels:
     print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, typ), file = indel_output)
