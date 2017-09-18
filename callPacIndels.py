@@ -5,11 +5,13 @@ import pysam
 from subprocess import call, Popen
 import subprocess
 from collections import defaultdict
+import networkx as nx
 
 def parseArguments(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""""")
     parser.add_argument('fasta', type=argparse.FileType('r'))
+    parser.add_argument('genome', default = "/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
     parser.add_argument('temp_dir', type=str, help='temp directory')
     return parser.parse_args()
 
@@ -113,17 +115,17 @@ def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
 
 def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 1):
     clusters_full = []
-    for partition in partitions:
-        connectionGraph = []
+    for num, partition in enumerate(partitions):
+        print("Process partition", num, file=sys.stderr)
+        connectionGraph = nx.Graph()
         for i1 in range(len(partition)):
-            currentRow = []
             for i2 in range(len(partition)):
                 if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) > maxDelta:
-                    currentRow.append(0)
+                    pass
                 else:
-                    currentRow.append(1)
-            connectionGraph.append(currentRow)
-        clusters_indices = bronKerboschClustering([], list(range(len(partition))), [], connectionGraph)
+                    connectionGraph.add_edge(i1, i2)
+        #print(connectionGraph)
+        clusters_indices = nx.find_cliques(connectionGraph)
         for cluster in clusters_indices:
             clusters_full.append([partition[index] for index in cluster])
     return clusters_full
@@ -199,7 +201,7 @@ if write_full:
 print("INFO: Temporary files written", file=sys.stderr)
 
 if not os.path.exists(options.temp_dir + '/full_aln.chained.sorted.bam'):
-    ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr', '-t', '30', '-r', '/scratch/cluster/heller_d/genomes/hg19/hg19.fa', '-q', options.temp_dir + '/full.fa', ], stdout=subprocess.PIPE)
+    ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr', '-t', '30', '-r', options.genome, '-q', options.temp_dir + '/full.fa', ], stdout=subprocess.PIPE)
     view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=subprocess.PIPE)
     sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10', '-o', options.temp_dir + '/full_aln.querysorted.bam'], stdin=view.stdout)
     sort.wait()
