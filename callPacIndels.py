@@ -52,13 +52,6 @@ def meanDistance(indel1, indel2):
         return float("inf")
 
 
-def hausdorffDistance(indel1, indel2):
-    if indel1[0] == indel2[0] and indel1[3] == indel2[3]:
-        return max( abs( indel1[1] - indel2[1] ), abs( indel1[2] - indel2[2] ) )
-    else:
-        return float("inf")
-
-
 def gowdaDidayDistance(indel1, indel2, largestIndelSize):
     #different chromosomes
     if indel1[0] != indel2[0]:
@@ -79,7 +72,7 @@ def gowdaDidayDistance(indel1, indel2, largestIndelSize):
     return distPos + distSpan + distContent
 
 
-def formPartitions(largeIndels, maxDelta = 5000):
+def formPartitions(largeIndels, maxDelta = 1000):
     #sort indels by their chromosome and mean
     sortedIndels = sorted(largeIndels, key=lambda indel: (indel[3], indel[0], ( indel[1] + indel[2] ) / 2 ))
     partitions = []
@@ -98,18 +91,6 @@ def formPartitions(largeIndels, maxDelta = 5000):
 
 
 def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
-    clusters = set()
-    for partition in partitions:
-        for i1 in range(len(partition)):
-            currentCluster = []
-            for i2 in range(len(partition)):
-                if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) <= maxDelta:
-                    currentCluster.append(partition[i2])
-            clusters.add(tuple(elem for elem in currentCluster))
-    return list(clusters)
-
-
-def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 1):
     clusters_full = []
     for num, partition in enumerate(partitions):
         print("Process partition", num, file=sys.stderr)
@@ -125,23 +106,6 @@ def clustersFromPartitions2(partitions, largestIndelSize, maxDelta = 1):
         for cluster in clusters_indices:
             clusters_full.append([partition[index] for index in cluster])
     return clusters_full
-
-
-def bronKerboschClustering(R, P, X, g):
-    """taken from https://stackoverflow.com/a/13905694"""
-    if not any((P, X)):
-        yield R
-    else:
-        u = sorted([(numN(x, g), x) for x in P + X], key=lambda tup: tup[0], reverse=True)[0][1]
-        u_n = N(u, g)
-    for v in [elem for elem in P if elem not in u_n]:
-        R_v = R + [v]
-        P_v = [v1 for v1 in P if v1 in N(v, g)]
-        X_v = [v1 for v1 in X if v1 in N(v, g)]
-        for r in bronKerboschClustering(R_v, P_v, X_v, g):
-            yield r
-        P.remove(v)
-        X.append(v)
 
 
 def N(v, g):
@@ -248,7 +212,7 @@ for chr, start, end, typ in largeIndels:
 
 partitions = formPartitions(largeIndels)
 print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
-rawClusters = clustersFromPartitions2(partitions, largestIndelSize)
+rawClusters = clustersFromPartitions(partitions, largestIndelSize)
 print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
 clusters = consolidateClusters(rawClusters)
 consolidatedPartitions = consolidateClusters(partitions)
