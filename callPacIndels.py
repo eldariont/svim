@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import argparse
 import os
@@ -6,6 +8,7 @@ from subprocess import call, Popen
 import subprocess
 from collections import defaultdict
 import networkx as nx
+
 
 def parseArguments(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -126,102 +129,106 @@ def consolidateClusters(clusters):
     return consolidatedClusters
 
 
-options = parseArguments(sys.argv)
+def main():
+    options = parseArguments(sys.argv)
 
-if not os.path.exists(options.temp_dir):
-    print("ERROR: Given temp directory does not exist", file=sys.stderr)
-    sys.exit()
+    if not os.path.exists(options.temp_dir):
+        print("ERROR: Given temp directory does not exist", file=sys.stderr)
+        sys.exit()
 
-if not os.path.exists(options.temp_dir + '/full.fa'):
-    full_file = open(options.temp_dir + '/full.fa', 'w')
-    length_dict = {}
-    seq_nr = 0
-    for line in options.fasta:
-        if line.startswith('>'):
-            seq_nr += 1
-            read_name = line.strip()[1:]
-        else:
-            sequence = line.strip()
-            length = len(sequence)
-            length_dict[read_name] = length
+    if not os.path.exists(options.temp_dir + '/full.fa'):
+        full_file = open(options.temp_dir + '/full.fa', 'w')
+        length_dict = {}
+        seq_nr = 0
+        for line in options.fasta:
+            if line.startswith('>'):
+                seq_nr += 1
+                read_name = line.strip()[1:]
+            else:
+                sequence = line.strip()
+                length = len(sequence)
+                length_dict[read_name] = length
 
-            print(">" + read_name, file=full_file)
-            print(sequence, file=full_file)
-    full_file.close()
-else:
-    print("WARNING: Temp file for full sequences exists. Skip", file=sys.stderr)
+                print(">" + read_name, file=full_file)
+                print(sequence, file=full_file)
+        full_file.close()
+    else:
+        print("WARNING: Temp file for full sequences exists. Skip", file=sys.stderr)
 
 
-options.fasta.close()
+    options.fasta.close()
 
-print("INFO: Temporary files written", file=sys.stderr)
+    print("INFO: Temporary files written", file=sys.stderr)
 
-if not os.path.exists(options.temp_dir + '/full_aln.chained.sorted.bam'):
-    ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr', '-t', '30', '-r', options.genome, '-q', options.temp_dir + '/full.fa', ], stdout=subprocess.PIPE)
-    view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=subprocess.PIPE)
-    sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10', '-o', options.temp_dir + '/full_aln.querysorted.bam'], stdin=view.stdout)
-    sort.wait()
-    if call(['python', '/home/heller_d/bin/bamChain', options.temp_dir + '/full_aln.querysorted.bam', options.temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
-        print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
-    if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-@', '10', options.temp_dir + '/full_aln.chained.bam', '-o', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
-        print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
-    if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'index', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
-        print("ERROR: Calling samtools index on full sequences failed", file=sys.stderr)
+    if not os.path.exists(options.temp_dir + '/full_aln.chained.sorted.bam'):
+        ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr', '-t', '30', '-r', options.genome, '-q', options.temp_dir + '/full.fa', ], stdout=subprocess.PIPE)
+        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=subprocess.PIPE)
+        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10', '-o', options.temp_dir + '/full_aln.querysorted.bam'], stdin=view.stdout)
+        sort.wait()
+        if call(['python', '/home/heller_d/bin/bamChain', options.temp_dir + '/full_aln.querysorted.bam', options.temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
+            print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-@', '10', options.temp_dir + '/full_aln.chained.bam', '-o', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
+            print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'index', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
+            print("ERROR: Calling samtools index on full sequences failed", file=sys.stderr)
 
-else:
-    print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
+    else:
+        print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
 
-print("INFO: Alignment finished", file=sys.stderr)
+    print("INFO: Alignment finished", file=sys.stderr)
 
-sam = pysam.AlignmentFile(options.temp_dir + '/full_aln.chained.sorted.bam', 'rb')
-contigs = sam.references
+    sam = pysam.AlignmentFile(options.temp_dir + '/full_aln.chained.sorted.bam', 'rb')
+    contigs = sam.references
 
-insertion_output = open(options.temp_dir + '/ins.bed', 'w')
-deletion_output = open(options.temp_dir + '/del.bed', 'w')
-partition_output = open(options.temp_dir + '/partitions.bed', 'w')
-indel_output = open(options.temp_dir + '/indels.bed', 'w')
+    insertion_output = open(options.temp_dir + '/ins.bed', 'w')
+    deletion_output = open(options.temp_dir + '/del.bed', 'w')
+    partition_output = open(options.temp_dir + '/partitions.bed', 'w')
+    indel_output = open(options.temp_dir + '/indels.bed', 'w')
 
-largeIndels = []
-largestIndelSize = -1
+    largeIndels = []
+    largestIndelSize = -1
 
-for contig in contigs:
-    print("INFO: Searching for SVs in", contig, "..", file=sys.stderr)
-    full_aln_dict = parseAlignmentFile(sam, contig)
-    for read in full_aln_dict.keys():
-        read_id = read.split("_")[1]
+    for contig in contigs:
+        print("INFO: Searching for SVs in", contig, "..", file=sys.stderr)
+        full_aln_dict = parseAlignmentFile(sam, contig)
+        for read in full_aln_dict.keys():
+            read_id = read.split("_")[1]
 
-        #Read full read alignment
-        try:
-            full_aln = full_aln_dict[read][0]
-            full_ref_start = full_aln.reference_start
-            full_ref_end = full_aln.reference_end
-            full_q_start = full_aln.query_alignment_start
-            full_q_end = full_aln.query_alignment_end
-            full_chrId = contig
+            #Read full read alignment
+            try:
+                full_aln = full_aln_dict[read][0]
+                full_ref_start = full_aln.reference_start
+                full_ref_end = full_aln.reference_end
+                full_q_start = full_aln.query_alignment_start
+                full_q_end = full_aln.query_alignment_end
+                full_chrId = contig
 
-            indels = findIndelsInCigarTuples(full_aln.cigartuples)
-            for pos, l, typ in indels:
-                largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
-                if l > largestIndelSize:
-                    largestIndelSize = l
-        except IndexError:
-            full_aln = None
+                indels = findIndelsInCigarTuples(full_aln.cigartuples)
+                for pos, l, typ in indels:
+                    largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
+                    if l > largestIndelSize:
+                        largestIndelSize = l
+            except IndexError:
+                full_aln = None
 
-for chr, start, end, typ in largeIndels:
-    print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, typ), file = indel_output)
+    for chr, start, end, typ in largeIndels:
+        print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, typ), file = indel_output)
 
-partitions = formPartitions(largeIndels)
-print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
-rawClusters = clustersFromPartitions(partitions, largestIndelSize)
-print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
-clusters = consolidateClusters(rawClusters)
-consolidatedPartitions = consolidateClusters(partitions)
+    partitions = formPartitions(largeIndels)
+    print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
+    rawClusters = clustersFromPartitions(partitions, largestIndelSize)
+    print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
+    clusters = consolidateClusters(rawClusters)
+    consolidatedPartitions = consolidateClusters(partitions)
 
-for typ, chr, start, end, support, members in consolidatedPartitions:
-    print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = partition_output)
+    for typ, chr, start, end, support, members in consolidatedPartitions:
+        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = partition_output)
 
-for typ, chr, start, end, support, members in clusters:
-    if typ == 'ins':
-        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = insertion_output)
-    if typ == 'del':
-        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = deletion_output)
+    for typ, chr, start, end, support, members in clusters:
+        if typ == 'ins':
+            print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = insertion_output)
+        if typ == 'del':
+            print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = deletion_output)
+
+if __name__ == "__main__":
+    sys.exit(main())
