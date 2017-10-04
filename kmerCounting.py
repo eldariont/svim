@@ -89,6 +89,7 @@ def find_best_path(segments, matrix_end, debug = False):
     #print segments
     G = nx.DiGraph()
     G.add_nodes_from(["start", "end"])
+    G.add_edge("start", "end", weight = distance((0,0), (0,0), matrix_end, matrix_end))
     for i1, s1 in enumerate(segments):
         for i2, s2 in enumerate(segments):
             if i1 != i2:
@@ -109,145 +110,181 @@ def find_best_path(segments, matrix_end, debug = False):
     return [start_segment] + [segments[node] for node in shortest_path[1:-1]] + [end_segment]
 
 
-def find_svs(fasta, winSize = 50, k = 7, debug = False):
-    s1 = time()
+def plot_array(array, rows, cols, d, figure = 1):
+    plt.figure(figure)
+    plt.subplot(rows, cols, d)
+    plt.imshow(array)
 
-    sequences = read_fasta(fasta)
 
-    print "Reading finished ({0} s)".format(time()-s1)
-
+def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
     band = 0.5
-
-    counting_time = 0
     start_time = time()
 
-    num_pairs = len(sequences) / 2
-    #for d in xrange(1, num_pairs+1):
-    for d in xrange(1, 17):
-        ref = sequences["ref" + str(d)]
-        read = sequences["read" + str(d)]
+    lengths = (len(ref), len(read))
+    rows = len(ref) / winSize
+    cols = len(read) / winSize
+    last_row_size = len(ref) % winSize
+    last_col_size = len(read) % winSize
+    if last_row_size > (winSize / 3):
+        rows += 1
+    if last_col_size > (winSize / 3):
+        cols += 1
 
-        lengths = (len(ref), len(read))
-        rows = len(ref) / winSize
-        cols = len(read) / winSize
-        #if len(ref) % winSize > 0:
-            #rows += 1
-        #if len(read) % winSize > 0:
-            #cols += 1
-        buckets = (rows, cols)
+    s2 = time()
+    counts = np.zeros((rows, cols), dtype=int)
 
-        s2 = time()
-        counts = np.zeros(buckets, dtype=int)
+    #Prepare kmer set for each read bucket
+    ykmers = []
+    for ybucket in xrange(cols):
+        bucketkmers = set()
+        for i in xrange(winSize):
+            if (ybucket*winSize + i + k) <= len(read):
+                bucketkmers.add(read[(ybucket*winSize + i) : (ybucket*winSize + i + k)])
+        ykmers.append(bucketkmers)
+    
+    for xbucket in xrange(rows):
+        for i in xrange(winSize):
+            for ybucket in xrange(cols):
+                if (xbucket*winSize + i + k) <= len(ref):
+                    if ref[(xbucket*winSize + i) : (xbucket*winSize + i + k)] in ykmers[ybucket]:
+                        counts[xbucket, ybucket] += 1
+    
+    if last_row_size > (winSize / 3):
+        for col in xrange(len(read) / winSize):
+            counts[rows - 1, col] = counts[rows - 1, col] * (winSize / last_row_size)
+    if last_col_size > (winSize / 3):
+        for row in xrange(len(ref) / winSize):
+            counts[row, cols - 1] = counts[row, cols - 1] * (winSize / last_col_size)
+    if last_row_size > (winSize / 3) and last_col_size > (winSize / 3):
+        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (winSize * winSize) / (last_row_size * last_col_size)
+    
+    if times:
+        print "The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size)
+        print "Counting finished ({0} s)".format(time()-s2)
+    
+    #s2 = time()
+    #counts2 = c_count(ref, read, (rows, cols), winSize, k)
+    #print "Counting finished ({0} s)".format(time()-s2)
 
-        #Prepare kmer set for each read bucket
-        ykmers = []
-        for ybucket in xrange(buckets[1]):
-            bucketkmers = set()
-            for i in xrange(winSize):
-                if (ybucket*winSize + i + k) <= len(read):
-                    bucketkmers.add(read[(ybucket*winSize + i) : (ybucket*winSize + i + k)])
-            ykmers.append(bucketkmers)
+    #if (counts == counts2).all():
+        #print "Same"
+    #else:
+        #print counts - counts2
+
+    s3 = time()
+    counts2 = np.nan_to_num(stats.zscore(counts, axis=1)  + stats.zscore(counts, axis=0))
+    if times:
+        print "Z-Score computation finished ({0} s)".format( time()-s3)
+    #print counts2
+
+    if rows > cols:
+        posLim = int(band * cols)
+        negLim = - (rows - cols) - int(band * cols)
+    else:
+        posLim = int(band * rows) + (cols - rows)
+        negLim = -int(band * rows)
+
+    s4 = time()
+    counts3 = np.zeros((rows, cols), dtype=int)
+    completed_segments = []
+    active_segments = []
+    for offset in xrange(negLim, posLim):
+        #Find stretches
+        values = np.diagonal(counts2, offset)
+        stretches = find_stretches(values)
+        for start, end in stretches:
+            for i in xrange(start, end+1):
+                if offset >= 0:
+                    counts3[i, i+offset] = 1
+                else:
+                    counts3[i-offset, i] = 1
+
+        #Combine stretches to segment
+        new_active_segments = []
+        new_completed_segments = completed_segments + active_segments[:]
+        for start, end in stretches:
+            found_matching_segment = False
+            for segment in active_segments:
+                last_offset, last_start, last_end = segment[-1]
+                if last_offset >= 0 and offset >= 0:
+                    if start - 1 <= last_end and end >= last_start:
+                        current_segment = segment[:]
+                        current_segment.append((offset, start, end))
+                        new_active_segments.append(current_segment)
+                        if segment in new_completed_segments:
+                            new_completed_segments.remove(segment)
+                        found_matching_segment = True
+                elif last_offset <= 0 and offset <= 0:
+                    if start <= last_end and end + 1 >= last_start:
+                        current_segment = segment[:]
+                        current_segment.append((offset, start, end))
+                        new_active_segments.append(current_segment)
+                        if segment in new_completed_segments:
+                            new_completed_segments.remove(segment)
+                        found_matching_segment = True
+            if not found_matching_segment:
+                new_active_segments.append([(offset, start, end)])
+        active_segments = new_active_segments
+        completed_segments = new_completed_segments
+
+    completed_segments.extend(active_segments)
+    if times:
+        print "Line finding finished ({0} s)".format(time()-s4)
+
+    final_segments = convert_segments(completed_segments)
+    if debug:
+        print "Final segments", final_segments
+    best_path = find_best_path(final_segments, (rows, cols), debug)
+    #print best_path
+    
+    sv_results = []
+    for index in xrange(len(best_path) - 1):
+        deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0]
+        insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1]
         
-        for xbucket in xrange(buckets[0]):
-            for i in xrange(winSize):
-                for ybucket in xrange(buckets[1]):
-                    if (xbucket*winSize + i + k) <= len(ref):
-                        if ref[(xbucket*winSize + i) : (xbucket*winSize + i + k)] in ykmers[ybucket]:
-                            counts[xbucket, ybucket] += 1
+        if insertion_gap > 1:
+            #print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
+            insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
+            sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
+        if deletion_gap > 1:
+            #print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
+            sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
 
-        #counts = c_count(ref, read, buckets, winSize, k)
-        
-        print "Counting finished for pair {0} ({1} s)".format(d, time()-s2)
-        counting_time += time()-s2
+    #np.putmask(counts3, counts2<5, 0)
 
-        s3 = time()
-        counts2 = np.nan_to_num(stats.zscore(counts, axis=1)  + stats.zscore(counts, axis=0))
-        print "Z-Score computation finished for pair {0} ({1} s)".format(d, time()-s3)
-        #print counts2
-
-        if buckets[0] > buckets[1]:
-            posLim = int(band * buckets[1])
-            negLim = - (buckets[0] - buckets[1]) - int(band * buckets[1])
-        else:
-            posLim = int(band * buckets[0]) + (buckets[1] - buckets[0])
-            negLim = -int(band * buckets[0])
-
-        s4 = time()
-        counts3 = np.zeros(buckets, dtype=int)
-        completed_segments = []
-        active_segments = []
-        for offset in xrange(negLim, posLim):
-            #Find stretches
-            values = np.diagonal(counts2, offset)
-            stretches = find_stretches(values)
-            for start, end in stretches:
-                for i in xrange(start, end+1):
-                    if offset >= 0:
-                        counts3[i, i+offset] = 1
-                    else:
-                        counts3[i-offset, i] = 1
-
-            #Combine stretches to segment
-            new_active_segments = []
-            new_completed_segments = completed_segments + active_segments[:]
-            for start, end in stretches:
-                found_matching_segment = False
-                for segment in active_segments:
-                    last_offset, last_start, last_end = segment[-1]
-                    if last_offset >= 0 and offset >= 0:
-                        if start - 1 <= last_end and end >= last_start:
-                            current_segment = segment[:]
-                            current_segment.append((offset, start, end))
-                            new_active_segments.append(current_segment)
-                            if segment in new_completed_segments:
-                                new_completed_segments.remove(segment)
-                            found_matching_segment = True
-                    elif last_offset <= 0 and offset <= 0:
-                        if start <= last_end and end + 1 >= last_start:
-                            current_segment = segment[:]
-                            current_segment.append((offset, start, end))
-                            new_active_segments.append(current_segment)
-                            if segment in new_completed_segments:
-                                new_completed_segments.remove(segment)
-                            found_matching_segment = True
-                if not found_matching_segment:
-                    new_active_segments.append([(offset, start, end)])
-            active_segments = new_active_segments
-            completed_segments = new_completed_segments
-
-        completed_segments.extend(active_segments)
-        print "Line finding finished for pair {0} ({1} s)".format(d, time()-s4)
-
-        final_segments = convert_segments(completed_segments)
-        if debug:
-            print "Final segments", final_segments
-        best_path = find_best_path(final_segments, buckets, debug)
-        #print best_path
-        for index in xrange(len(best_path) - 1):
-            deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0]
-            insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1]
-            
-            if insertion_gap > 1:
-                print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
-            if deletion_gap > 1:
-                print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
-
-        #np.putmask(counts3, counts2<5, 0)
-        plt.figure(1)
-        plt.subplot(4, 4, d)
-        plt.imshow(counts3)
-        plt.figure(2)
-        plt.subplot(4, 4, d)
-        plt.imshow(counts2)
-
-    plt.show()
     total_time = time() - start_time
-    print "Total time: {0}s; counting time: {1}s".format(total_time, counting_time)
+    if times:
+        print "Total time: {0}s".format(total_time)
+    if debug:
+        return sv_results, counts, counts2, counts3
+    
+    return sv_results
 
 
 def main():
     options = parseArguments(sys.argv)
-    find_svs(options.fasta, debug = options.debug)
+
+    #Read fasta file
+    s1 = time()
+    sequences = read_fasta(options.fasta)
+    #print "Reading finished ({0} s)".format(time()-s1)
+
+    num_pairs = len(sequences) / 2
+    for i, d in enumerate(xrange(16, 24, 1)):
+        print "Read", d
+        for key in sequences.keys():
+            if key.startswith("ref" + str(d)):
+                ref = sequences[key]
+            if key.startswith("read" + str(d)):
+                read = sequences[key]
+        sv_results, counts, zscores, stretches = find_svs(ref, read, debug=True)
+        plot_array(counts, 4, 2, i+1, 1)
+        plot_array(zscores, 4, 2, i+1, 2)
+        plot_array(stretches, 4, 2, i+1, 3)
+        print sv_results
+        print("")
+    plt.show()
+        
     
 if __name__ == "__main__":
     sys.exit(main())
