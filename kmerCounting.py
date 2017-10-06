@@ -7,6 +7,7 @@ import sys
 import math
 import argparse
 from cCounting import c_count
+from semiglobal import nw_compute_matrix, get_end_of_alignment
 
 def parseArguments(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -35,6 +36,8 @@ def read_fasta(filehandle):
 
 
 def find_stretches(values, threshold = 7, tolerance = 2, min_length = 5):
+    """Finds all streaks of values larger than threshold. Gaps up to length tolerance are tolerated. Streaks must have a certain minimum length.
+       Returns a list of tuples (start, inclusive end)"""
     stretches = []
     begin = -1
     last_good = -1
@@ -45,7 +48,7 @@ def find_stretches(values, threshold = 7, tolerance = 2, min_length = 5):
             last_good = index
         else:
             if begin != -1 and index - last_good > tolerance:
-                if last_good - begin >= min_length - 1:
+                if last_good - begin + 1 >= min_length:
                     stretches.append((begin, last_good))
                 begin = -1
                 last_good = -1
@@ -192,6 +195,8 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
         #Find stretches
         values = np.diagonal(counts2, offset)
         stretches = find_stretches(values)
+        
+        #Visualize stretches
         for start, end in stretches:
             for i in xrange(start, end+1):
                 if offset >= 0:
@@ -238,17 +243,33 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
     #print best_path
     
     sv_results = []
+    costs = (3, -12, -12)
     for index in xrange(len(best_path) - 1):
-        deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0]
-        insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1]
+        #end coordinates are inclusive ==> therefore subtract 1 from gap length
+        deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0] - 1
+        insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1] - 1
         
-        if insertion_gap > 1:
+        if insertion_gap > 1 or deletion_gap > 1:
+            #Find exact start of deletion
+            ref_window_start = (best_path[index]['end'][0], best_path[index]['end'][0] + 2)
+            read_window_start = (best_path[index]['end'][1], best_path[index]['end'][1] + 2)            
+            start_i, start_j = get_end_of_alignment(nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs), (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, costs)
+            
+            #Find exact end of deletion
+            ref_window_end = (best_path[index+1]['start'][0] - 1, best_path[index+1]['start'][0] + 1)
+            read_window_end = (best_path[index+1]['start'][1] - 1, best_path[index+1]['start'][1] + 1)            
+            end_i, end_j = get_end_of_alignment(nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs, backwards = True), (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, backwards = True)
+        
+        if insertion_gap > 1:            
             #print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
-            insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
-            sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
+            #insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
+            insertion_length = read_window_end[0] * 50 + end_j - read_window_start[0] * 50 + start_j
+            #sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
+            sv_results.append( ('ins', ref_window_start[0] * 50 + start_i, ref_window_start[0] * 50 + start_i + insertion_length) )
         if deletion_gap > 1:
             #print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
-            sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
+            #sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
+            sv_results.append( ('del', ref_window_start[0] * 50 + start_i, ref_window_end[0] * 50 + end_i) )
 
     #np.putmask(counts3, counts2<5, 0)
 

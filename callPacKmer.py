@@ -183,12 +183,12 @@ def gather_candidates(temp_dir, genome, fasta, span, min_mapq = 30):
                                 for typ, start, end in sv_results:
                                     if typ == "del":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), (end - start) * 50), file=deletion_output)
-                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), typ) )
+                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - end , left_ref_start - start, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_start - end, left_ref_start - start, typ) )
                                     if typ == "ins":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), (end - start) * 50), file=insertion_output)
-                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), typ) )
+                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - start, left_ref_start - start + (end - start), end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_start - start, left_ref_start - start + (end - start), typ) )
 
                         if percent_shift < -0.1:
                             deletion_size_estimate = reference_dist - individual_dist + (0.04 * original_length)
@@ -201,12 +201,12 @@ def gather_candidates(temp_dir, genome, fasta, span, min_mapq = 30):
                                 for typ, start, end in sv_results:
                                     if typ == "del":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), (end - start) * 50), file=deletion_output)
-                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_start - (end * 50), left_ref_start - (start * 50), typ) )
+                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - end, left_ref_start - start, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_start - end, left_ref_start - start, typ) )
                                     if typ == "ins":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), (end - start) * 50), file=insertion_output)
-                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_start - (start * 50), left_ref_start - (start * 50) + ((end - start) * 50), typ) )
+                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_start - start, left_ref_start - start + (end - start), end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_start - start, left_ref_start - start + (end - start), typ) )
                     else:
                         pass #Todo
                 elif not left_aln.is_reverse and not right_aln.is_reverse:
@@ -226,12 +226,12 @@ def gather_candidates(temp_dir, genome, fasta, span, min_mapq = 30):
                                 for typ, start, end in sv_results:
                                     if typ == "del":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=deletion_output)
-                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), typ) )
+                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_end + start, left_ref_end + end, typ) )
                                     if typ == "ins":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=insertion_output)
-                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), typ) )
+                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_end + start, left_ref_end + end, typ) )
 
                         if percent_shift < -0.1:
                             deletion_size_estimate = reference_dist - individual_dist + (0.04 * original_length)
@@ -243,12 +243,12 @@ def gather_candidates(temp_dir, genome, fasta, span, min_mapq = 30):
                                 for typ, start, end in sv_results:
                                     if typ == "del":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=deletion_output)
-                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), typ) )
+                                        print("Deletion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_end + start, left_ref_end + end, typ) )
                                     if typ == "ins":
                                         #print("{0}\t{1}\t{2}\t{3}\tprecise".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=insertion_output)
-                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), (end - start) * 50), file=sys.stdout)
-                                        found_svs.append( (left_contig, left_ref_end + (start * 50), left_ref_end + (end * 50), typ) )
+                                        print("Insertion detected: {0}: {1} - {2} (length {3})".format(left_contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+                                        found_svs.append( (left_contig, left_ref_end + start, left_ref_end + end, typ) )
                         
                     else:
                         pass #Todo
