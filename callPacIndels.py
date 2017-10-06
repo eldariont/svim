@@ -96,15 +96,16 @@ def formPartitions(largeIndels, maxDelta = 1000):
 def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
     clusters_full = []
     for num, partition in enumerate(partitions):
-        print("Process partition", num, file=sys.stderr)
+        print("Process partition", num, "of length", len(partition), file=sys.stderr)
         connectionGraph = nx.Graph()
+        connectionGraph.add_nodes_from(range(len(partition)))
         for i1 in range(len(partition)):
             for i2 in range(len(partition)):
+                #print(i1, i2, gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize))
                 if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) > maxDelta:
                     pass
                 else:
                     connectionGraph.add_edge(i1, i2)
-        #print(connectionGraph)
         clusters_indices = nx.find_cliques(connectionGraph)
         for cluster in clusters_indices:
             clusters_full.append([partition[index] for index in cluster])
@@ -125,7 +126,7 @@ def consolidateClusters(clusters):
         l = len(cluster)
         starts = [member[1] for member in cluster]
         ends = [member[2] for member in cluster]
-        consolidatedClusters.append( ( cluster[0][3], cluster[0][0], round(sum(starts) / l), round(sum(ends) / l), l, cluster) )
+        consolidatedClusters.append( ( cluster[0][3], cluster[0][0], int(round(sum(starts) / l)), int(round(sum(ends)) / l), l, cluster) )
     return consolidatedClusters
 
 
