@@ -1,15 +1,17 @@
+import sys
+import math
+import argparse
+from time import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 from scipy import stats
-from time import time
-import sys
-import math
-import argparse
-from cCounting import c_count
-from semiglobal import nw_compute_matrix, get_end_of_alignment, nw_get_alignment, print_alignment
 
-def parseArguments(args):
+from semiglobal import nw_compute_matrix, get_end_of_alignment
+
+
+def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""""")
     parser.add_argument('fasta', type=argparse.FileType('r'))
@@ -17,27 +19,27 @@ def parseArguments(args):
     return parser.parse_args()
 
 
-def read_fasta(filehandle):
+def read_fasta(file_handle):
+    """Simple FASTA file reader. Store sequences in a dictionary with sequence names as keys."""
     sequences = dict()
     seq = ""
-    for line in filehandle:
-        sline = line.strip()
-        if sline.startswith('>'):
+    for line in file_handle:
+        stripped_line = line.strip()
+        if stripped_line.startswith('>'):
             if len(seq) > 0:
                 sequences[name] = seq
                 seq = ""
-            name = sline[1:]
+            name = stripped_line[1:]
         else:
-            seq += sline
+            seq += stripped_line
     if len(seq) > 0:
         sequences[name] = seq
-        seq = ""
     return sequences
 
 
-def find_stretches(values, threshold = 7, tolerance = 2, min_length = 3):
-    """Finds all streaks of values larger than threshold. Gaps up to length tolerance are tolerated. Streaks must have a certain minimum length.
-       Returns a list of tuples (start, inclusive end)"""
+def find_stretches(values, threshold=7, tolerance=2, min_length=3):
+    """Finds all streaks of values larger than threshold. Gaps up to length tolerance are tolerated.
+       Streaks must have a certain minimum length. Returns a list of tuples (start, inclusive end)"""
     stretches = []
     begin = -1
     last_good = -1
@@ -58,6 +60,8 @@ def find_stretches(values, threshold = 7, tolerance = 2, min_length = 3):
 
 
 def convert_segments(segments):
+    """Converts segments from diagonal-relative coordinates to x-y coordinates.
+       A segment is a list of stretches. A stretch is a (offset, start, end) tuple."""
     converted_segments = []
     for segment in segments:
         stretches = []
@@ -73,138 +77,144 @@ def convert_segments(segments):
     return converted_segments
 
 
-def distance(start1, end1, start2, end2, convexA = 0, convexB = 3,shift_tolerance = 2):
-    if start2[0] + shift_tolerance >= end1[0] and start2[1] + shift_tolerance >= end1[1]:
-        if start2[0] - end1[0] <= 0:
+def distance(point1, point2, constant_gap_cost=0, convex_gap_cost=3, tolerance=2):
+    """Compute distance between two points with convex gap costs.
+       Point 2 must have higher x and y than point 1 (with a tolerance)."""
+    if point2[0] + tolerance >= point1[0] and point2[1] + tolerance >= point1[1]:
+        # distance in x direction
+        if point2[0] - point1[0] <= 0:
             dist = 0
         else:
-            dist = convexA + (convexB * math.log(start2[0] - end1[0]))
-        if start2[1] - end1[1] <= 0:
+            dist = constant_gap_cost + (convex_gap_cost * math.log(point2[0] - point1[0]))
+        # distance in y direction
+        if point2[1] - point1[1] <= 0:
             dist += 0
         else:
-            dist += convexA + (convexB * math.log(start2[1] - end1[1]))
+            dist += constant_gap_cost + (convex_gap_cost * math.log(point2[1] - point1[1]))
         return dist
     else:
         return float("inf")
 
 
-def find_best_path(segments, matrix_end, debug = False):
-    #print segments
-    G = nx.DiGraph()
-    G.add_nodes_from(["start", "end"])
-    G.add_edge("start", "end", weight = distance((0,0), (0,0), matrix_end, matrix_end))
+def find_best_path(segments, matrix_end, debug=False):
+    """Find best path through alignment matrix using segments."""
+    graph = nx.DiGraph()
+    graph.add_nodes_from(["start", "end"])
+    graph.add_edge("start", "end", weight=distance((0, 0), matrix_end))
     for i1, s1 in enumerate(segments):
         for i2, s2 in enumerate(segments):
             if i1 != i2:
-                dist = distance(s1['start'], s1['end'], s2['start'], s2['end'])
+                dist = distance(s1['end'], s2['start'])
                 if dist < float('inf'):
-                    G.add_edge(i1, i2, weight = dist)
-        dist = distance((0,0), (0,0), s1['start'], s1['end'])
+                    graph.add_edge(i1, i2, weight=dist)
+        dist = distance((0, 0), s1['start'])
         if dist < float('inf'):
-            G.add_edge("start", i1, weight = dist)
-        dist = distance(s1['start'], s1['end'], matrix_end, matrix_end)
+            graph.add_edge("start", i1, weight=dist)
+        dist = distance(s1['end'], matrix_end)
         if dist < float('inf'):
-            G.add_edge(i1, "end", weight = dist)
+            graph.add_edge(i1, "end", weight=dist)
     if debug:
-        print "Edge-list:", nx.to_edgelist(G)
-    shortest_path = nx.shortest_path(G, "start", "end", weight = "weight")
-    start_segment = {'start': (0,0), 'end': (0,0), 'stretches': []}
+        print "Edge-list:", nx.to_edgelist(graph)
+    shortest_path = nx.shortest_path(graph, "start", "end", weight="weight")
+    start_segment = {'start': (0, 0), 'end': (0, 0), 'stretches': []}
     end_segment = {'start': matrix_end, 'end': matrix_end, 'stretches': []}
     return [start_segment] + [segments[node] for node in shortest_path[1:-1]] + [end_segment]
 
 
-def plot_array(array, rows, cols, d, figure = 1):
+def plot_array(array, rows, cols, dataset, figure=1):
+    """Plot an array using matplotlib."""
     plt.figure(figure)
-    plt.subplot(rows, cols, d)
+    plt.subplot(rows, cols, dataset)
     plt.imshow(array)
 
 
-def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
-    band = 0.5
+def find_svs(ref, read, win_size=50, k=7, debug=False, times=False):
+    """Identify SVs between reference and read by kmer counting."""
     start_time = time()
 
-    lengths = (len(ref), len(read))
-    rows = len(ref) / winSize
-    cols = len(read) / winSize
-    last_row_size = len(ref) % winSize
-    last_col_size = len(read) % winSize
-    if last_row_size > (winSize / 3):
+    # Determine size of counting matrix
+    rows = len(ref) / win_size
+    cols = len(read) / win_size
+    last_row_size = len(ref) % win_size
+    last_col_size = len(read) % win_size
+    if last_row_size > (win_size / 3):
         rows += 1
-    if last_col_size > (winSize / 3):
+    if last_col_size > (win_size / 3):
         cols += 1
 
+    ########################
+    # Step 1: Kmer counting#
+    ########################
     s2 = time()
     counts = np.zeros((rows, cols), dtype=int)
 
-    #Prepare kmer set for each read bucket
+    # Prepare kmer set for each read bucket
     ykmers = []
     for ybucket in xrange(cols):
         bucketkmers = set()
-        for i in xrange(winSize):
-            if (ybucket*winSize + i + k) <= len(read):
-                bucketkmers.add(read[(ybucket*winSize + i) : (ybucket*winSize + i + k)])
+        for i in xrange(win_size):
+            if (ybucket * win_size + i + k) <= len(read):
+                bucketkmers.add(read[(ybucket * win_size + i): (ybucket * win_size + i + k)])
         ykmers.append(bucketkmers)
 
     for xbucket in xrange(rows):
-        for i in xrange(winSize):
+        for i in xrange(win_size):
             for ybucket in xrange(cols):
-                if (xbucket*winSize + i + k) <= len(ref):
-                    if ref[(xbucket*winSize + i) : (xbucket*winSize + i + k)] in ykmers[ybucket]:
+                if (xbucket * win_size + i + k) <= len(ref):
+                    if ref[(xbucket * win_size + i): (xbucket * win_size + i + k)] in ykmers[ybucket]:
                         counts[xbucket, ybucket] += 1
 
-    if last_row_size > (winSize / 3):
-        for col in xrange(len(read) / winSize):
-            counts[rows - 1, col] = counts[rows - 1, col] * (winSize / last_row_size)
-    if last_col_size > (winSize / 3):
-        for row in xrange(len(ref) / winSize):
-            counts[row, cols - 1] = counts[row, cols - 1] * (winSize / last_col_size)
-    if last_row_size > (winSize / 3) and last_col_size > (winSize / 3):
-        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (winSize * winSize) / (last_row_size * last_col_size)
+    if last_row_size > (win_size / 3):
+        for col in xrange(len(read) / win_size):
+            counts[rows - 1, col] = counts[rows - 1, col] * (win_size / last_row_size)
+    if last_col_size > (win_size / 3):
+        for row in xrange(len(ref) / win_size):
+            counts[row, cols - 1] = counts[row, cols - 1] * (win_size / last_col_size)
+    if last_row_size > (win_size / 3) and last_col_size > (win_size / 3):
+        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (win_size * win_size) / (last_row_size * last_col_size)
 
     if times:
         print "The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size)
-        print "Counting finished ({0} s)".format(time()-s2)
+        print "Counting finished ({0} s)".format(time() - s2)
 
-    #s2 = time()
-    #counts2 = c_count(ref, read, (rows, cols), winSize, k)
-    #print "Counting finished ({0} s)".format(time()-s2)
-
-    #if (counts == counts2).all():
-        #print "Same"
-    #else:
-        #print counts - counts2
-
+    #############################
+    # Step 2: Counts to Z-Scores#
+    #############################
     s3 = time()
-    counts2 = np.nan_to_num(stats.zscore(counts, axis=1)  + stats.zscore(counts, axis=0))
+    counts2 = np.nan_to_num(stats.zscore(counts, axis=1) + stats.zscore(counts, axis=0))
     if times:
-        print "Z-Score computation finished ({0} s)".format( time()-s3)
-    #print counts2
+        print "Z-Score computation finished ({0} s)".format(time() - s3)
 
+    ############################################
+    # Step 3: Z-Scores to stretches to segments#
+    ############################################
+    # Compute boundaries of area where alignment path could possibly lay.
+    band = 0.5
     if rows > cols:
-        posLim = int(band * cols)
-        negLim = - (rows - cols) - int(band * cols)
+        pos_lim = int(band * cols)
+        neg_lim = - (rows - cols) - int(band * cols)
     else:
-        posLim = int(band * rows) + (cols - rows)
-        negLim = -int(band * rows)
+        pos_lim = int(band * rows) + (cols - rows)
+        neg_lim = -int(band * rows)
 
     s4 = time()
     counts3 = np.zeros((rows, cols), dtype=int)
     completed_segments = []
     active_segments = []
-    for offset in xrange(negLim, posLim):
-        #Find stretches
+    for offset in xrange(neg_lim, pos_lim):
+        # Find stretches
         values = np.diagonal(counts2, offset)
         stretches = find_stretches(values)
 
-        #Visualize stretches
+        # Visualize stretches
         for start, end in stretches:
-            for i in xrange(start, end+1):
+            for i in xrange(start, end + 1):
                 if offset >= 0:
-                    counts3[i, i+offset] = 1
+                    counts3[i, i + offset] = 1
                 else:
-                    counts3[i-offset, i] = 1
+                    counts3[i - offset, i] = 1
 
-        #Combine stretches to segment
+        # Combine stretches to segment
         new_active_segments = []
         new_completed_segments = completed_segments + active_segments[:]
         for start, end in stretches:
@@ -234,52 +244,61 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
 
     completed_segments.extend(active_segments)
     if times:
-        print "Line finding finished ({0} s)".format(time()-s4)
+        print "Line finding finished ({0} s)".format(time() - s4)
 
     final_segments = convert_segments(completed_segments)
     if debug:
         print "Final segments", final_segments
-    best_path = find_best_path(final_segments, (rows, cols), debug)
-    #print best_path
 
+    #########################################
+    # Step 4: Path finding through segments #
+    #########################################
+    best_path = find_best_path(final_segments, (rows, cols), debug)
+
+    ####################################
+    # Step 5: Search best path for SVs #
+    ####################################
     sv_results = []
     costs = (3, -12, -12)
     for index in xrange(len(best_path) - 1):
-        #end coordinates are inclusive ==> therefore subtract 1 from gap length
-        deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0] - 1
-        insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1] - 1
+        # end coordinates are inclusive ==> therefore subtract 1 from gap length
+        deletion_gap = best_path[index + 1]['start'][0] - best_path[index]['end'][0] - 1
+        insertion_gap = best_path[index + 1]['start'][1] - best_path[index]['end'][1] - 1
 
         if insertion_gap > 1 or deletion_gap > 1:
-            #Find exact start of deletion
+            # Find exact start of deletion
             ref_window_start = (best_path[index]['end'][0], best_path[index]['end'][0] + 2)
             read_window_start = (best_path[index]['end'][1], best_path[index]['end'][1] + 2)
-            matrix = nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs)
-            start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, costs)
-            #alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], matrix, costs)
-            #print "End of segment:"
-            #print_alignment(alin_a, alin_b)
+            matrix = nw_compute_matrix(ref[ref_window_start[0] * 50: ref_window_start[1] * 50],
+                                       read[read_window_start[0] * 50: read_window_start[1] * 50], costs)
+            start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * 50,
+                                                    (read_window_start[1] - read_window_start[0]) * 50, costs)
+            # alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], matrix, costs)
+            # print "End of segment:"
+            # print_alignment(alin_a, alin_b)
 
-            #Find exact end of deletion
-            ref_window_end = (max(best_path[index+1]['start'][0] - 1, 0), best_path[index+1]['start'][0] + 1)
-            read_window_end = (max(best_path[index+1]['start'][1] - 1, 0), best_path[index+1]['start'][1] + 1)
-            matrix = nw_compute_matrix( ref[ref_window_end[0] * 50 : ref_window_end[1] * 50], read[read_window_end[0] * 50 : read_window_end[1] * 50], costs, backwards = True)
-            end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * 50, (read_window_end[1] - read_window_end[0]) * 50, backwards = True)
-            #alin_a, alin_b = nw_get_alignment(ref[ref_window_end[0] * 50 : ref_window_end[1] * 50], read[read_window_end[0] * 50 : read_window_end[1] * 50], matrix, costs, backwards = True)
-            #print "Start of segment:"
-            #print_alignment(alin_a, alin_b, backwards=True)
+            # Find exact end of deletion
+            ref_window_end = (max(best_path[index + 1]['start'][0] - 1, 0), best_path[index + 1]['start'][0] + 1)
+            read_window_end = (max(best_path[index + 1]['start'][1] - 1, 0), best_path[index + 1]['start'][1] + 1)
+            matrix = nw_compute_matrix(ref[ref_window_end[0] * 50: ref_window_end[1] * 50],
+                                       read[read_window_end[0] * 50: read_window_end[1] * 50], costs, backwards=True)
+            end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * 50,
+                                                (read_window_end[1] - read_window_end[0]) * 50, backwards=True)
+            # alin_a, alin_b = nw_get_alignment(ref[ref_window_end[0] * 50 : ref_window_end[1] * 50], read[read_window_end[0] * 50 : read_window_end[1] * 50], matrix, costs, backwards = True)
+            # print "Start of segment:"
+            # print_alignment(alin_a, alin_b, backwards=True)
 
-        if insertion_gap > 1:
-            #print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
-            #insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
-            insertion_length = read_window_end[0] * 50 + end_j - read_window_start[0] * 50 + start_j
-            #sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
-            sv_results.append( ('ins', ref_window_start[0] * 50 + start_i, ref_window_start[0] * 50 + start_i + insertion_length) )
-        if deletion_gap > 1:
-            #print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
-            #sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
-            sv_results.append( ('del', ref_window_start[0] * 50 + start_i, ref_window_end[0] * 50 + end_i) )
-
-    #np.putmask(counts3, counts2<5, 0)
+            if insertion_gap > 1:
+                # print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
+                # insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
+                insertion_length = read_window_end[0] * 50 + end_j - read_window_start[0] * 50 + start_j
+                # sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
+                sv_results.append(
+                    ('ins', ref_window_start[0] * 50 + start_i, ref_window_start[0] * 50 + start_i + insertion_length))
+            if deletion_gap > 1:
+                # print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
+                # sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
+                sv_results.append(('del', ref_window_start[0] * 50 + start_i, ref_window_end[0] * 50 + end_i))
 
     total_time = time() - start_time
     if times:
@@ -291,14 +310,11 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
 
 
 def main():
-    options = parseArguments(sys.argv)
+    options = parse_arguments()
 
-    #Read fasta file
-    s1 = time()
+    # Read fasta file
     sequences = read_fasta(options.fasta)
-    #print "Reading finished ({0} s)".format(time()-s1)
 
-    num_pairs = len(sequences) / 2
     for i, d in enumerate(xrange(16, 24, 1)):
         print "Read", d
         for key in sequences.keys():
@@ -307,9 +323,9 @@ def main():
             if key.startswith("read" + str(d)):
                 read = sequences[key]
         sv_results, counts, zscores, stretches = find_svs(ref, read, debug=True)
-        plot_array(counts, 4, 2, i+1, 1)
-        plot_array(zscores, 4, 2, i+1, 2)
-        plot_array(stretches, 4, 2, i+1, 3)
+        plot_array(counts, 4, 2, i + 1, 1)
+        plot_array(zscores, 4, 2, i + 1, 2)
+        plot_array(stretches, 4, 2, i + 1, 3)
         print sv_results
         print("")
     plt.show()

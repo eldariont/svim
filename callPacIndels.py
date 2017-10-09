@@ -3,140 +3,143 @@ from __future__ import print_function
 import sys
 import argparse
 import os
-import pysam
-from subprocess import call, Popen
-import subprocess
+from subprocess import call, Popen, PIPE
 from collections import defaultdict
+
+import pysam
 import networkx as nx
 
 
-def parseArguments(args):
+def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""""")
     parser.add_argument('fasta', type=argparse.FileType('r'))
-    parser.add_argument('genome', default = "/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
+    parser.add_argument('genome', default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
     parser.add_argument('temp_dir', type=str, help='temp directory')
     return parser.parse_args()
 
 
-def parseAlignmentFile(sam, contig):
-    """Parses SAM and BAM files and returns two dictionaries: dict of reads (list of alignments for each read) and dict for mapping between chrID and ChrName"""
-    alns = sam.fetch(reference = contig)
+def parse_sam_file(sam, contig):
+    """Parses a SAM file and returns a dict of reads (list of alignments for each read) for a given reference contig"""
+    alns = sam.fetch(reference=contig)
     aln_dict = defaultdict(list)
     for aln in alns:
         aln_dict[aln.query_name].append(aln)
-        #print(aln.query_name)
     return aln_dict
 
 
-def findIndelsInCigarTuples(tuples, minLength = 50):
+def find_indels_in_cigar_tuples(tuples, min_length=50):
     """Parses CIGAR tuples (op, len) and returns Indels with a length > minLength"""
     pos = 0
     indels = []
-    for op, l in tuples:
-        if op == 0: #alignment match
-            pos += l
-        elif op == 1: #insertion
-            if l >= minLength:
-                indels.append((pos, l, 'ins'))
-        elif op == 2: #deletion
-            if l >= minLength:
-                indels.append((pos, l, 'del'))
-            pos += l
-        elif op == 7 or op == 8: #match or mismatch
-            pos += l
+    for operation, length in tuples:
+        if operation == 0:                     # alignment match
+            pos += length
+        elif operation == 1:                   # insertion
+            if length >= min_length:
+                indels.append((pos, length, 'ins'))
+        elif operation == 2:                   # deletion
+            if length >= min_length:
+                indels.append((pos, length, 'del'))
+            pos += length
+        elif operation == 7 or operation == 8:        # match or mismatch
+            pos += length
     return indels
 
 
-def meanDistance(indel1, indel2):
+def mean_distance(indel1, indel2):
+    """Return distance between means of two indels.
+       An indel is a tuple of (contig, start, end, type)."""
     if indel1[0] == indel2[0] and indel1[3] == indel2[3]:
-        return abs( ( ( indel1[1] + indel1[2] ) / 2 ) - ( ( indel2[1] + indel2[2] ) / 2 ) )
+        return abs(((indel1[1] + indel1[2]) / 2) - ((indel2[1] + indel2[2]) / 2))
     else:
         return float("inf")
 
 
-def gowdaDidayDistance(indel1, indel2, largestIndelSize):
-    #different chromosomes
+def gowda_diday_distance(indel1, indel2, largest_indel_size):
+    """Return Gowda-Diday distance between two indels.
+       An indel is a tuple of (contig, start, end, type)."""
+    # different chromosomes
     if indel1[0] != indel2[0]:
         return float("inf")
-    #different SV type
+    # different SV type
     if indel1[3] != indel2[3]:
         return float("inf")
-    #non-intersecting
+    # non-intersecting
     if indel1[2] <= indel2[1] or indel2[2] <= indel1[1]:
         return float("inf")
-    distPos = abs(indel1[1] - indel2[1]) / float(largestIndelSize)
+    dist_pos = abs(indel1[1] - indel2[1]) / float(largest_indel_size)
     span1 = abs(indel1[2] - indel1[1])
     span2 = abs(indel2[2] - indel2[1])
-    spanTotal = abs(max(indel1[2], indel2[2]) - min(indel1[1], indel2[1]))
-    distSpan = abs(span1 - span2) / float(spanTotal)
+    span_total = abs(max(indel1[2], indel2[2]) - min(indel1[1], indel2[1]))
+    dist_span = abs(span1 - span2) / float(span_total)
     inter = min(indel1[2], indel2[2]) - max(indel1[1], indel2[1])
-    distContent = (span1 + span2 - 2 * inter) / float(spanTotal)
-    return distPos + distSpan + distContent
+    dist_content = (span1 + span2 - 2 * inter) / float(span_total)
+    return dist_pos + dist_span + dist_content
 
 
-def formPartitions(largeIndels, maxDelta = 1000):
-    #sort indels by their chromosome and mean
-    sortedIndels = sorted(largeIndels, key=lambda indel: (indel[3], indel[0], ( indel[1] + indel[2] ) / 2 ))
+def form_partitions(indels, max_delta=1000):
+    """Form partitions of indels using mean distance.
+       An indel is a tuple of (contig, start, end, type)."""
+    # Sort indels by their type, contig and mean
+    sorted_indels = sorted(indels, key=lambda ind: (ind[3], ind[0], (ind[1] + ind[2]) / 2))
     partitions = []
-    currentPartition = []
-    for indel in sortedIndels:
-        if len(currentPartition) < 1:
-            currentPartition.append(indel)
+    current_partition = []
+    for indel in sorted_indels:
+        if len(current_partition) < 1:
+            current_partition.append(indel)
             continue
-        if meanDistance(currentPartition[0], indel) > maxDelta:
-            partitions.append(currentPartition[:])
-            while len(currentPartition) > 0 and meanDistance(currentPartition[0], indel) > maxDelta:
-                currentPartition.pop(0)
-        currentPartition.append(indel)
-    partitions.append(currentPartition[:])
+        if mean_distance(current_partition[0], indel) > max_delta:
+            partitions.append(current_partition[:])
+            while len(current_partition) > 0 and mean_distance(current_partition[0], indel) > max_delta:
+                current_partition.pop(0)
+        current_partition.append(indel)
+    partitions.append(current_partition[:])
     return partitions
 
 
-def clustersFromPartitions(partitions, largestIndelSize, maxDelta = 1):
+def clusters_from_partitions(partitions, largest_indel_size, max_delta=1):
+    """Form clusters in partitions using Gowda-Diday distance and clique finding in a distance graph."""
     clusters_full = []
+    # Find clusters in each partition individually.
     for num, partition in enumerate(partitions):
-        print("Process partition", num, "of length", len(partition), file=sys.stderr)
-        connectionGraph = nx.Graph()
-        connectionGraph.add_nodes_from(range(len(partition)))
+        # print("Process partition", num, "of length", len(partition), file=sys.stderr)
+        connection_graph = nx.Graph()
+        connection_graph.add_nodes_from(range(len(partition)))
         for i1 in range(len(partition)):
             for i2 in range(len(partition)):
-                #print(i1, i2, gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize))
-                if i1 == i2 or gowdaDidayDistance(partition[i1], partition[i2], largestIndelSize) > maxDelta:
+                if i1 == i2 or gowda_diday_distance(partition[i1], partition[i2], largest_indel_size) > max_delta:
                     pass
                 else:
-                    connectionGraph.add_edge(i1, i2)
-        clusters_indices = nx.find_cliques(connectionGraph)
+                    # Add edge in graph only if two indels are close to each other (distance <= max_delta)
+                    connection_graph.add_edge(i1, i2)
+        clusters_indices = nx.find_cliques(connection_graph)
         for cluster in clusters_indices:
             clusters_full.append([partition[index] for index in cluster])
     return clusters_full
 
 
-def N(v, g):
-    return [i for i, n_v in enumerate(g[v]) if n_v]
-
-
-def numN(v, g):
-    return sum(g[v])
-
-
-def consolidateClusters(clusters):
-    consolidatedClusters = []
+def consolidate_clusters(clusters):
+    """Consolidate clusters to a list of (typ, contig, mean start, mean end, cluster size, members) tuples."""
+    consolidated_clusters = []
     for cluster in clusters:
-        l = len(cluster)
+        length = len(cluster)
         starts = [member[1] for member in cluster]
         ends = [member[2] for member in cluster]
-        consolidatedClusters.append( ( cluster[0][3], cluster[0][0], int(round(sum(starts) / l)), int(round(sum(ends)) / l), l, cluster) )
-    return consolidatedClusters
+        consolidated_clusters.append((cluster[0][3], cluster[0][0],
+                                      int(round(sum(starts) / length)), int(round(sum(ends)) / length),
+                                      length, cluster))
+    return consolidated_clusters
 
 
 def main():
-    options = parseArguments(sys.argv)
+    options = parse_arguments()
 
     if not os.path.exists(options.temp_dir):
         print("ERROR: Given temp directory does not exist", file=sys.stderr)
         sys.exit()
 
+    # Create temporary FASTA file
     if not os.path.exists(options.temp_dir + '/full.fa'):
         full_file = open(options.temp_dir + '/full.fa', 'w')
         length_dict = {}
@@ -156,23 +159,26 @@ def main():
     else:
         print("WARNING: Temp file for full sequences exists. Skip", file=sys.stderr)
 
-
-    options.fasta.close()
-
     print("INFO: Temporary files written", file=sys.stderr)
 
+    # Align full reads with NGM-LR
     if not os.path.exists(options.temp_dir + '/full_aln.chained.sorted.bam'):
-        ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr', '-t', '30', '-r', options.genome, '-q', options.temp_dir + '/full.fa', ], stdout=subprocess.PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=subprocess.PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10', '-o', options.temp_dir + '/full_aln.querysorted.bam'], stdin=view.stdout)
+        ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
+                       '-t', '30', '-r', options.genome, '-q', options.temp_dir + '/full.fa', ], stdout=PIPE)
+        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=PIPE)
+        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'sort', '-n', '-@', '10', '-o', options.temp_dir + '/full_aln.querysorted.bam'], stdin=view.stdout)
         sort.wait()
-        if call(['python', '/home/heller_d/bin/bamChain', options.temp_dir + '/full_aln.querysorted.bam', options.temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
+        if call(['python', '/home/heller_d/bin/bamChain', options.temp_dir + '/full_aln.querysorted.bam',
+                 options.temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
             print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-@', '10', options.temp_dir + '/full_aln.chained.bam', '-o', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-@', '10',
+                 options.temp_dir + '/full_aln.chained.bam', '-o', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
             print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'index', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                 'index', options.temp_dir + '/full_aln.chained.sorted.bam']) != 0:
             print("ERROR: Calling samtools index on full sequences failed", file=sys.stderr)
-
     else:
         print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
 
@@ -181,55 +187,45 @@ def main():
     sam = pysam.AlignmentFile(options.temp_dir + '/full_aln.chained.sorted.bam', 'rb')
     contigs = sam.references
 
+    indel_output = open(options.temp_dir + '/indels.bed', 'w')
+    partition_output = open(options.temp_dir + '/partitions.bed', 'w')
     insertion_output = open(options.temp_dir + '/ins.bed', 'w')
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
-    partition_output = open(options.temp_dir + '/partitions.bed', 'w')
-    indel_output = open(options.temp_dir + '/indels.bed', 'w')
 
-    largeIndels = []
-    largestIndelSize = -1
+    large_indels = []
+    largest_indel_size = -1
 
     for contig in contigs:
         print("INFO: Searching for SVs in", contig, "..", file=sys.stderr)
-        full_aln_dict = parseAlignmentFile(sam, contig)
+        full_aln_dict = parse_sam_file(sam, contig)
         for read in full_aln_dict.keys():
-            read_id = read.split("_")[1]
+            full_aln = full_aln_dict[read][0]
+            indels = find_indels_in_cigar_tuples(full_aln.cigartuples)
+            for pos, length, typ in indels:
+                large_indels.append(
+                    (contig, full_aln.reference_start + pos, full_aln.reference_start + pos + length, typ))
+                if length > largest_indel_size:
+                    largest_indel_size = length
 
-            #Read full read alignment
-            try:
-                full_aln = full_aln_dict[read][0]
-                full_ref_start = full_aln.reference_start
-                full_ref_end = full_aln.reference_end
-                full_q_start = full_aln.query_alignment_start
-                full_q_end = full_aln.query_alignment_end
-                full_chrId = contig
+    for contig, start, end, typ in large_indels:
+        print("{0}\t{1}\t{2}\t{3}".format(contig, start, end, typ), file=indel_output)
 
-                indels = findIndelsInCigarTuples(full_aln.cigartuples)
-                for pos, l, typ in indels:
-                    largeIndels.append( (full_chrId, full_ref_start + pos, full_ref_start + pos + l, typ) )
-                    if l > largestIndelSize:
-                        largestIndelSize = l
-            except IndexError:
-                full_aln = None
-
-    for chr, start, end, typ in largeIndels:
-        print("{0}\t{1}\t{2}\t{3}".format(chr, start, end, typ), file = indel_output)
-
-    partitions = formPartitions(largeIndels)
+    partitions = form_partitions(large_indels)
     print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
-    rawClusters = clustersFromPartitions(partitions, largestIndelSize)
-    print("Subdivided partition into {0} clusters".format(len(rawClusters)), file=sys.stderr)
-    clusters = consolidateClusters(rawClusters)
-    consolidatedPartitions = consolidateClusters(partitions)
+    raw_clusters = clusters_from_partitions(partitions, largest_indel_size)
+    print("Subdivided partition into {0} clusters".format(len(raw_clusters)), file=sys.stderr)
+    clusters = consolidate_clusters(raw_clusters)
+    consolidated_partitions = consolidate_clusters(partitions)
 
-    for typ, chr, start, end, support, members in consolidatedPartitions:
-        print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = partition_output)
+    for typ, contig, start, end, support, members in consolidated_partitions:
+        print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=partition_output)
 
-    for typ, chr, start, end, support, members in clusters:
+    for typ, contig, start, end, support, members in clusters:
         if typ == 'ins':
-            print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = insertion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=insertion_output)
         if typ == 'del':
-            print("{0}\t{1}\t{2}\t{3}\t{4}".format(chr, start, end, support, members), file = deletion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=deletion_output)
+
 
 if __name__ == "__main__":
     sys.exit(main())
