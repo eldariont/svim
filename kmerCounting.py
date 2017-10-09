@@ -7,7 +7,7 @@ import sys
 import math
 import argparse
 from cCounting import c_count
-from semiglobal import nw_compute_matrix, get_end_of_alignment
+from semiglobal import nw_compute_matrix, get_end_of_alignment, nw_get_alignment, print_alignment
 
 def parseArguments(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -35,7 +35,7 @@ def read_fasta(filehandle):
     return sequences
 
 
-def find_stretches(values, threshold = 7, tolerance = 2, min_length = 5):
+def find_stretches(values, threshold = 7, tolerance = 2, min_length = 3):
     """Finds all streaks of values larger than threshold. Gaps up to length tolerance are tolerated. Streaks must have a certain minimum length.
        Returns a list of tuples (start, inclusive end)"""
     stretches = []
@@ -144,14 +144,14 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
             if (ybucket*winSize + i + k) <= len(read):
                 bucketkmers.add(read[(ybucket*winSize + i) : (ybucket*winSize + i + k)])
         ykmers.append(bucketkmers)
-    
+
     for xbucket in xrange(rows):
         for i in xrange(winSize):
             for ybucket in xrange(cols):
                 if (xbucket*winSize + i + k) <= len(ref):
                     if ref[(xbucket*winSize + i) : (xbucket*winSize + i + k)] in ykmers[ybucket]:
                         counts[xbucket, ybucket] += 1
-    
+
     if last_row_size > (winSize / 3):
         for col in xrange(len(read) / winSize):
             counts[rows - 1, col] = counts[rows - 1, col] * (winSize / last_row_size)
@@ -160,11 +160,11 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
             counts[row, cols - 1] = counts[row, cols - 1] * (winSize / last_col_size)
     if last_row_size > (winSize / 3) and last_col_size > (winSize / 3):
         counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (winSize * winSize) / (last_row_size * last_col_size)
-    
+
     if times:
         print "The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size)
         print "Counting finished ({0} s)".format(time()-s2)
-    
+
     #s2 = time()
     #counts2 = c_count(ref, read, (rows, cols), winSize, k)
     #print "Counting finished ({0} s)".format(time()-s2)
@@ -195,7 +195,7 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
         #Find stretches
         values = np.diagonal(counts2, offset)
         stretches = find_stretches(values)
-        
+
         #Visualize stretches
         for start, end in stretches:
             for i in xrange(start, end+1):
@@ -241,26 +241,34 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
         print "Final segments", final_segments
     best_path = find_best_path(final_segments, (rows, cols), debug)
     #print best_path
-    
+
     sv_results = []
     costs = (3, -12, -12)
     for index in xrange(len(best_path) - 1):
         #end coordinates are inclusive ==> therefore subtract 1 from gap length
         deletion_gap = best_path[index+1]['start'][0] - best_path[index]['end'][0] - 1
         insertion_gap = best_path[index+1]['start'][1] - best_path[index]['end'][1] - 1
-        
+
         if insertion_gap > 1 or deletion_gap > 1:
             #Find exact start of deletion
             ref_window_start = (best_path[index]['end'][0], best_path[index]['end'][0] + 2)
-            read_window_start = (best_path[index]['end'][1], best_path[index]['end'][1] + 2)            
-            start_i, start_j = get_end_of_alignment(nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs), (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, costs)
-            
+            read_window_start = (best_path[index]['end'][1], best_path[index]['end'][1] + 2)
+            matrix = nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs)
+            start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, costs)
+            #alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], matrix, costs)
+            #print "End of segment:"
+            #print_alignment(alin_a, alin_b)
+
             #Find exact end of deletion
-            ref_window_end = (best_path[index+1]['start'][0] - 1, best_path[index+1]['start'][0] + 1)
-            read_window_end = (best_path[index+1]['start'][1] - 1, best_path[index+1]['start'][1] + 1)            
-            end_i, end_j = get_end_of_alignment(nw_compute_matrix( ref[ref_window_start[0] * 50 : ref_window_start[1] * 50], read[read_window_start[0] * 50 : read_window_start[1] * 50], costs, backwards = True), (ref_window_start[1] - ref_window_start[0]) * 50, (read_window_start[1] - read_window_start[0]) * 50, backwards = True)
-        
-        if insertion_gap > 1:            
+            ref_window_end = (max(best_path[index+1]['start'][0] - 1, 0), best_path[index+1]['start'][0] + 1)
+            read_window_end = (max(best_path[index+1]['start'][1] - 1, 0), best_path[index+1]['start'][1] + 1)
+            matrix = nw_compute_matrix( ref[ref_window_end[0] * 50 : ref_window_end[1] * 50], read[read_window_end[0] * 50 : read_window_end[1] * 50], costs, backwards = True)
+            end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * 50, (read_window_end[1] - read_window_end[0]) * 50, backwards = True)
+            #alin_a, alin_b = nw_get_alignment(ref[ref_window_end[0] * 50 : ref_window_end[1] * 50], read[read_window_end[0] * 50 : read_window_end[1] * 50], matrix, costs, backwards = True)
+            #print "Start of segment:"
+            #print_alignment(alin_a, alin_b, backwards=True)
+
+        if insertion_gap > 1:
             #print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
             #insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
             insertion_length = read_window_end[0] * 50 + end_j - read_window_start[0] * 50 + start_j
@@ -278,7 +286,7 @@ def find_svs(ref, read, winSize = 50, k = 7, debug = False, times = False):
         print "Total time: {0}s".format(total_time)
     if debug:
         return sv_results, counts, counts2, counts3
-    
+
     return sv_results
 
 
@@ -305,7 +313,7 @@ def main():
         print sv_results
         print("")
     plt.show()
-        
-    
+
+
 if __name__ == "__main__":
     sys.exit(main())
