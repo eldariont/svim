@@ -19,6 +19,24 @@ def parse_arguments():
     parser.add_argument('fasta', type=argparse.FileType('r'))
     parser.add_argument('genome', default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
     parser.add_argument('temp_dir', type=str, help='temp directory')
+
+    parser.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
+    parser.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+    parser.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
+    parser.add_argument('--tail_max_deviation', type=float, default=0.2, help='maximum deviation')
+    parser.add_argument('--count_win_size', type=int, default=50, help='window size for k-mer counting')
+    parser.add_argument('--count_k', type=int, default=7, help='k for k-mer counting')
+    parser.add_argument('--count_band', type=float, default=0.5, help='band width')
+    parser.add_argument('--stretch_threshold', type=int, default=7, help='z-score threshold')
+    parser.add_argument('--stretch_tolerance', type=int, default=2, help='tolerance for stretch finding')
+    parser.add_argument('--stretch_min_length', type=int, default=3, help='minimum stretch length')
+    parser.add_argument('--path_constant_gap_cost', type=int, default=0, help='constant gap cost for path finding')
+    parser.add_argument('--path_convex_gap_cost', type=int, default=3, help='convex gap cost for path finding')
+    parser.add_argument('--path_tolerance', type=int, default=2, help='tolerance for overlapping segments')
+    parser.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
+    parser.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
+    parser.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
+
     return parser.parse_args()
 
 
@@ -243,6 +261,7 @@ def search_svs(temp_dir, genome, fasta, parameters):
 def main():
     options = parse_arguments()
     parameters = callPacParams()
+    parameters.set_with_options(options)
 
     # Run SV search only if raw SV results do not exist
     if not os.path.exists(options.temp_dir + '/svs_raw.tsv'):
