@@ -3,6 +3,7 @@ from __future__ import print_function
 import sys
 import argparse
 import os
+import re
 from subprocess import call, Popen, PIPE
 
 import pysam
@@ -14,16 +15,16 @@ from kmerCounting import find_svs
 from callPacIndels import parse_sam_file, find_indels_in_cigar_tuples
 
 class SVEvidence:
-    def __init__(self, contig, start, end, type, evidence, source):
+    def __init__(self, contig, start, end, type, evidence, read):
         self.contig = contig
         self.start = start
         self.end = end
         self.type = type
         self.evidence = evidence
-        self.source = source
+        self.read = read
 
     def as_tuple(self):
-        return (self.contig, self.start, self.end, self.type, self.evidence, self.source)
+        return (self.contig, self.start, self.end, self.type, self.evidence, self.read)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -95,85 +96,261 @@ def create_temp_files(temp_dir, fasta, span):
         left_file.close()
     if write_right:
         right_file.close()
-        
+
     print("INFO: Temporary files written", file=sys.stderr)
 
 
 def run_alignments(temp_dir, genome, fasta):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
-    if not os.path.exists(temp_dir + '/left_aln.sorted.bam'):
+    if not os.path.exists(temp_dir + '/left_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
                      'mem', '-x', 'pacbio', '-t', '30', genome, temp_dir + '/left.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-o', temp_dir + '/left_aln.sorted.bam'], stdin=view.stdout)
+                      'sort', '-@', '10', '-n', '-o', temp_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                 'index', temp_dir + '/left_aln.sorted.bam']) != 0:
-            print("ERROR: Calling samtools index on left sequences failed", file=sys.stderr)
     else:
         print("WARNING: Alignment for left sequences exists. Skip", file=sys.stderr)
 
-    if not os.path.exists(temp_dir + '/right_aln.sorted.bam'):
+    if not os.path.exists(temp_dir + '/right_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
                      'mem', '-x', 'pacbio', '-t', '30', genome, temp_dir + '/right.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-o', temp_dir + '/right_aln.sorted.bam'], stdin=view.stdout)
+                      'sort', '-@', '10', '-n', '-o', temp_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                 'index', temp_dir + '/right_aln.sorted.bam']) != 0:
-            print("ERROR: Calling samtools index on right sequences failed", file=sys.stderr)
     else:
         print("WARNING: Alignment for right sequences exists. Skip", file=sys.stderr)
 
     # Align full reads with NGM-LR
-    if not os.path.exists(temp_dir + '/full_aln.chained.sorted.bam'):
+    if not os.path.exists(temp_dir + '/full_aln.chained.rsorted.bam'):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
                        '-t', '30', '-r', genome, '-q', os.path.realpath(fasta.name), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', '10', '-o', temp_dir + '/full_aln.querysorted.bam'],
+                      'sort', '-n', '-@', '10', '-o', temp_dir + '/full_aln.rsorted.bam'],
                      stdin=view.stdout)
         sort.wait()
-        if call(['python', '/home/heller_d/bin/bamChain', temp_dir + '/full_aln.querysorted.bam',
+        if call(['python', '/home/heller_d/bin/bamChain', temp_dir + '/full_aln.rsorted.bam',
                  temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
             print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-@', '10',
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10',
                  temp_dir + '/full_aln.chained.bam', '-o',
-                 temp_dir + '/full_aln.chained.sorted.bam']) != 0:
+                 temp_dir + '/full_aln.chained.rsorted.bam']) != 0:
             print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                 'index', temp_dir + '/full_aln.chained.sorted.bam']) != 0:
-            print("ERROR: Calling samtools index on full sequences failed", file=sys.stderr)
     else:
         print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
 
     print("INFO: Alignment finished", file=sys.stderr)
 
 
+def natural_representation(qname): 
+    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', qname)]
+
+
+def bam_iterator(bam):
+    """Returns an iterator for the given BAM file (must be query-sorted). 
+    In each call, the alignments of a single read are yielded as a 4-tuple: (read_name, list of primary pysam.AlignedSegment, list of supplementary pysam.AlignedSegment, list of secondary pysam.AlignedSegment)."""
+    alignments = bam.fetch(until_eof=True)
+    current_aln = alignments.next()
+    current_read_name = current_aln.query_name
+    current_prim = []
+    current_suppl = []
+    current_sec = []
+    if current_aln.is_secondary:
+        current_sec.append(current_aln)
+    elif current_aln.is_supplementary:
+        current_suppl.append(current_aln)
+    else:
+        current_prim.append(current_aln)
+    while True:
+        try:
+            next_aln = alignments.next()
+            next_read_name = next_aln.query_name
+            if next_read_name != current_read_name:
+                yield (current_read_name, current_prim, current_suppl, current_sec)
+                current_read_name = next_read_name
+                current_prim = []
+                current_suppl = []
+                current_sec = []
+            if next_aln.is_secondary:
+                current_sec.append(next_aln)
+            elif next_aln.is_supplementary:
+                current_suppl.append(next_aln)
+            else:
+                current_prim.append(next_aln)
+        except StopIteration:
+            break
+    yield (current_read_name, current_prim, current_suppl, current_sec)
+
+def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, reference, parameters):
+    left_ref_start = left_tail.reference_start
+    left_q_start = left_tail.query_alignment_start
+    right_ref_end = right_tail.reference_end
+    right_q_end = right_tail.query_alignment_end
+
+    read_snippet = str(full_read[parameters.tail_span - left_q_start : len(full_read) - right_q_end].upper())
+    ref_snippet = str(reference[contig].seq[right_ref_end:left_ref_start].upper().reverse_complement())
+    sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
+
+    sv_evidences = []
+    for typ, start, end in sv_results:
+        if typ == "del":
+            print("Deletion detected: {0}: {1} - {2} (length {3})".format(contig, left_ref_start - end , left_ref_start - start, end - start), file=sys.stdout)
+            sv_evidences.append(SVEvidence(contig, left_ref_start - end, left_ref_start - start, typ, "kmer", left_tail.query_name))
+        if typ == "ins":
+            print("Insertion detected: {0}: {1} - {2} (length {3})".format(contig, left_ref_start - start, left_ref_start - start + (end - start), end - start), file=sys.stdout)
+            sv_evidences.append(SVEvidence(contig, left_ref_start - start, left_ref_start - start + (end - start), typ, "kmer", left_tail.query_name))
+    return sv_evidences
+
+def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, reference, parameters):
+    left_ref_end = left_tail.reference_end
+    left_q_end = left_tail.query_alignment_end
+    right_ref_start = right_tail.reference_start
+    right_q_start = right_tail.query_alignment_start
+    
+    read_snippet = str(full_read[left_q_end:len(full_read) - parameters.tail_span + right_q_start].upper())
+    ref_snippet = str(reference[contig].seq[left_ref_end:right_ref_start].upper())
+    sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
+
+    sv_evidences = []
+    for typ, start, end in sv_results:
+        if typ == "del":
+            print("Deletion detected: {0}: {1} - {2} (length {3})".format(contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+            sv_evidences.append(SVEvidence(contig, left_ref_end + start, left_ref_end + end, typ, "kmer", left_tail.query_name))
+        if typ == "ins":
+            print("Insertion detected: {0}: {1} - {2} (length {3})".format(contig, left_ref_end + start, left_ref_end + end, end - start), file=sys.stdout)
+            sv_evidences.append(SVEvidence(contig, left_ref_end + start, left_ref_end + end, typ, "kmer", left_tail.query_name))
+    return sv_evidences
+
+def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters):
+    left_read_name, left_prim, left_suppl, left_sec = left_iterator_object
+    right_read_name, right_prim, right_suppl, right_sec = right_iterator_object
+
+    if len(left_prim) != 1 or left_prim[0].is_unmapped or left_prim[0].mapping_quality < parameters.tail_min_mapq:
+        return
+    if len(right_prim) != 1 or right_prim[0].is_unmapped or right_prim[0].mapping_quality < parameters.tail_min_mapq:
+        return
+
+    left_ref_chr = left_bam.getrname(left_prim[0].reference_id)
+    left_ref_start = left_prim[0].reference_start
+    left_ref_end = left_prim[0].reference_end
+    left_q_start = left_prim[0].query_alignment_start
+    left_q_end = left_prim[0].query_alignment_end
+
+    right_ref_chr = right_bam.getrname(right_prim[0].reference_id)
+    right_ref_start = right_prim[0].reference_start
+    right_ref_end = right_prim[0].reference_end
+    right_q_start = right_prim[0].query_alignment_start
+    right_q_end = right_prim[0].query_alignment_end
+
+    full_read = reads[left_read_name].seq
+    read_length = len(full_read)
+
+    if left_ref_chr == right_ref_chr:
+        if left_prim[0].is_reverse and right_prim[0].is_reverse:
+            reference_dist = left_ref_start - right_ref_end
+            if reference_dist > 0:
+                individual_dist = read_length - right_q_end - (parameters.tail_span - left_q_start)
+                percent_shift = (individual_dist - reference_dist) / float(read_length)
+                if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
+                    size_estimate = individual_dist - reference_dist - (0.04 * read_length)
+                    if size_estimate > -10000:
+                        #INDEL candidate, check with k-mer counting
+                        print("SV detected between {0} and {1} on {2} (estimated size: {3} bps, read {4})".format(right_ref_end, left_ref_start, left_ref_chr, size_estimate, left_read_name), file=sys.stdout)
+                        return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                    else:
+                        #Either very large INS or TRANS
+                        pass 
+            else:
+                #TRANS candidate
+                pass
+        elif not left_prim[0].is_reverse and not right_prim[0].is_reverse:
+            reference_dist = right_ref_start - left_ref_end
+            if reference_dist > 0:
+                individual_dist = read_length - left_q_end - (parameters.tail_span - right_q_start)
+                percent_shift = (individual_dist - reference_dist) / float(read_length)
+                if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
+                    size_estimate = individual_dist - reference_dist - (0.04 * read_length)
+                    if size_estimate > -10000:
+                        #INDEL candidate, check with k-mer counting
+                        print("SV detected between {0} and {1} on {2} (estimated size: {3} bps, read {4})".format(left_ref_end, right_ref_start, left_ref_chr, size_estimate, left_read_name), file=sys.stdout)
+                        return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                    else:
+                        #Either very large INS or TRANS
+                        pass
+            else:
+                #TRANS candidate
+                pass
+        elif not left_prim[0].is_reverse and right_prim[0].is_reverse:
+            reference_dist = right_ref_start - left_ref_end
+            if reference_dist > 0:
+                #INV candidate, right tail in inverted region
+                pass
+            else:
+                #INV candidate, left tail in inverted region
+                pass
+        elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
+            reference_dist = right_ref_start - left_ref_end
+            if reference_dist > 0:
+                #INV candidate, left tail in inverted region
+                pass
+            else:
+                #INV candidate, right tail in inverted region
+                pass
+    else:
+        #TRANS candidate
+        pass
+
+
+def analyze_read_tails(temp_dir, genome, fasta, parameters):
+    left_bam = pysam.AlignmentFile(temp_dir + '/left_aln.rsorted.bam')
+    right_bam = pysam.AlignmentFile(temp_dir + '/right_aln.rsorted.bam')
+    left_it = bam_iterator(left_bam)
+    right_it = bam_iterator(right_bam)
+
+    reads = SeqIO.index(fasta.name, "fasta")
+    reference = SeqIO.index(genome, "fasta")
+    print("INFO: Indexing reads and reference finished", file=sys.stderr)
+
+    sv_evidences = []
+
+    left_iterator_object = left_it.next()
+    while True:
+        try:
+            right_iterator_object = right_it.next()             
+            while natural_representation(left_iterator_object[0]) < natural_representation(right_iterator_object[0]):
+                left_iterator_object = left_it.next()
+            if left_iterator_object[0] == right_iterator_object[0]:
+                if int(left_iterator_object[0].split("_")[1]) % 1000 == 0:
+                    print("INFO: Processed read", left_iterator_object[0].split("_")[1], file=sys.stderr)
+                sv_evidences.append(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
+                left_iterator_object = left_it.next()
+        except StopIteration:
+            break
+
+
 def search_svs(temp_dir, genome, fasta, parameters):
     """Search for SVs using aligned read tails and the read and reference regions in-between."""
-    left_sam = pysam.AlignmentFile(temp_dir + '/left_aln.sorted.bam')
-    right_sam = pysam.AlignmentFile(temp_dir + '/right_aln.sorted.bam')
-    full_sam = pysam.AlignmentFile(temp_dir + '/full_aln.chained.sorted.bam', 'rb')
-    left_contigs = left_sam.references
+    left_it = bam_iterator(temp_dir + '/left_aln.rsorted.bam')
+    right_it = bam_iterator(temp_dir + '/right_aln.rsorted.bam')
+    full_bam = pysam.AlignmentFile(temp_dir + '/full_aln.chained.rsorted.bam')
 
-    reference = SeqIO.index(genome, "fasta")
-    reads = SeqIO.index(fasta.name, "fasta")
-    print("INFO: Opening output and reference finished", file=sys.stderr)
+    # reference = SeqIO.index(genome, "fasta")
+    # reads = SeqIO.index(fasta.name, "fasta")
+    # print("INFO: Opening output and reference finished", file=sys.stderr)
 
     sv_evidences = []
 
     try:
         for left_contig in left_contigs:
             print("INFO: Searching for SVs in", left_contig, "..", file=sys.stderr)
-            left_aln_dict = parse_sam_file(left_sam, left_contig)
-            right_aln_dict = parse_sam_file(right_sam, left_contig)
-            full_aln_dict = parse_sam_file(full_sam, left_contig)
+            left_aln_dict = parse_sam_file(left_bam, left_contig)
+            right_aln_dict = parse_sam_file(right_bam, left_contig)
+            full_aln_dict = parse_sam_file(full_bam, left_contig)
 
             for read in left_aln_dict.keys():
                 read_id = read.split("_")[1]
@@ -189,7 +366,7 @@ def search_svs(temp_dir, genome, fasta, parameters):
                 if left_aln.is_unmapped or right_aln.is_unmapped:
                     # print("One or both of the tails is unmapped", file=sys.stderr)
                     continue
-                    
+
                 if left_aln.mapping_quality < parameters.tail_min_mapq or right_aln.mapping_quality < parameters.tail_min_mapq:
                     # print("One or both of the tails are mapped with low quality", file=sys.stderr)
                     continue
@@ -379,11 +556,18 @@ def consolidate_clusters(clusters):
     consolidated_clusters = []
     for cluster in clusters:
         length = len(cluster)
-        starts = [member.start for member in cluster]
-        ends = [member.end for member in cluster]
+        cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
+        kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
+        score = len(cigar_evidences) + len(kmer_evidences)
+        if len(cigar_evidences) > 0:
+            score += 5
+        if len(kmer_evidences) > 0:
+            score += 5
+        average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
+        average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
         consolidated_clusters.append((cluster[0].type, cluster[0].contig,
-                                      int(round(sum(starts) / length)), int(round(sum(ends)) / length),
-                                      length, map(lambda x: x.as_tuple(), cluster)))
+                                      int(round(average_start)), int(round(average_end)),
+                                      score, length, map(lambda x: x.as_tuple(), cluster)))
     return consolidated_clusters
 
 
@@ -396,8 +580,8 @@ def main():
     if not os.path.exists(options.temp_dir + '/sv_evidences.tsv'):
         create_temp_files(options.temp_dir, options.fasta, parameters.tail_span)
         run_alignments(options.temp_dir, options.genome, options.fasta)
-        sv_evidences = search_svs(options.temp_dir, options.genome, options.fasta, parameters)
-        
+        sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
+
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'w')
         for sv_evidence in sv_evidences:
             print("\t".join(map(str, sv_evidence.as_tuple())), file=raw_file)
@@ -423,15 +607,15 @@ def main():
     partition_output = open(options.temp_dir + '/partitions.bed', 'w')
     insertion_output = open(options.temp_dir + '/ins.bed', 'w')
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
-    
-    for typ, contig, start, end, support, members in partitions_consolidated:
-        print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=partition_output)
-        
-    for typ, contig, start, end, support, members in clusters_consolidated:
+
+    for typ, contig, start, end, score, length, members in partitions_consolidated:
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=partition_output)
+
+    for typ, contig, start, end, score, length, members in clusters_consolidated:
         if typ == 'ins':
-            print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=insertion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=insertion_output)
         if typ == 'del':
-            print("{0}\t{1}\t{2}\t{3}\t{4}".format(contig, start, end, support, members), file=deletion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=deletion_output)
 
 
 if __name__ == "__main__":
