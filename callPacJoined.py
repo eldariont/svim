@@ -16,8 +16,12 @@ from callPacIndels import parse_sam_file, find_indels_in_cigar_tuples
 
 
 class SVEvidence:
-    def __init__(self, contig, start, end, type, evidence, read):
-        self.contig = contig
+    def __init__(self, contig1, start, end, type, evidence, read, contig2 = None):
+        self.contig1 = contig1
+        if contig2 == None:
+            self.contig2 = contig1
+        else:
+            self.contig2 = contig2
         self.start = start
         self.end = end
         self.type = type
@@ -25,7 +29,7 @@ class SVEvidence:
         self.read = read
 
     def as_tuple(self):
-        return (self.contig, self.start, self.end, self.type, self.evidence, self.read)
+        return (self.contig1, self.start, self.contig2, self.end, self.type, self.evidence, self.read)
 
 
 def parse_arguments():
@@ -609,7 +613,7 @@ def gowda_diday_distance(evidence1, evidence2, largest_indel_size):
 
 def form_partitions(sv_evidences, max_delta=1000):
     """Form partitions of evidences using mean distance."""
-    sorted_evidences = sorted(sv_evidences, key=lambda evi: (evi.type, evi.contig, (evi.start + evi.end) / 2))
+    sorted_evidences = sorted(sv_evidences, key=lambda evi: (evi.type, evi.contig1, (evi.start + evi.end) / 2))
     partitions = []
     current_partition = []
     for evidence in sorted_evidences:
@@ -688,8 +692,8 @@ def main():
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'r')
         sv_evidences = []
         for line in raw_file:
-            con, sta, end, typ, evi, sou = line.strip().split("\t")
-            sv_evidences.append(SVEvidence(con, int(sta), int(end), typ, evi, sou))
+            con1, sta, con2, end, typ, evi, sou = line.strip().split("\t")
+            sv_evidences.append(SVEvidence(con1, int(sta), int(end), typ, evi, sou, contig2 = con2))
         raw_file.close()
 
     # Cluster raw SVs
