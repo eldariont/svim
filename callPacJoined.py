@@ -320,7 +320,7 @@ def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters)
     return sv_evidences
 
 
-def check_trans_candidate(left_tail, right_tail, left_contig, right_contig, full_read, reference, parameters):
+def check_trans_candidate_1(left_tail, right_tail, left_contig, right_contig, full_read, reference, parameters):
     left_ref_end = left_tail.reference_end
     left_q_end = left_tail.query_alignment_end
     right_ref_start = right_tail.reference_start
@@ -336,6 +336,27 @@ def check_trans_candidate(left_tail, right_tail, left_contig, right_contig, full
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
             breakpoint1 = left_ref_end + start
             breakpoint2 = right_ref_start - (len(ref_snippet_1 + ref_snippet_2) - end)
+            print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
+            sv_evidences.append(SVEvidence(left_contig, breakpoint1, breakpoint2, "trans", "kmer", left_tail.query_name, contig2 = right_contig))
+    return sv_evidences
+
+
+def check_trans_candidate_2(left_tail, right_tail, left_contig, right_contig, full_read, reference, parameters):
+    left_ref_start = left_tail.reference_start
+    left_q_start = left_tail.query_alignment_start
+    right_ref_end = right_tail.reference_end
+    right_q_end = right_tail.query_alignment_end
+    
+    read_snippet = str(full_read[parameters.tail_span - left_q_start:len(full_read) - right_q_end].upper())
+    ref_snippet_1 = str(reference[left_contig].seq[left_ref_start - len(read_snippet):left_ref_start].upper().reverse_complement())
+    ref_snippet_2 = str(reference[right_contig].seq[right_ref_end:right_ref_end + len(read_snippet)].upper().reverse_complement())
+    sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
+
+    sv_evidences = []
+    for typ, start, end in sv_results:
+        if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
+            breakpoint1 = left_ref_start - start
+            breakpoint2 = right_ref_end + (len(ref_snippet_1 + ref_snippet_2) - end)
             print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
             sv_evidences.append(SVEvidence(left_contig, breakpoint1, breakpoint2, "trans", "kmer", left_tail.query_name, contig2 = right_contig))
     return sv_evidences
@@ -382,7 +403,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                         pass 
             else:
                 #TRANS candidate
-                pass
+                return check_trans_candidate_2(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
         elif not left_prim[0].is_reverse and not right_prim[0].is_reverse:
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
@@ -399,7 +420,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                         pass
             else:
                 #TRANS candidate
-                return check_trans_candidate(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
+                return check_trans_candidate_1(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
         elif not left_prim[0].is_reverse and right_prim[0].is_reverse:
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
@@ -422,7 +443,16 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                 return check_inv_4(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
     else:
         #TRANS candidate
-        pass
+        if left_prim[0].is_reverse and right_prim[0].is_reverse:
+            return check_trans_candidate_2(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
+        elif not left_prim[0].is_reverse and not right_prim[0].is_reverse:
+            return check_trans_candidate_1(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
+        elif not left_prim[0].is_reverse and right_prim[0].is_reverse:
+            #TRANS + INV
+            pass
+        elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
+            #TRANS + INV
+            pass
     return None
 
 
