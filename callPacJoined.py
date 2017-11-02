@@ -29,7 +29,7 @@ class SVEvidence:
         self.read = read
 
     def as_tuple(self):
-        return (self.contig1, self.start, self.contig2, self.end, self.type, self.evidence, self.read)
+        return (self.contig1, self.start, self.end, self.type, self.contig2, self.evidence, self.read)
 
 
 def parse_arguments():
@@ -605,7 +605,7 @@ def search_svs(temp_dir, genome, fasta, parameters):
 
 def mean_distance(evidence1, evidence2):
     """Return distance between means of two evidences."""
-    if evidence1.contig == evidence2.contig and evidence1.type == evidence2.type:
+    if evidence1.contig1 == evidence2.contig1 and evidence1.type == evidence2.type:
         return abs(((evidence1.start + evidence1.end) / 2) - ((evidence2.start + evidence2.end) / 2))
     else:
         return float("inf")
@@ -614,7 +614,7 @@ def mean_distance(evidence1, evidence2):
 def gowda_diday_distance(evidence1, evidence2, largest_indel_size):
     """Return Gowda-Diday distance between two evidences."""
     # different chromosomes
-    if evidence1.contig != evidence2.contig:
+    if evidence1.contig1 != evidence2.contig1:
         return float("inf")
     # different SV type
     if evidence1.type != evidence2.type:
@@ -687,7 +687,7 @@ def consolidate_clusters(clusters):
             score += 5
         average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
         average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
-        consolidated_clusters.append((cluster[0].type, cluster[0].contig,
+        consolidated_clusters.append((cluster[0].type, cluster[0].contig1,
                                       int(round(average_start)), int(round(average_end)),
                                       score, length, map(lambda x: x.as_tuple(), cluster)))
     return consolidated_clusters
@@ -713,7 +713,7 @@ def main():
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'r')
         sv_evidences = []
         for line in raw_file:
-            con1, sta, con2, end, typ, evi, sou = line.strip().split("\t")
+            con1, sta, end, typ, con2, evi, sou = line.strip().split("\t")
             sv_evidences.append(SVEvidence(con1, int(sta), int(end), typ, evi, sou, contig2 = con2))
         raw_file.close()
 
