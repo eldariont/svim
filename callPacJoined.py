@@ -453,6 +453,9 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
                 left_iterator_object = left_it.next()
         except StopIteration:
             break
+        except KeyboardInterrupt:
+            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            break
     return sv_evidences
 
 
