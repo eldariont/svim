@@ -55,6 +55,7 @@ def parse_arguments():
     parser.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
     parser.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
     parser.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
+    parser.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
     return parser.parse_args()
 
 
@@ -455,6 +456,34 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
     return sv_evidences
 
 
+def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
+    left_bam = pysam.AlignmentFile(temp_dir + '/left_aln.rsorted.bam')
+    right_bam = pysam.AlignmentFile(temp_dir + '/right_aln.rsorted.bam')
+    left_it = bam_iterator(left_bam)
+    right_it = bam_iterator(right_bam)
+
+    reads = SeqIO.index(fasta.name, "fasta")
+    reference = SeqIO.index(genome, "fasta")
+    print("INFO: Indexing reads and reference finished", file=sys.stderr)
+
+    sv_evidences = []
+
+    left_iterator_object = left_it.next()
+    while left_iterator_object[0] != read_name:
+        try:
+            left_iterator_object = left_it.next()
+        except StopIteration:
+            break
+    right_iterator_object = right_it.next()
+    while right_iterator_object[0] != read_name:
+        try:
+            right_iterator_object = right_it.next()
+        except StopIteration:
+            break
+
+    result = analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
+
+
 def search_svs(temp_dir, genome, fasta, parameters):
     """Search for SVs using aligned read tails and the read and reference regions in-between."""
     left_it = bam_iterator(temp_dir + '/left_aln.rsorted.bam')
@@ -702,7 +731,11 @@ def main():
     if not os.path.exists(options.temp_dir + '/sv_evidences.tsv'):
         create_temp_files(options.temp_dir, options.fasta, parameters.tail_span)
         run_alignments(options.temp_dir, options.genome, options.fasta)
-        sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
+        if options.read_name != "all":
+            analyze_specific_read(options.temp_dir, options.genome, options.fasta, parameters, options.read_name)
+            return
+        else:
+            sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
 
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'w')
         for sv_evidence in sv_evidences:
