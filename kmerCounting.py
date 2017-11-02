@@ -271,7 +271,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
             matrix = nw_compute_matrix(ref[ref_window_start[0] * parameters.count_win_size: ref_window_start[1] * parameters.count_win_size],
                                        read[read_window_start[0] * parameters.count_win_size: read_window_start[1] * parameters.count_win_size], parameters.align_costs)
             start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * parameters.count_win_size,
-                                                    (read_window_start[1] - read_window_start[0]) * parameters.count_win_size, parameters.align_costs)
+                                                    (read_window_start[1] - read_window_start[0]) * parameters.count_win_size, backwards=False)
             # alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * parameters.count_win_size : ref_window_start[1] * parameters.count_win_size], read[read_window_start[0] * parameters.count_win_size : read_window_start[1] * parameters.count_win_size], matrix, parameters.align_costs)
             # print "End of segment:"
             # print_alignment(alin_a, alin_b)
