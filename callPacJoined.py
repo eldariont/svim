@@ -341,10 +341,10 @@ def check_trans_candidate_1(left_tail, right_tail, left_contig, right_contig, fu
 
 
 def check_trans_candidate_2(left_tail, right_tail, left_contig, right_contig, full_read, reference, parameters):
-    left_ref_start = left_tail.reference_start
-    left_q_start = left_tail.query_alignment_start
-    right_ref_end = right_tail.reference_end
-    right_q_end = right_tail.query_alignment_end
+    left_ref_end = left_tail.reference_end
+    left_q_end = left_tail.query_alignment_end
+    right_ref_start = right_tail.reference_start
+    right_q_start = right_tail.query_alignment_start
     
     read_snippet = str(full_read[parameters.tail_span - left_q_end:len(full_read) - right_q_start].upper())
     ref_snippet_1 = str(reference[left_contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
