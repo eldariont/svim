@@ -320,21 +320,21 @@ def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters)
 
 
 def check_trans_candidate(left_tail, right_tail, left_contig, right_contig, full_read, reference, parameters):
-    left_ref_end = left_tail.reference_end
-    left_q_end = left_tail.query_alignment_end
-    right_ref_start = right_tail.reference_start
-    right_q_start = right_tail.query_alignment_start
+    left_ref_start = left_tail.reference_start
+    left_q_start = left_tail.query_alignment_start
+    right_ref_end = right_tail.reference_end
+    right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[left_q_end:len(full_read) - parameters.tail_span + right_q_start].upper())
-    ref_snippet_1 = str(reference[left_contig].seq[left_ref_end:left_ref_end+len(read_snippet)].upper())
-    ref_snippet_2 = str(reference[right_contig].seq[right_ref_start - len(read_snippet):right_ref_start].upper())
+    read_snippet = str(full_read[left_q_start:len(full_read) - parameters.tail_span + right_q_end].upper())
+    ref_snippet_1 = str(reference[left_contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
+    ref_snippet_2 = str(reference[right_contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
-            breakpoint1 = left_ref_end + start
-            breakpoint2 = right_ref_start - (len(ref_snippet_1 + ref_snippet_2) - end)
+            breakpoint1 = left_ref_start + start
+            breakpoint2 = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
             print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
             sv_evidences.append(SVEvidence(left_contig, breakpoint1, breakpoint2, "trans", "kmer", left_tail.query_name, contig2 = right_contig))
     return sv_evidences
