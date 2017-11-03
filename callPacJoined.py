@@ -634,8 +634,11 @@ def main():
             sv_evidences.append(SVEvidence(con1, int(sta), int(end), typ, evi, sou, contig2 = con2))
         raw_file.close()
 
+    translocations = [ev for ev in sv_evidences if ev.type == 'trans']
+    other_svs = [ev for ev in sv_evidences if ev.type != 'trans']
+
     # Cluster raw SVs
-    partitions_raw = form_partitions(sv_evidences)
+    partitions_raw = form_partitions(other_svs)
     print("Formed {0} partitions".format(len(partitions_raw)), file=sys.stderr)
     clusters_raw = clusters_from_partitions(partitions_raw)
     print("Subdivided partition into {0} clusters".format(len(clusters_raw)), file=sys.stderr)
@@ -647,17 +650,22 @@ def main():
     insertion_output = open(options.temp_dir + '/ins.bed', 'w')
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
     inversion_output = open(options.temp_dir + '/inv.bed', 'w')
+    translocation_output = open(options.temp_dir + '/trans.bed', 'w')
 
-    for typ, contig, start, end, score, length, members in partitions_consolidated:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=partition_output)
+    for typ, contig1, start, end, score, length, members in partitions_consolidated:
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(contig1, start, end, score, length, members), file=partition_output)
 
-    for typ, contig, start, end, score, length, members in clusters_consolidated:
+    for typ, contig1, start, end, score, length, members in clusters_consolidated:
         if typ == 'ins':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=insertion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=insertion_output)
         if typ == 'del':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=deletion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=deletion_output)
         if typ == 'inv':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig, start, end, score, length, members), file=inversion_output)
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=inversion_output)
+    
+    for translocation in translocations:
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.start, translocation.start+1, ">{0}:{1}".format(translocation.contig2, translocation.end), translocation.evidence, translocation.read), file=translocation_output)
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.end, translocation.end+1, ">{0}:{1}".format(translocation.contig1, translocation.start), translocation.evidence, translocation.read), file=translocation_output)
 
 
 if __name__ == "__main__":
