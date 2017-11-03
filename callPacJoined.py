@@ -455,6 +455,26 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
     return None
 
 
+def analyze_full_read(full_iterator_object, full_bam, reads, reference, parameters):
+    full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
+
+    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters.tail_min_mapq:
+        return None
+
+    sv_evidences = []
+
+    indels = find_indels_in_cigar_tuples(full_prim[0].cigartuples)
+    for pos, length, typ in indels:
+        if typ == "del":
+            print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, pos, pos + length, length), file=sys.stdout)
+            sv_evidences.append(SVEvidence(full_ref_chr, pos, pos + length, typ, "cigar", full_read_name))
+        elif typ == "ins":
+            print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, pos, pos + length, length), file=sys.stdout)
+            sv_evidences.append(SVEvidence(full_ref_chr, pos, pos + length, typ, "cigar", full_read_name))
+
+    return sv_evidences
+
+
 def analyze_read_tails(temp_dir, genome, fasta, parameters):
     left_bam = pysam.AlignmentFile(temp_dir + '/left_aln.rsorted.bam')
     right_bam = pysam.AlignmentFile(temp_dir + '/right_aln.rsorted.bam')
@@ -480,6 +500,32 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
                 if result != None:
                     sv_evidences.extend(result)
                 left_iterator_object = left_it.next()
+        except StopIteration:
+            break
+        except KeyboardInterrupt:
+            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            break
+    return sv_evidences
+
+
+def analyze_full_reads(temp_dir, genome, fasta, parameters):
+    full_bam = pysam.AlignmentFile(temp_dir + '/full_aln.chained.rsorted.bam')
+    full_it = bam_iterator(full_bam)
+
+    reads = SeqIO.index(fasta.name, "fasta")
+    reference = SeqIO.index(genome, "fasta")
+    print("INFO: Indexing reads and reference finished", file=sys.stderr)
+
+    sv_evidences = []
+
+    while True:
+        try:
+            full_iterator_object = full_it.next()
+            if int(full_iterator_object[0].split("_")[1]) % 1000 == 0:
+                print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
+            result = analyze_full_read(full_iterator_object, full_bam, reads, reference, parameters)
+            if result != None:
+                sv_evidences.extend(result)
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -620,6 +666,7 @@ def main():
             return
         else:
             sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
+            sv_evidences.extend(analyze_full_reads(options.temp_dir, options.genome, options.fasta, parameters))
 
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'w')
         for sv_evidence in sv_evidences:
@@ -653,7 +700,7 @@ def main():
     translocation_output = open(options.temp_dir + '/trans.bed', 'w')
 
     for typ, contig1, start, end, score, length, members in partitions_consolidated:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(contig1, start, end, score, length, members), file=partition_output)
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=partition_output)
 
     for typ, contig1, start, end, score, length, members in clusters_consolidated:
         if typ == 'ins':
