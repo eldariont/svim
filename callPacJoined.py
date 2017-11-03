@@ -395,10 +395,9 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -10000:
                         #INDEL candidate, check with k-mer counting
-                        #print("INDEL detected between {0} and {1} on {2} (estimated size: {3} bps, read {4})".format(right_ref_end, left_ref_start, left_ref_chr, size_estimate, left_read_name), file=sys.stdout)
                         return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:
-                        #Either very large INS or TRANS
+                        #Either very large DEL or TRANS
                         pass 
             else:
                 #TRANS candidate
@@ -412,10 +411,9 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -10000:
                         #INDEL candidate, check with k-mer counting
-                        #print("INDEL detected between {0} and {1} on {2} (estimated size: {3} bps, read {4})".format(left_ref_end, right_ref_start, left_ref_chr, size_estimate, left_read_name), file=sys.stdout)
                         return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:
-                        #Either very large INS or TRANS
+                        #Either very large DEL or TRANS
                         pass
             else:
                 #TRANS candidate
@@ -455,7 +453,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
     return None
 
 
-def analyze_full_read(full_iterator_object, full_bam, reads, reference, parameters):
+def analyze_full_read(full_iterator_object, full_bam, parameters):
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
     if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters.tail_min_mapq:
@@ -463,14 +461,16 @@ def analyze_full_read(full_iterator_object, full_bam, reads, reference, paramete
 
     sv_evidences = []
 
+    full_ref_chr = full_bam.getrname(full_prim[0].reference_id)
+    full_ref_start = full_prim[0].reference_start
     indels = find_indels_in_cigar_tuples(full_prim[0].cigartuples)
     for pos, length, typ in indels:
         if typ == "del":
-            print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, pos, pos + length, length), file=sys.stdout)
-            sv_evidences.append(SVEvidence(full_ref_chr, pos, pos + length, typ, "cigar", full_read_name))
+            print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_start, pos, full_ref_start + pos + length, length), file=sys.stdout)
+            sv_evidences.append(SVEvidence(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, typ, "cigar", full_read_name))
         elif typ == "ins":
-            print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, pos, pos + length, length), file=sys.stdout)
-            sv_evidences.append(SVEvidence(full_ref_chr, pos, pos + length, typ, "cigar", full_read_name))
+            print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
+            sv_evidences.append(SVEvidence(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, typ, "cigar", full_read_name))
 
     return sv_evidences
 
@@ -512,10 +512,6 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
     full_bam = pysam.AlignmentFile(temp_dir + '/full_aln.chained.rsorted.bam')
     full_it = bam_iterator(full_bam)
 
-    reads = SeqIO.index(fasta.name, "fasta")
-    reference = SeqIO.index(genome, "fasta")
-    print("INFO: Indexing reads and reference finished", file=sys.stderr)
-
     sv_evidences = []
 
     while True:
@@ -523,7 +519,7 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
             full_iterator_object = full_it.next()
             if int(full_iterator_object[0].split("_")[1]) % 1000 == 0:
                 print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
-            result = analyze_full_read(full_iterator_object, full_bam, reads, reference, parameters)
+            result = analyze_full_read(full_iterator_object, full_bam, parameters)
             if result != None:
                 sv_evidences.extend(result)
         except StopIteration:
