@@ -237,83 +237,83 @@ def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, referen
 
 
 def check_inv_1(left_tail, right_tail, contig, full_read, reference, parameters):
-    left_ref_end = left_tail.reference_end
-    left_q_end = left_tail.query_alignment_end
-    right_ref_end = right_tail.reference_end
-    right_q_end = right_tail.query_alignment_end
+    left_ref_start = left_tail.reference_start
+    left_q_start = left_tail.query_alignment_start
+    right_ref_start = right_tail.reference_start
+    right_q_start = right_tail.query_alignment_start
     
-    read_snippet = str(full_read[left_q_end:len(full_read) - right_q_end].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_end:left_ref_end+len(read_snippet)].upper())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_end:right_ref_end+len(read_snippet)].upper().reverse_complement())
+    read_snippet = str(full_read[left_q_start:len(full_read) - right_q_start].upper())
+    ref_snippet_1 = str(reference[contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
+    ref_snippet_2 = str(reference[contig].seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
-            inv_start = left_ref_end + start
-            inv_end = right_ref_end + (len(ref_snippet_1 + ref_snippet_2) - end)
+            inv_start = left_ref_start + start
+            inv_end = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
             print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
             sv_evidences.append(SVEvidence(contig, inv_start, inv_end, "inv", "kmer", left_tail.query_name))
     return sv_evidences
 
 
 def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters):
-    left_ref_start = left_tail.reference_start
-    left_q_start = left_tail.query_alignment_start
-    right_ref_start = right_tail.reference_start
-    right_q_start = right_tail.query_alignment_start
+    left_ref_end = left_tail.reference_end
+    left_q_end = left_tail.query_alignment_end
+    right_ref_end = right_tail.reference_end
+    right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[parameters.tail_span - left_q_start : len(full_read) - parameters.tail_span + right_q_start].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_start - len(read_snippet):left_ref_start].upper().reverse_complement())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_start - len(read_snippet):right_ref_start].upper())
+    read_snippet = str(full_read[parameters.tail_span - left_q_end : len(full_read) - parameters.tail_span + right_q_end].upper())
+    ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
+    ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
-            inv_start = left_ref_start - start
-            inv_end = right_ref_start - (len(ref_snippet_1 + ref_snippet_2) - end)
+            inv_start = left_ref_end - start
+            inv_end = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
             print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
             sv_evidences.append(SVEvidence(contig, inv_start, inv_end, "inv", "kmer", left_tail.query_name))
     return sv_evidences
 
 
 def check_inv_3(left_tail, right_tail, contig, full_read, reference, parameters):
-    left_ref_end = left_tail.reference_end
-    left_q_end = left_tail.query_alignment_end
-    right_ref_end = right_tail.reference_end
-    right_q_end = right_tail.query_alignment_end
+    left_ref_start = left_tail.reference_start
+    left_q_start = left_tail.query_alignment_start
+    right_ref_start = right_tail.reference_start
+    right_q_start = right_tail.query_alignment_start
     
-    read_snippet = str(full_read[left_q_end:len(full_read) - right_q_end].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_end:left_ref_end+len(read_snippet)].upper())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_end:right_ref_end+len(read_snippet)].upper().reverse_complement())
+    read_snippet = str(full_read[left_q_start:len(full_read) - right_q_start].upper())
+    ref_snippet_1 = str(reference[contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
+    ref_snippet_2 = str(reference[contig].seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
-            inv_start = right_ref_end + (len(ref_snippet_1 + ref_snippet_2) - end)
-            inv_end = left_ref_end + start
+            inv_start = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
+            inv_end = left_ref_start + start
             print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
             sv_evidences.append(SVEvidence(contig, inv_start, inv_end, "inv", "kmer", left_tail.query_name))
     return sv_evidences
 
 
 def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters):
-    left_ref_start = left_tail.reference_start
-    left_q_start = left_tail.query_alignment_start
-    right_ref_start = right_tail.reference_start
-    right_q_start = right_tail.query_alignment_start
+    left_ref_end = left_tail.reference_end
+    left_q_end = left_tail.query_alignment_end
+    right_ref_end = right_tail.reference_end
+    right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[parameters.tail_span - left_q_start : len(full_read) - parameters.tail_span + right_q_start].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_start - len(read_snippet):left_ref_start].upper().reverse_complement())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_start - len(read_snippet):right_ref_start].upper())
+    read_snippet = str(full_read[parameters.tail_span - left_q_end : len(full_read) - parameters.tail_span + right_q_end].upper())
+    ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
+    ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
-            inv_start = right_ref_start - (len(ref_snippet_1 + ref_snippet_2) - end)
-            inv_end = left_ref_start - start
+            inv_start = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
+            inv_end = left_ref_end - start
             print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
             sv_evidences.append(SVEvidence(contig, inv_start, inv_end, "inv", "kmer", left_tail.query_name))
     return sv_evidences
