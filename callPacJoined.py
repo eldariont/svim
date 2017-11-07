@@ -422,21 +422,17 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
                 #INV candidate, right tail in inverted region
-                print("INV detected between {0} and {1} on {2} (1, read {3})".format(left_ref_end, right_ref_start, left_ref_chr, left_read_name), file=sys.stdout)
                 return check_inv_1(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
             else:
                 #INV candidate, left tail in inverted region
-                print("INV detected between {0} and {1} on {2} (3, read {3})".format(right_ref_end, left_ref_start, left_ref_chr, left_read_name), file=sys.stdout)
                 return check_inv_3(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
         elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
                 #INV candidate, left tail in inverted region
-                print("INV detected between {0} and {1} on {2} (2, read {3})".format(left_ref_end, right_ref_start, left_ref_chr, left_read_name), file=sys.stdout)
                 return check_inv_2(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
             else:
                 #INV candidate, right tail in inverted region
-                print("INV detected between {0} and {1} on {2} (4, read {3})".format(right_ref_end, left_ref_start, left_ref_chr, left_read_name), file=sys.stdout)
                 return check_inv_4(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
     else:
         #TRANS candidate
@@ -450,6 +446,105 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
         elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
             #TRANS + INV
             pass
+    return None
+
+
+def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
+    read_name = primary_aln.query_name
+    primary_ref_chr = full_bam.getrname(primary_aln.reference_id)
+    primary_ref_start = primary_aln.reference_start
+    primary_ref_end = primary_aln.reference_end
+    primary_q_start = primary_aln.query_alignment_start
+    primary_q_end = primary_aln.query_alignment_end
+
+    supplementary_ref_chr = full_bam.getrname(supplementary_aln.reference_id)
+    supplementary_ref_start = supplementary_aln.reference_start
+    supplementary_ref_end = supplementary_aln.reference_end
+    supplementary_q_start = supplementary_aln.query_alignment_start
+    supplementary_q_end = supplementary_aln.query_alignment_end
+
+    if primary_ref_chr == supplementary_ref_chr:
+        if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
+            if supplementary_q_start >= primary_q_end:
+                individual_dist = supplementary_q_start - primary_q_end
+                reference_dist = supplementary_ref_start - primary_ref_end
+                if reference_dist >= 0:                    
+                    deviation = individual_dist - reference_dist
+                    if deviation > 50:
+                        #INS candidate
+                        if reference_dist <= 10:
+                            print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
+                            return SVEvidence(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, "ins", "suppl", read_name)
+                        else:
+                            print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
+                    elif -10000 < deviation < -50:
+                        #DEL candidate
+                        if individual_dist <= 10:
+                            print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
+                            return SVEvidence(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, "del", "suppl", read_name)
+                        else:
+                            print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
+                    elif deviation <= -10000:
+                        #Either very large DEL or TRANS
+                        pass
+                elif reference_dist < -50:
+                    #Duplication
+                    pass
+            elif primary_q_start >= supplementary_q_end:
+                reference_dist = primary_ref_start - supplementary_ref_end
+                individual_dist = primary_q_start - supplementary_q_end
+                if reference_dist >= 0:
+                    deviation = individual_dist - reference_dist
+                    if deviation > 50:
+                        #INS candidate
+                        if reference_dist <= 10:
+                            print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
+                            return SVEvidence(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, "ins", "suppl", read_name)
+                        else:
+                            print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
+                    elif -10000 < deviation < -50:
+                        #DEL candidate
+                        if individual_dist <= 10:
+                            print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
+                            return SVEvidence(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, "del", "suppl", read_name)
+                        else:
+                            print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
+                    elif deviation <= -10000:
+                        #Either very large DEL or TRANS
+                        pass
+                elif reference_dist < -50:
+                    #Duplication
+                    pass
+            else:
+                print("Overlapping read segments in read", read_name)
+        elif not primary_aln.is_reverse and supplementary_aln.is_reverse:
+            print("Read segments with different orientation in read", read_name)
+        elif primary_aln.is_reverse and not supplementary_aln.is_reverse:
+            print("Read segments with different orientation in read", read_name)
+    else:
+        if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
+            if supplementary_q_start >= primary_q_end:
+                individual_dist = supplementary_q_start - primary_q_end
+                if individual_dist <= 10:
+                    print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
+                    return SVEvidence(primary_ref_chr, primary_ref_end, supplementary_ref_start, "trans", "suppl", read_name, contig2 = supplementary_ref_chr)
+                else:
+                    print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
+            elif primary_q_start >= supplementary_q_end:
+                individual_dist = primary_q_start - supplementary_q_end
+                if individual_dist <= 10:
+                    print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
+                    return SVEvidence(supplementary_ref_chr, supplementary_ref_end, primary_ref_start, "trans", "suppl", read_name, contig2 = primary_ref_chr)
+                    print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
+            else:
+                print("Overlapping read segments in read", read_name)
+        else:
+            #INV + TRANS
+            pass
+    return None
+
+
+def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam):
     return None
 
 
@@ -472,6 +567,18 @@ def analyze_full_read(full_iterator_object, full_bam, parameters):
             print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
             sv_evidences.append(SVEvidence(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, typ, "cigar", full_read_name))
 
+    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.tail_min_mapq]
+    if len(good_suppl_alns) == 1:
+        result = analyze_one_supplementary(full_prim[0], good_suppl_alns[0], full_bam)
+        if result != None:
+            sv_evidences.append(result)
+    elif len(good_suppl_alns) == 2:
+        result = analyze_two_supplementary(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam)
+        if result != None:
+            sv_evidences.append(result)
+    elif 2 < len(good_suppl_alns) < 6:
+        print("Read", full_read_name.split("_")[1], "has", len(good_suppl_alns), "good supplementary segments.") 
+    
     return sv_evidences
 
 
@@ -635,13 +742,16 @@ def consolidate_clusters(clusters):
         length = len(cluster)
         cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
         kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
-        score = len(cigar_evidences) + len(kmer_evidences)
+        suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
+        score = len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences)
         if len(cigar_evidences) > 0:
             score += 5
         if len(kmer_evidences) > 0:
             score += 5
-        average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
-        average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences))
+        if len(suppl_evidences) > 0:
+            score += 5
+        average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences]) + sum([member.start for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences]) + sum([member.end for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
         consolidated_clusters.append((cluster[0].type, cluster[0].contig1,
                                       int(round(average_start)), int(round(average_end)),
                                       score, length, map(lambda x: x.as_tuple(), cluster)))
