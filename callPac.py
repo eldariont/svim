@@ -150,6 +150,8 @@ def run_alignments(temp_dir, genome, fasta):
 
 
 def natural_representation(qname): 
+    """Splits a read name into a tuple of strings and numbers. This facilitates the sort order applied by samtools -n
+       See https://www.biostars.org/p/102735/"""
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', qname)]
 
 
@@ -318,6 +320,7 @@ def main():
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
     inversion_output = open(options.temp_dir + '/inv.bed', 'w')
     translocation_output = open(options.temp_dir + '/trans.bed', 'w')
+    tandem_duplication_output = open(options.temp_dir + '/dup_tan.bed', 'w')
 
     for typ, contig1, start, end, score, length, members in partitions_consolidated:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=partition_output)
@@ -329,6 +332,8 @@ def main():
             print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=deletion_output)
         if typ == 'inv':
             print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=inversion_output)
+        if typ == 'dup_tan':
+            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=tandem_duplication_output)
     
     for translocation in translocations:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.start, translocation.start+1, ">{0}:{1}".format(translocation.contig2, translocation.end), translocation.evidence, translocation.read), file=translocation_output)
