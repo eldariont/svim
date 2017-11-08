@@ -93,9 +93,51 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
             else:
                 print("Overlapping read segments in read", read_name)
         elif not primary_aln.is_reverse and supplementary_aln.is_reverse:
-            print("Read segments with different orientation in read", read_name)
+            supplementary_q_end = primary_aln.infer_read_length() - supplementary_aln.query_alignment_start
+            supplementary_q_start = primary_aln.infer_read_length() - supplementary_aln.query_alignment_end
+            if supplementary_q_start >= primary_q_end:
+                individual_dist = supplementary_q_start - primary_q_end
+                if individual_dist <= 10:
+                    if supplementary_ref_start >= primary_ref_end: # Case 1
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, primary_ref_end, supplementary_ref_end, "inv", "suppl", read_name)
+                    else: # Case 3
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, supplementary_ref_end, primary_ref_end, "inv", "suppl", read_name)
+            elif primary_q_start >= supplementary_q_end:
+                individual_dist = primary_q_start - supplementary_q_end
+                if individual_dist <= 10:
+                    if primary_ref_start >= supplementary_ref_end: # Case 2
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, supplementary_ref_start, primary_ref_start, "inv", "suppl", read_name)
+                    else: # Case 4
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, primary_ref_start, supplementary_ref_start, "inv", "suppl", read_name)
+            else:
+                print("Overlapping read segments in read", read_name)
         elif primary_aln.is_reverse and not supplementary_aln.is_reverse:
-            print("Read segments with different orientation in read", read_name)
+            primary_q_end = primary_aln.infer_read_length() - primary_aln.query_alignment_start
+            primary_q_start = primary_aln.infer_read_length() - primary_aln.query_alignment_end
+            if supplementary_q_start >= primary_q_end:
+                individual_dist = supplementary_q_start - primary_q_end
+                if individual_dist <= 10:
+                    if supplementary_ref_start >= primary_ref_end: # Case 2
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, primary_ref_start, supplementary_ref_start, "inv", "suppl", read_name)
+                    else: # Case 4
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, supplementary_ref_start, primary_ref_start, "inv", "suppl", read_name)
+            elif primary_q_start >= supplementary_q_end:
+                individual_dist = primary_q_start - supplementary_q_end
+                if individual_dist <= 10:
+                    if primary_ref_start >= supplementary_ref_end: # Case 1
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, supplementary_ref_end, primary_ref_end, "inv", "suppl", read_name)
+                    else: # Case 3
+                        print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
+                        return SVEvidence(primary_ref_chr, primary_ref_end, supplementary_ref_end, "inv", "suppl", read_name)
+            else:
+                print("Overlapping read segments in read", read_name)
     else:
         if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
             if supplementary_q_start >= primary_q_end:
