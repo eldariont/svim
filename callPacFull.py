@@ -170,7 +170,34 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
 
 
 def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam):
-    return None
+    read_name = primary_aln.query_name
+    alns = [primary_aln, supplementary_aln1, supplementary_aln2]
+    alns_reference_names = [full_bam.getrname(aln.reference_id) for aln in alns]
+    
+    if alns_reference_names[0] == alns_reference_names[1] == alns_reference_names[2]:
+        ordered_alns = sorted(alns, key = lambda aln: aln.infer_read_length() - aln.query_alignment_end if aln.is_reverse else aln.query_alignment_start)
+        ordered_alns_query_limits = [(aln.infer_read_length() - aln.query_alignment_end, aln.infer_read_length() - aln.query_alignment_start) if aln.is_reverse else (aln.query_alignment_start, aln.query_alignment_end) for aln in ordered_alns]
+   
+        query_order_nice = True
+        for i in xrange(len(ordered_alns) - 1):
+            if abs(ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1]) > 10:
+                query_order_nice = False
+        
+        reference_order_nice = True
+        for i in xrange(len(ordered_alns) - 1):
+            if abs(ordered_alns[i+1].reference_start - ordered_alns[i].reference_end) > 10:
+                reference_order_nice = False
+        
+        if query_order_nice:
+            if reference_order_nice:
+                if not ordered_alns[0].is_reverse and ordered_alns[1].is_reverse and not ordered_alns[2].is_reverse:
+                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
+                    return SVEvidence(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "inv", "suppl", read_name)
+                elif ordered_alns[0].is_reverse and not ordered_alns[1].is_reverse and ordered_alns[2].is_reverse:
+                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
+                    return SVEvidence(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "inv", "suppl", read_name)
+        
+        return None         
 
 
 def analyze_full_read(full_iterator_object, full_bam, parameters):
