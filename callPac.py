@@ -11,7 +11,7 @@ import pysam
 from Bio import SeqIO
 
 from callPacParams import callPacParams
-from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem
+from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
 from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem
 
 from callPacFull import analyze_full_read
@@ -286,8 +286,12 @@ def read_evidences_file(path):
         elif name_fields[0] == "dup":
             sv_evidences.append(EvidenceDuplicationTandem(contig, int(start), int(end), name_fields[1], name_fields[2],read))
         elif name_fields[0] == "tra":
-            contig2, pos2 = name_fields[1].split[":"]
-            sv_evidences.append(EvidenceTranslocation(contig, int(start), contig2, pos2, name_fields[2], read))        
+            contig2, pos2 = name_fields[1].split(":")
+            sv_evidences.append(EvidenceTranslocation(contig, int(start), contig2, int(pos2), name_fields[2], read))
+        elif name_fields[0] == "ins_dup":
+            source_contig = name_fields[1].split(":")[0]
+            source_start, source_end = name_fields[1].split(":")[1].split("-")
+            sv_evidences.append(EvidenceInsertionFrom(source_contig, int(source_start), int(source_end), contig, int(start), name_fields[2], read))
     raw_file.close()
     return sv_evidences
 
@@ -321,13 +325,17 @@ def main():
     inversion_evidences = [ev for ev in sv_evidences if ev.type == 'inv']
     tandem_duplication_evidences = [ev for ev in sv_evidences if ev.type == 'dup']
     translocation_evidences = [ev for ev in sv_evidences if ev.type == 'tra']
+    insertion_from_evidences = [ev for ev in sv_evidences if ev.type == 'ins_dup']
 
-    print("INFO: Found {0}/{1}/{2}/{3}/{4} evidences for deletions, insertions, inversions, tandem duplications, and translocations, respectively.".format(len(deletion_evidences),len(insertion_evidences),len(inversion_evidences),len(tandem_duplication_evidences),len(translocation_evidences),), file=sys.stderr)
+    print("INFO: Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
+        len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)), file=sys.stderr)
+    
     # Cluster raw SVs
     deletion_evidence_clusters = partition_and_cluster(deletion_evidences)
     insertion_evidence_clusters = partition_and_cluster(insertion_evidences)
     inversion_evidence_clusters = partition_and_cluster(inversion_evidences)
     tandem_duplication_evidence_clusters = partition_and_cluster(tandem_duplication_evidences)
+    insertion_from_evidence_clusters = partition_and_cluster(insertion_from_evidences)
 
     # Print output
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
@@ -335,6 +343,7 @@ def main():
     inversion_output = open(options.temp_dir + '/inv.bed', 'w')
     tandem_duplication_output = open(options.temp_dir + '/dup_tan.bed', 'w')
     translocation_output = open(options.temp_dir + '/trans.bed', 'w')
+    insertion_from_output = open(options.temp_dir + '/ins_dup.bed', 'w')
 
     for cluster in deletion_evidence_clusters:
         print(cluster.get_bed_entry(), file=deletion_output)
@@ -344,6 +353,8 @@ def main():
         print(cluster.get_bed_entry(), file=inversion_output)
     for cluster in tandem_duplication_evidence_clusters:
         print(cluster.get_bed_entry(), file=tandem_duplication_output)
+    for cluster in insertion_from_evidence_clusters:
+        print(cluster.get_bed_entry(), file=insertion_from_output)
 
     for translocation in translocation_evidences:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_output)

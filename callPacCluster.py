@@ -7,35 +7,6 @@ import networkx as nx
 from SVEvidence import EvidenceCluster
 
 
-def mean_distance(evidence1, evidence2):
-    """Return distance between means of two evidences."""
-    if evidence1.contig == evidence2.contig and evidence1.type == evidence2.type:
-        return abs(((evidence1.start + evidence1.end) / 2) - ((evidence2.start + evidence2.end) / 2))
-    else:
-        return float("inf")
-
-
-def gowda_diday_distance(evidence1, evidence2, largest_indel_size):
-    """Return Gowda-Diday distance between two evidences."""
-    # different chromosomes
-    if evidence1.contig != evidence2.contig:
-        return float("inf")
-    # different SV type
-    if evidence1.type != evidence2.type:
-        return float("inf")
-    # non-intersecting
-    if evidence1.end <= evidence2.start or evidence2.end <= evidence1.start:
-        return float("inf")
-    dist_pos = abs(evidence1.start - evidence2.start) / float(largest_indel_size)
-    span1 = abs(evidence1.end - evidence1.start)
-    span2 = abs(evidence2.end - evidence2.start)
-    span_total = abs(max(evidence1.end, evidence2.end) - min(evidence1.start, evidence2.start))
-    dist_span = abs(span1 - span2) / float(span_total)
-    inter = min(evidence1.end, evidence2.end) - max(evidence1.start, evidence2.start)
-    dist_content = (span1 + span2 - 2 * inter) / float(span_total)
-    return dist_pos + dist_span + dist_content
-
-
 def form_partitions(sv_evidences, max_delta=1000):
     """Form partitions of evidences using mean distance."""
     sorted_evidences = sorted(sv_evidences, key=lambda evi: evi.get_key())
@@ -66,7 +37,7 @@ def clusters_from_partitions(partitions, max_delta=1):
         connection_graph.add_nodes_from(range(len(partition)))
         for i1 in range(len(partition)):
             for i2 in range(len(partition)):
-                if i1 == i2 or gowda_diday_distance(partition[i1], partition[i2], largest_indel_size) > max_delta:
+                if i1 == i2 or partition[i1].gowda_diday_distance(partition[i2], largest_indel_size) > max_delta:
                     pass
                 else:
                     # Add edge in graph only if two indels are close to each other (distance <= max_delta)
@@ -91,9 +62,9 @@ def consolidate_clusters(clusters):
             score += 5
         if len(suppl_evidences) > 0:
             score += 5
-        average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences]) + sum([member.start for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences]) + sum([member.end for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        consolidated_clusters.append(EvidenceCluster(cluster[0].contig, int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
+        average_start = (2 * sum([member.get_bed_start() for member in cigar_evidences]) + sum([member.get_bed_start() for member in kmer_evidences]) + sum([member.get_bed_start() for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        average_end = (2 * sum([member.get_bed_end() for member in cigar_evidences]) + sum([member.get_bed_end() for member in kmer_evidences]) + sum([member.get_bed_end() for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        consolidated_clusters.append(EvidenceCluster(cluster[0].get_bed_contig(), int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
 
 

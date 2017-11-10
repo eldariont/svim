@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import sys
 
-from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem
+from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
 
 
 def find_indels_in_cigar_tuples(tuples, min_length=50):
@@ -172,33 +172,80 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
 def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam):
     read_name = primary_aln.query_name
     alns = [primary_aln, supplementary_aln1, supplementary_aln2]
-    alns_reference_names = [full_bam.getrname(aln.reference_id) for aln in alns]
     
-    if alns_reference_names[0] == alns_reference_names[1] == alns_reference_names[2]:
-        ordered_alns = sorted(alns, key = lambda aln: aln.infer_read_length() - aln.query_alignment_end if aln.is_reverse else aln.query_alignment_start)
-        ordered_alns_query_limits = [(aln.infer_read_length() - aln.query_alignment_end, aln.infer_read_length() - aln.query_alignment_start) if aln.is_reverse else (aln.query_alignment_start, aln.query_alignment_end) for aln in ordered_alns]
-   
+    ordered_alns = sorted(alns, key = lambda aln: aln.infer_read_length() - aln.query_alignment_end if aln.is_reverse else aln.query_alignment_start)
+    ordered_alns_query_limits = [(aln.infer_read_length() - aln.query_alignment_end, aln.infer_read_length() - aln.query_alignment_start) if aln.is_reverse else (aln.query_alignment_start, aln.query_alignment_end) for aln in ordered_alns]
+    ordered_alns_reference_names = [full_bam.getrname(aln.reference_id) for aln in ordered_alns]
+
+    if ordered_alns_reference_names[0] == ordered_alns_reference_names[1] == ordered_alns_reference_names[2]:
         query_order_nice = True
         for i in xrange(len(ordered_alns) - 1):
             if abs(ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1]) > 10:
                 query_order_nice = False
         
-        reference_order_nice = True
+        reference_012 = True
         for i in xrange(len(ordered_alns) - 1):
             if abs(ordered_alns[i+1].reference_start - ordered_alns[i].reference_end) > 10:
-                reference_order_nice = False
+                reference_012 = False
+
+        reference_210 = True
+        for i in xrange(len(ordered_alns) - 1):
+            if abs(ordered_alns[i].reference_start - ordered_alns[i+1].reference_end) > 10:
+                reference_210 = False
         
+        if abs(ordered_alns[2].reference_start - ordered_alns[0].reference_end) <= 10:
+            reference_02 = True
+        else:
+            reference_02 = False
+
+        if abs(ordered_alns[0].reference_start - ordered_alns[2].reference_end) <= 10:
+            reference_20 = True
+        else:
+            reference_20 = False
+
         if query_order_nice:
-            if reference_order_nice:
+            if reference_012 or reference_210:
                 if not ordered_alns[0].is_reverse and ordered_alns[1].is_reverse and not ordered_alns[2].is_reverse:
-                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    return EvidenceInversion(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name)
+                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
+                    return EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name)
                 elif ordered_alns[0].is_reverse and not ordered_alns[1].is_reverse and ordered_alns[2].is_reverse:
-                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    return EvidenceInversion(alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name)
-            elif abs(ordered_alns[2].reference_start - ordered_alns[0].reference_end) > 10:
+                    print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
+                    return EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name)
+            elif reference_02:
+                if ordered_alns[1].reference_start >= ordered_alns[2].reference_end or ordered_alns[1].reference_end <= ordered_alns[0].reference_start:
+                    #Duplication or Insertion
+                    print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[0].reference_end), file=sys.stdout)
+                    return EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[0], ordered_alns[0].reference_end, "suppl", read_name)
+            elif reference_20:
+                if ordered_alns[1].reference_start >= ordered_alns[0].reference_end or ordered_alns[1].reference_end <= ordered_alns[2].reference_start:
+                    #Duplication or Insertion
+                    print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[2].reference_end), file=sys.stdout)
+                    return EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[2], ordered_alns[2].reference_end, "suppl", read_name)
+    elif ordered_alns_reference_names[0] == ordered_alns_reference_names[2]:
+        query_order_nice = True
+        for i in xrange(len(ordered_alns) - 1):
+            if abs(ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1]) > 10:
+                query_order_nice = False
+
+        if abs(ordered_alns[2].reference_start - ordered_alns[0].reference_end) <= 10:
+            reference_02 = True
+        else:
+            reference_02 = False
+
+        if abs(ordered_alns[0].reference_start - ordered_alns[2].reference_end) <= 10:
+            reference_20 = True
+        else:
+            reference_20 = False
+
+        if query_order_nice:
+            if reference_02:
                 #Duplication or Insertion
-                pass
+                print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[0].reference_end), file=sys.stdout)
+                return EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[0], ordered_alns[0].reference_end, "suppl", read_name)
+            elif reference_20:
+                #Duplication or Insertion
+                print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[2].reference_end), file=sys.stdout)
+                return EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[2], ordered_alns[2].reference_end, "suppl", read_name)
     return None
 
 
