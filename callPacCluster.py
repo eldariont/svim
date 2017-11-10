@@ -1,13 +1,15 @@
 from __future__ import print_function
 
+import sys
+
 import networkx as nx
 
-from SVEvidence import SVEvidence
+from SVEvidence import EvidenceCluster
 
 
 def mean_distance(evidence1, evidence2):
     """Return distance between means of two evidences."""
-    if evidence1.contig1 == evidence2.contig1 and evidence1.type == evidence2.type:
+    if evidence1.contig == evidence2.contig and evidence1.type == evidence2.type:
         return abs(((evidence1.start + evidence1.end) / 2) - ((evidence2.start + evidence2.end) / 2))
     else:
         return float("inf")
@@ -16,7 +18,7 @@ def mean_distance(evidence1, evidence2):
 def gowda_diday_distance(evidence1, evidence2, largest_indel_size):
     """Return Gowda-Diday distance between two evidences."""
     # different chromosomes
-    if evidence1.contig1 != evidence2.contig1:
+    if evidence1.contig != evidence2.contig:
         return float("inf")
     # different SV type
     if evidence1.type != evidence2.type:
@@ -36,19 +38,20 @@ def gowda_diday_distance(evidence1, evidence2, largest_indel_size):
 
 def form_partitions(sv_evidences, max_delta=1000):
     """Form partitions of evidences using mean distance."""
-    sorted_evidences = sorted(sv_evidences, key=lambda evi: (evi.type, evi.contig1, (evi.start + evi.end) / 2))
+    sorted_evidences = sorted(sv_evidences, key=lambda evi: evi.get_key())
     partitions = []
     current_partition = []
     for evidence in sorted_evidences:
         if len(current_partition) < 1:
             current_partition.append(evidence)
             continue
-        if mean_distance(current_partition[0], evidence) > max_delta:
+        if current_partition[0].mean_distance_to(evidence) > max_delta:
             partitions.append(current_partition[:])
-            while len(current_partition) > 0 and mean_distance(current_partition[0], evidence) > max_delta:
+            while len(current_partition) > 0 and current_partition[0].mean_distance_to(evidence) > max_delta:
                 current_partition.pop(0)
         current_partition.append(evidence)
-    partitions.append(current_partition[:])
+    if len(current_partition) > 0:
+        partitions.append(current_partition[:])
     return partitions
 
 
@@ -78,7 +81,6 @@ def consolidate_clusters(clusters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
-        length = len(cluster)
         cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
         kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
         suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
@@ -91,7 +93,13 @@ def consolidate_clusters(clusters):
             score += 5
         average_start = (2 * sum([member.start for member in cigar_evidences]) + sum([member.start for member in kmer_evidences]) + sum([member.start for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
         average_end = (2 * sum([member.end for member in cigar_evidences]) + sum([member.end for member in kmer_evidences]) + sum([member.end for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        consolidated_clusters.append((cluster[0].type, cluster[0].contig1,
-                                      int(round(average_start)), int(round(average_end)),
-                                      score, length, map(lambda x: x.as_tuple(), cluster)))
+        consolidated_clusters.append(EvidenceCluster(cluster[0].contig, int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
+
+
+def partition_and_cluster(evidences):
+    partitions = form_partitions(evidences)
+    print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
+    clusters = clusters_from_partitions(partitions)
+    print("Subdivided partitions into {0} clusters".format(len(clusters)), file=sys.stderr)
+    return consolidate_clusters(clusters)

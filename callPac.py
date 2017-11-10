@@ -11,11 +11,12 @@ import pysam
 from Bio import SeqIO
 
 from callPacParams import callPacParams
-from SVEvidence import SVEvidence
+from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem
+from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem
 
 from callPacFull import analyze_full_read
 from callPacTails import analyze_pair_of_read_tails
-from callPacCluster import form_partitions, clusters_from_partitions, consolidate_clusters
+from callPacCluster import partition_and_cluster
 
 
 def parse_arguments():
@@ -212,9 +213,7 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
             if left_iterator_object[0] == right_iterator_object[0]:
                 if int(left_iterator_object[0].split("_")[1]) % 1000 == 0:
                     print("INFO: Processed read", left_iterator_object[0].split("_")[1], file=sys.stderr)
-                result = analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
-                if result != None:
-                    sv_evidences.extend(result)
+                sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
                 left_iterator_object = left_it.next()
         except StopIteration:
             break
@@ -235,9 +234,7 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
             full_iterator_object = full_it.next()
             if int(full_iterator_object[0].split("_")[1]) % 1000 == 0:
                 print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
-            result = analyze_full_read(full_iterator_object, full_bam, parameters)
-            if result != None:
-                sv_evidences.extend(result)
+            sv_evidences.extend(analyze_full_read(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -274,6 +271,27 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
     result = analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
 
+def read_evidences_file(path):
+    raw_file = open(path, 'r')
+    sv_evidences = []
+    for line in raw_file:
+        contig, start, end, name, score, read = line.strip().split("\t")
+        name_fields = name.split(";")
+        if name_fields[0] == "del":
+            sv_evidences.append(EvidenceDeletion(contig, int(start), int(end), name_fields[1], read))
+        elif name_fields[0] == "ins":
+            sv_evidences.append(EvidenceInsertion(contig, int(start), int(end), name_fields[1], read))
+        elif name_fields[0] == "inv":
+            sv_evidences.append(EvidenceInversion(contig, int(start), int(end), name_fields[1], read))
+        elif name_fields[0] == "dup":
+            sv_evidences.append(EvidenceDuplicationTandem(contig, int(start), int(end), name_fields[1], name_fields[2],read))
+        elif name_fields[0] == "tra":
+            contig2, pos2 = name_fields[1].split[":"]
+            sv_evidences.append(EvidenceTranslocation(contig, int(start), contig2, pos2, name_fields[2], read))        
+    raw_file.close()
+    return sv_evidences
+
+
 def main():
     options = parse_arguments()
     parameters = callPacParams()
@@ -292,52 +310,44 @@ def main():
 
         raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'w')
         for sv_evidence in sv_evidences:
-            print("\t".join(map(str, sv_evidence.as_tuple())), file=raw_file)
+            print(sv_evidence.get_bed_entry(), file=raw_file)
         raw_file.close()
     else:
         print("WARNING: Result file with SV evidences already exists. Skip", file=sys.stderr)
-        raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'r')
-        sv_evidences = []
-        for line in raw_file:
-            con1, sta, end, typ, con2, evi, sou = line.strip().split("\t")
-            sv_evidences.append(SVEvidence(con1, int(sta), int(end), typ, evi, sou, contig2 = con2))
-        raw_file.close()
+        sv_evidences = read_evidences_file(options.temp_dir + '/sv_evidences.tsv')
 
-    translocations = [ev for ev in sv_evidences if ev.type == 'trans']
-    other_svs = [ev for ev in sv_evidences if ev.type != 'trans']
+    deletion_evidences = [ev for ev in sv_evidences if ev.type == 'del']
+    insertion_evidences = [ev for ev in sv_evidences if ev.type == 'ins']
+    inversion_evidences = [ev for ev in sv_evidences if ev.type == 'inv']
+    tandem_duplication_evidences = [ev for ev in sv_evidences if ev.type == 'dup']
+    translocation_evidences = [ev for ev in sv_evidences if ev.type == 'tra']
 
+    print("INFO: Found {0}/{1}/{2}/{3}/{4} evidences for deletions, insertions, inversions, tandem duplications, and translocations, respectively.".format(len(deletion_evidences),len(insertion_evidences),len(inversion_evidences),len(tandem_duplication_evidences),len(translocation_evidences),), file=sys.stderr)
     # Cluster raw SVs
-    partitions_raw = form_partitions(other_svs)
-    print("Formed {0} partitions".format(len(partitions_raw)), file=sys.stderr)
-    clusters_raw = clusters_from_partitions(partitions_raw)
-    print("Subdivided partition into {0} clusters".format(len(clusters_raw)), file=sys.stderr)
-    clusters_consolidated = consolidate_clusters(clusters_raw)
-    partitions_consolidated = consolidate_clusters(partitions_raw)
+    deletion_evidence_clusters = partition_and_cluster(deletion_evidences)
+    insertion_evidence_clusters = partition_and_cluster(insertion_evidences)
+    inversion_evidence_clusters = partition_and_cluster(inversion_evidences)
+    tandem_duplication_evidence_clusters = partition_and_cluster(tandem_duplication_evidences)
 
     # Print output
-    partition_output = open(options.temp_dir + '/partitions.bed', 'w')
-    insertion_output = open(options.temp_dir + '/ins.bed', 'w')
     deletion_output = open(options.temp_dir + '/del.bed', 'w')
+    insertion_output = open(options.temp_dir + '/ins.bed', 'w')
     inversion_output = open(options.temp_dir + '/inv.bed', 'w')
-    translocation_output = open(options.temp_dir + '/trans.bed', 'w')
     tandem_duplication_output = open(options.temp_dir + '/dup_tan.bed', 'w')
+    translocation_output = open(options.temp_dir + '/trans.bed', 'w')
 
-    for typ, contig1, start, end, score, length, members in partitions_consolidated:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=partition_output)
+    for cluster in deletion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=deletion_output)
+    for cluster in insertion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=insertion_output)
+    for cluster in inversion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=inversion_output)
+    for cluster in tandem_duplication_evidence_clusters:
+        print(cluster.get_bed_entry(), file=tandem_duplication_output)
 
-    for typ, contig1, start, end, score, length, members in clusters_consolidated:
-        if typ == 'ins':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=insertion_output)
-        if typ == 'del':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=deletion_output)
-        if typ == 'inv':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=inversion_output)
-        if typ == 'dup_tan':
-            print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(contig1, start, end, score, length, members), file=tandem_duplication_output)
-    
-    for translocation in translocations:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.start, translocation.start+1, ">{0}:{1}".format(translocation.contig2, translocation.end), translocation.evidence, translocation.read), file=translocation_output)
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.end, translocation.end+1, ">{0}:{1}".format(translocation.contig1, translocation.start), translocation.evidence, translocation.read), file=translocation_output)
+    for translocation in translocation_evidences:
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_output)
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_output)
 
 
 if __name__ == "__main__":
