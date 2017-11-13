@@ -4,7 +4,7 @@ import sys
 
 import networkx as nx
 
-from SVEvidence import EvidenceCluster
+from SVEvidence import EvidenceClusterUniLocal, EvidenceClusterBiLocal
 
 
 def form_partitions(sv_evidences, max_delta=1000):
@@ -48,7 +48,7 @@ def clusters_from_partitions(partitions, max_delta=1):
     return clusters_full
 
 
-def consolidate_clusters(clusters):
+def consolidate_clusters_unilocal(clusters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
@@ -62,15 +62,51 @@ def consolidate_clusters(clusters):
             score += 5
         if len(suppl_evidences) > 0:
             score += 5
-        average_start = (2 * sum([member.get_bed_start() for member in cigar_evidences]) + sum([member.get_bed_start() for member in kmer_evidences]) + sum([member.get_bed_start() for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        average_end = (2 * sum([member.get_bed_end() for member in cigar_evidences]) + sum([member.get_bed_end() for member in kmer_evidences]) + sum([member.get_bed_end() for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        consolidated_clusters.append(EvidenceCluster(cluster[0].get_bed_contig(), int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
+        average_start = (2 * sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        average_end = (2 * sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        consolidated_clusters.append(EvidenceClusterUniLocal(cluster[0].get_source()[0], int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
 
 
-def partition_and_cluster(evidences):
+def consolidate_clusters_bilocal(clusters):
+    """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
+    consolidated_clusters = []
+    for cluster in clusters:
+        cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
+        kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
+        suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
+        score = len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences)
+        if len(cigar_evidences) > 0:
+            score += 5
+        if len(kmer_evidences) > 0:
+            score += 5
+        if len(suppl_evidences) > 0:
+            score += 5
+        
+        #Source
+        source_average_start = (sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        source_average_end = (sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        
+        #Destination
+        destination_average_start = (sum([member.get_destination()[1] for member in cigar_evidences]) + sum([member.get_destination()[1] for member in kmer_evidences]) + sum([member.get_destination()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        destination_average_end = (sum([member.get_destination()[2] for member in cigar_evidences]) + sum([member.get_destination()[2] for member in kmer_evidences]) + sum([member.get_destination()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        
+        consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                            cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
+    return consolidated_clusters
+
+
+def partition_and_cluster_unilocal(evidences):
     partitions = form_partitions(evidences)
     print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
     clusters = clusters_from_partitions(partitions)
     print("Subdivided partitions into {0} clusters".format(len(clusters)), file=sys.stderr)
-    return consolidate_clusters(clusters)
+    return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
+
+
+def partition_and_cluster_bilocal(evidences):
+    partitions = form_partitions(evidences)
+    print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
+    clusters = clusters_from_partitions(partitions)
+    print("Subdivided partitions into {0} clusters".format(len(clusters)), file=sys.stderr)
+    return consolidate_clusters_bilocal(clusters)

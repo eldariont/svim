@@ -6,17 +6,18 @@ import os
 import re
 from subprocess import call, Popen, PIPE
 from collections import defaultdict
+import pickle
 
 import pysam
 from Bio import SeqIO
 
 from callPacParams import callPacParams
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
-from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem
+from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem, CandidateDuplicationInterspersed
 
 from callPacFull import analyze_full_read
 from callPacTails import analyze_pair_of_read_tails
-from callPacCluster import partition_and_cluster
+from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
 
 
 def parse_arguments():
@@ -271,38 +272,13 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
     result = analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
 
-def read_evidences_file(path):
-    raw_file = open(path, 'r')
-    sv_evidences = []
-    for line in raw_file:
-        contig, start, end, name, score, read = line.strip().split("\t")
-        name_fields = name.split(";")
-        if name_fields[0] == "del":
-            sv_evidences.append(EvidenceDeletion(contig, int(start), int(end), name_fields[1], read))
-        elif name_fields[0] == "ins":
-            sv_evidences.append(EvidenceInsertion(contig, int(start), int(end), name_fields[1], read))
-        elif name_fields[0] == "inv":
-            sv_evidences.append(EvidenceInversion(contig, int(start), int(end), name_fields[1], read))
-        elif name_fields[0] == "dup":
-            sv_evidences.append(EvidenceDuplicationTandem(contig, int(start), int(end), name_fields[1], name_fields[2],read))
-        elif name_fields[0] == "tra":
-            contig2, pos2 = name_fields[1].split(":")
-            sv_evidences.append(EvidenceTranslocation(contig, int(start), contig2, int(pos2), name_fields[2], read))
-        elif name_fields[0] == "ins_dup":
-            source_contig = name_fields[1].split(":")[0]
-            source_start, source_end = name_fields[1].split(":")[1].split("-")
-            sv_evidences.append(EvidenceInsertionFrom(source_contig, int(source_start), int(source_end), contig, int(start), name_fields[2], read))
-    raw_file.close()
-    return sv_evidences
-
-
 def main():
     options = parse_arguments()
     parameters = callPacParams()
     parameters.set_with_options(options)
 
     # Run SV search only if raw SV results do not exist
-    if not os.path.exists(options.temp_dir + '/sv_evidences.tsv'):
+    if not os.path.exists(options.temp_dir + '/sv_evidences.obj'):
         create_temp_files(options.temp_dir, options.fasta, parameters.tail_span)
         run_alignments(options.temp_dir, options.genome, options.fasta)
         if options.read_name != "all":
@@ -312,13 +288,14 @@ def main():
             sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
             sv_evidences.extend(analyze_full_reads(options.temp_dir, options.genome, options.fasta, parameters))
 
-        raw_file = open(options.temp_dir + '/sv_evidences.tsv', 'w')
-        for sv_evidence in sv_evidences:
-            print(sv_evidence.get_bed_entry(), file=raw_file)
-        raw_file.close()
+        evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'w')
+        pickle.dump(sv_evidences, evidences_file) 
+        evidences_file.close()
     else:
-        print("WARNING: Result file with SV evidences already exists. Skip", file=sys.stderr)
-        sv_evidences = read_evidences_file(options.temp_dir + '/sv_evidences.tsv')
+        print("WARNING: Stored file with SV evidences (sv_evidences.obj) already exists. Load..", file=sys.stderr)
+        evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'r')
+        sv_evidences = pickle.load(evidences_file)
+        evidences_file.close()
 
     deletion_evidences = [ev for ev in sv_evidences if ev.type == 'del']
     insertion_evidences = [ev for ev in sv_evidences if ev.type == 'ins']
@@ -330,36 +307,82 @@ def main():
     print("INFO: Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
         len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)), file=sys.stderr)
     
-    # Cluster raw SVs
-    deletion_evidence_clusters = partition_and_cluster(deletion_evidences)
-    insertion_evidence_clusters = partition_and_cluster(insertion_evidences)
-    inversion_evidence_clusters = partition_and_cluster(inversion_evidences)
-    tandem_duplication_evidence_clusters = partition_and_cluster(tandem_duplication_evidences)
-    insertion_from_evidence_clusters = partition_and_cluster(insertion_from_evidences)
+    # Cluster SV evidences
+    print("INFO: Cluster deletion evidences..", file=sys.stderr)
+    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences)
+    print("INFO: Cluster insertion evidences..", file=sys.stderr)
+    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences)
+    print("INFO: Cluster inversion evidences..", file=sys.stderr)
+    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences)
+    print("INFO: Cluster tandem duplication evidences..", file=sys.stderr)
+    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences)
+    print("INFO: Cluster insertion evidences with source..", file=sys.stderr)
+    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
-    # Print output
-    deletion_output = open(options.temp_dir + '/del.bed', 'w')
-    insertion_output = open(options.temp_dir + '/ins.bed', 'w')
-    inversion_output = open(options.temp_dir + '/inv.bed', 'w')
-    tandem_duplication_output = open(options.temp_dir + '/dup_tan.bed', 'w')
-    translocation_output = open(options.temp_dir + '/trans.bed', 'w')
-    insertion_from_output = open(options.temp_dir + '/ins_dup.bed', 'w')
+    # Print SV evidence clusters
+    deletion_evidence_output = open(options.temp_dir + '/evidences/del.bed', 'w')
+    insertion_evidence_output = open(options.temp_dir + '/evidences/ins.bed', 'w')
+    inversion_evidence_output = open(options.temp_dir + '/evidences/inv.bed', 'w')
+    tandem_duplication_evidence_output = open(options.temp_dir + '/evidences/dup_tan.bed', 'w')
+    translocation_evidence_output = open(options.temp_dir + '/evidences/trans.bed', 'w')
+    insertion_from_evidence_output = open(options.temp_dir + '/evidences/ins_dup.bed', 'w')
 
     for cluster in deletion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=deletion_output)
+        print(cluster.get_bed_entry(), file=deletion_evidence_output)
     for cluster in insertion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=insertion_output)
+        print(cluster.get_bed_entry(), file=insertion_evidence_output)
     for cluster in inversion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=inversion_output)
+        print(cluster.get_bed_entry(), file=inversion_evidence_output)
     for cluster in tandem_duplication_evidence_clusters:
-        print(cluster.get_bed_entry(), file=tandem_duplication_output)
+        bed_entries = cluster.get_bed_entries()
+        print(bed_entries[0], file=tandem_duplication_evidence_output)
+        print(bed_entries[1], file=tandem_duplication_evidence_output)
     for cluster in insertion_from_evidence_clusters:
-        print(cluster.get_bed_entry(), file=insertion_from_output)
+        bed_entries = cluster.get_bed_entries()
+        print(bed_entries[0], file=insertion_from_evidence_output)
+        print(bed_entries[1], file=insertion_from_evidence_output)
+
+    
+    # Merge evidences to candidates
+    insertion_candidates = []
+    int_duplication_candidates = []        
+
+    for ins_cluster in insertion_from_evidence_clusters:    
+        distances = [(ind, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
+        closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
+        print("Closest deletion:", closest_deletion)
+        source_contig, source_start, source_end = ins_cluster.get_source()
+        dest_contig, dest_start, dest_end = ins_cluster.get_destination()
+        if closest_deletion[1] <= 1.0:
+            #Insertion
+            all_members = ins_cluster.members + deletion_evidence_clusters[closest_deletion[0]].members
+            insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_cluster.score))
+            del(deletion_evidence_clusters[closest_deletion[0]])
+        else:
+            #Duplication
+            int_duplication_candidates.append(CandidateDuplicationInterspersed(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, ins_cluster.members, ins_cluster.score))
 
     for translocation in translocation_evidences:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_output)
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_output)
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
+    #deletion_candidate_output = open(options.temp_dir + '/candidates/del.bed', 'w')
+    insertion_candidate_source_output = open(options.temp_dir + '/candidates/cand_insertions_source.bed', 'w')
+    insertion_candidate_dest_output = open(options.temp_dir + '/candidates/cand_insertions_dest.bed', 'w')
+    #inversion_candidate_output = open(options.temp_dir + '/candidates/inv.bed', 'w')
+    #tandem_duplication_candidate_output = open(options.temp_dir + '/candidates/dup_tan.bed', 'w')
+    interspersed_duplication_candidate_source_output = open(options.temp_dir + '/candidates/cand_int_duplications_source.bed', 'w')
+    interspersed_duplication_candidate_dest_output = open(options.temp_dir + '/candidates/cand_int_duplications_dest.bed', 'w')
+    #insertion_from_candidate_output = open(options.temp_dir + '/candidates/ins_dup.bed', 'w')
+
+    for candidate in insertion_candidates:
+        bed_entries = candidate.get_bed_entries()
+        print(bed_entries[0], file=insertion_candidate_source_output)
+        print(bed_entries[1], file=insertion_candidate_dest_output)
+    for candidate in int_duplication_candidates:
+        bed_entries = candidate.get_bed_entries()
+        print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
+        print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
 
 if __name__ == "__main__":
     sys.exit(main())
