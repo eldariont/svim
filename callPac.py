@@ -350,7 +350,6 @@ def main():
     for ins_cluster in insertion_from_evidence_clusters:    
         distances = [(ind, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
         closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
-        print("Closest deletion:", closest_deletion)
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
         if closest_deletion[1] <= 1.0:

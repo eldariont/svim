@@ -86,13 +86,25 @@ def consolidate_clusters_bilocal(clusters):
         #Source
         source_average_start = (sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
         source_average_end = (sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        
-        #Destination
-        destination_average_start = (sum([member.get_destination()[1] for member in cigar_evidences]) + sum([member.get_destination()[1] for member in kmer_evidences]) + sum([member.get_destination()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        destination_average_end = (sum([member.get_destination()[2] for member in cigar_evidences]) + sum([member.get_destination()[2] for member in kmer_evidences]) + sum([member.get_destination()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        
-        consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
-                                                            cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
+
+        if cluster[0].type == "dup":
+            max_copies = max([member.copies for member in cluster])
+            consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0],
+                                                                int(round(source_average_start)),
+                                                                int(round(source_average_end)),
+                                                                cluster[0].get_source()[0],
+                                                                int(round(source_average_end)),
+                                                                int(round(source_average_end)) + max_copies *
+                                                                (int(round(source_average_end)) -
+                                                                 int(round(source_average_start))),
+                                                                score, len(cluster), cluster, cluster[0].type))
+        else:
+            #Destination
+            destination_average_start = (sum([member.get_destination()[1] for member in cigar_evidences]) + sum([member.get_destination()[1] for member in kmer_evidences]) + sum([member.get_destination()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+            destination_average_end = (sum([member.get_destination()[2] for member in cigar_evidences]) + sum([member.get_destination()[2] for member in kmer_evidences]) + sum([member.get_destination()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+
+            consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                                cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
 
 

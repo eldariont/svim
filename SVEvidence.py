@@ -147,9 +147,6 @@ class EvidenceDuplicationTandem(Evidence):
         self.read = read
         self.type = "dup"
 
-    def get_key(self):
-        return (self.type, self.copies, self.contig, (self.start + self.end) / 2)
-
 
     def get_destination(self):
         source_contig, source_start, source_end = self.get_source()
@@ -160,7 +157,7 @@ class EvidenceDuplicationTandem(Evidence):
         """Return distance between means of two evidences."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = evidence2.get_source()
-        if self.type == evidence2.type and this_contig == other_contig and self.copies == evidence2.copies:
+        if self.type == evidence2.type and this_contig == other_contig:
             return abs(((this_start + this_end) / 2) - ((other_start + other_end) / 2))
         else:
             return float("inf")
@@ -171,7 +168,7 @@ class EvidenceDuplicationTandem(Evidence):
         dest_contig, dest_start, dest_end = self.get_destination()
         return sep.join(["{0}:{1}-{2}","{3}:{4}-{5}","{6}", "{7}"]).format(source_contig, source_start, source_end,
                                                                            dest_contig, dest_start, dest_end,
-                                                                           "{0};{1}".format(self.type, self.evidence), self.read)
+                                                                           "{0};{1};{2}".format(self.type, self.evidence, self.copies), self.read)
 
 
 class EvidenceTranslocation(Evidence):
