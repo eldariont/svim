@@ -323,7 +323,8 @@ def main():
     deletion_evidence_output = open(options.temp_dir + '/evidences/del.bed', 'w')
     insertion_evidence_output = open(options.temp_dir + '/evidences/ins.bed', 'w')
     inversion_evidence_output = open(options.temp_dir + '/evidences/inv.bed', 'w')
-    tandem_duplication_evidence_output = open(options.temp_dir + '/evidences/dup_tan.bed', 'w')
+    tandem_duplication_evidence_source_output = open(options.temp_dir + '/evidences/dup_tan_source.bed', 'w')
+    tandem_duplication_evidence_dest_output = open(options.temp_dir + '/evidences/dup_tan_dest.bed', 'w')
     translocation_evidence_output = open(options.temp_dir + '/evidences/trans.bed', 'w')
     insertion_from_evidence_output = open(options.temp_dir + '/evidences/ins_dup.bed', 'w')
 
@@ -335,8 +336,8 @@ def main():
         print(cluster.get_bed_entry(), file=inversion_evidence_output)
     for cluster in tandem_duplication_evidence_clusters:
         bed_entries = cluster.get_bed_entries()
-        print(bed_entries[0], file=tandem_duplication_evidence_output)
-        print(bed_entries[1], file=tandem_duplication_evidence_output)
+        print(bed_entries[0], file=tandem_duplication_evidence_source_output)
+        print(bed_entries[1], file=tandem_duplication_evidence_dest_output)
     for cluster in insertion_from_evidence_clusters:
         bed_entries = cluster.get_bed_entries()
         print(bed_entries[0], file=insertion_from_evidence_output)
