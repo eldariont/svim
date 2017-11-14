@@ -18,7 +18,7 @@ from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversio
 from callPacFull import analyze_full_read
 from callPacTails import analyze_pair_of_read_tails
 from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
-
+from callPacMerge import merge_insertions_from, merge_translocations
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -348,19 +348,15 @@ def main():
     insertion_candidates = []
     int_duplication_candidates = []        
 
-    for ins_cluster in insertion_from_evidence_clusters:    
-        distances = [(ind, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
-        closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
-        source_contig, source_start, source_end = ins_cluster.get_source()
-        dest_contig, dest_start, dest_end = ins_cluster.get_destination()
-        if closest_deletion[1] <= 1.0:
-            #Insertion
-            all_members = ins_cluster.members + deletion_evidence_clusters[closest_deletion[0]].members
-            insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_cluster.score))
-            del(deletion_evidence_clusters[closest_deletion[0]])
-        else:
-            #Duplication
-            int_duplication_candidates.append(CandidateDuplicationInterspersed(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, ins_cluster.members, ins_cluster.score))
+    #Merge insertions with source
+    new_insertion_candidates,new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
+    insertion_candidates.extend(new_insertion_candidates)
+    int_duplication_candidates.extend(new_int_duplication_candidates)
+
+    #Merge translocation breakpoints
+    new_insertion_candidates,new_int_duplication_candidates = merge_translocations(translocation_evidences, deletion_evidence_clusters, insertion_evidence_clusters)
+    insertion_candidates.extend(new_insertion_candidates)
+    int_duplication_candidates.extend(new_int_duplication_candidates)
 
     for translocation in translocation_evidences:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)

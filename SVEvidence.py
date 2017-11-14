@@ -199,6 +199,18 @@ class EvidenceTranslocation(Evidence):
                                                                            "{0};{1}".format(self.type, self.evidence), self.read)
 
 
+    def get_key(self):
+        return (self.type, self.contig1, self.pos1)
+
+
+    def mean_distance_to(self, evidence2):
+        """Return distance between means of two evidences."""
+        if self.type == evidence2.type and self.contig1 == evidence2.contig1:
+            return abs(self.pos1 - evidence2.pos1)
+        else:
+            return float("inf")
+
+
 class EvidenceClusterUniLocal(Evidence):
     def __init__(self, contig, start, end, score, size, members, type):
         self.contig = contig
