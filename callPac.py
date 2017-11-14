@@ -362,7 +362,7 @@ def main():
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
-    #deletion_candidate_output = open(options.temp_dir + '/candidates/del.bed', 'w')
+    deletion_candidate_output = open(options.temp_dir + '/candidates/del.bed', 'w')
     insertion_candidate_source_output = open(options.temp_dir + '/candidates/cand_insertions_source.bed', 'w')
     insertion_candidate_dest_output = open(options.temp_dir + '/candidates/cand_insertions_dest.bed', 'w')
     #inversion_candidate_output = open(options.temp_dir + '/candidates/inv.bed', 'w')
@@ -379,6 +379,8 @@ def main():
         bed_entries = candidate.get_bed_entries()
         print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
+    for cluster in deletion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=deletion_candidate_output)
 
 if __name__ == "__main__":
     sys.exit(main())
