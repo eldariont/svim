@@ -62,7 +62,7 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
                     elif deviation <= -10000:
                         #Either very large DEL or TRANS
                         pass
-                elif reference_dist < -50 and supplementary_ref_start >= primary_ref_start:
+                elif reference_dist < -50 and supplementary_ref_end > primary_ref_start:
                     #Tandem Duplication
                     print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_end, primary_ref_end - supplementary_ref_start), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, supplementary_ref_start, primary_ref_end, 1, "suppl", read_name)
@@ -88,7 +88,7 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
                     elif deviation <= -10000:
                         #Either very large DEL or TRANS
                         pass
-                elif reference_dist < -50 and primary_ref_start >= supplementary_ref_start:
+                elif reference_dist < -50 and primary_ref_end > supplementary_ref_start:
                     #Tandem Duplication
                     print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_end, supplementary_ref_start - primary_ref_end), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, primary_ref_start, supplementary_ref_end, 1, "suppl", read_name)
