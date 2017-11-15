@@ -231,16 +231,14 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                 #TRANS candidate
                 return check_trans_candidate_1(left_prim[0], right_prim[0], left_ref_chr, right_ref_chr, full_read, reference, parameters)
         elif not left_prim[0].is_reverse and right_prim[0].is_reverse:
-            reference_dist = right_ref_start - left_ref_end
-            if reference_dist > 0:
+            if right_ref_start >= left_ref_start:
                 #INV candidate, right tail in inverted region
                 return check_inv_1(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
             else:
                 #INV candidate, left tail in inverted region
                 return check_inv_3(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
         elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
-            reference_dist = right_ref_start - left_ref_end
-            if reference_dist > 0:
+            if right_ref_start >= left_ref_start:
                 #INV candidate, left tail in inverted region
                 return check_inv_2(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
             else:
