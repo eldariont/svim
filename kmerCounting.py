@@ -214,29 +214,41 @@ def find_svs(ref, read, parameters, debug=False, times=False):
                 else:
                     counts3[i - offset, i] = 1
 
-        # Combine stretches to segment
+        # Combine stretches to segments
         new_active_segments = []
+        # Active segments become completed segments in the next iteration
         new_completed_segments = completed_segments + active_segments[:]
         for start, end in stretches:
             found_matching_segment = False
+            # Search matching segments for all stretches in this offset
             for segment in active_segments:
+                # Look only at last stretch from this segment
                 last_offset, last_start, last_end = segment[-1]
                 if last_offset >= 0 and offset >= 0:
+                    # If stretch is connected to this segment..
                     if start - 1 <= last_end and end >= last_start:
+                        # ..add stretch to the segment..
                         current_segment = segment[:]
                         current_segment.append((offset, start, end))
+                        # ..add the extended segment to active segments..
                         new_active_segments.append(current_segment)
+                        # ..and remove the extended segment from completed segments because it is still active
                         if segment in new_completed_segments:
                             new_completed_segments.remove(segment)
                         found_matching_segment = True
                 elif last_offset <= 0 and offset <= 0:
+                    # If stretch is connected to this segment..
                     if start <= last_end and end + 1 >= last_start:
+                        # ..add stretch to the segment..
                         current_segment = segment[:]
                         current_segment.append((offset, start, end))
+                        # ..add the extended segment to active segments..
                         new_active_segments.append(current_segment)
+                        # ..and remove the extended segment from completed segments because it is still active
                         if segment in new_completed_segments:
                             new_completed_segments.remove(segment)
                         found_matching_segment = True
+            # If no matching segments are found, open up new segment for this stretch
             if not found_matching_segment:
                 new_active_segments.append([(offset, start, end)])
         active_segments = new_active_segments
