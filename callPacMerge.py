@@ -33,6 +33,8 @@ def get_closest_index(input_list, input_number):
 
     If two numbers are equally close, return the index of the smallest number.
     """
+    if len(input_list) < 1:
+        return None
     pos = bisect_left(input_list, input_number)
     if pos == 0:
         return 0
@@ -89,6 +91,8 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
     for deletion_index, del_cluster in enumerate(deletion_evidence_clusters):
         del_contig, del_start, del_end = del_cluster.get_source()
         translocation_partition_means = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[del_contig]]
+        if len(translocation_partition_means) < 1:
+            continue
         closest_to_start = get_closest_index(translocation_partition_means, del_start)
         closest_to_end = get_closest_index(translocation_partition_means, del_end)
         # if translocations found close to start and end of deletion
