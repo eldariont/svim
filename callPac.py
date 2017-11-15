@@ -254,8 +254,6 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
     reference = SeqIO.index(genome, "fasta")
     print("INFO: Indexing reads and reference finished", file=sys.stderr)
 
-    sv_evidences = []
-
     left_iterator_object = left_it.next()
     while left_iterator_object[0] != read_name:
         try:
@@ -269,7 +267,7 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
         except StopIteration:
             break
 
-    result = analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
+    analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
 
 def main():
@@ -292,6 +290,9 @@ def main():
         pickle.dump(sv_evidences, evidences_file) 
         evidences_file.close()
     else:
+        if options.read_name != "all":
+            analyze_specific_read(options.temp_dir, options.genome, options.fasta, parameters, options.read_name)
+            return
         print("WARNING: Stored file with SV evidences (sv_evidences.obj) already exists. Load..", file=sys.stderr)
         evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
