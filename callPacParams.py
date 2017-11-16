@@ -18,7 +18,9 @@ class callPacParams:
 
         # Find best path through segments
         self.path_constant_gap_cost = 0
-        self.path_convex_gap_cost = 3
+        self.path_linear_gap_cost = 0.01
+        self.path_convex_gap_cost = 0
+        self.path_root_gap_cost = 1
         self.path_tolerance = 2
 
         # Alignment
@@ -43,7 +45,9 @@ class callPacParams:
 
         # Find best path through segments
         self.path_constant_gap_cost = options.path_constant_gap_cost
+        self.path_linear_gap_cost = options.path_linear_gap_cost
         self.path_convex_gap_cost = options.path_convex_gap_cost
+        self.path_root_gap_cost = options.path_root_gap_cost
         self.path_tolerance = options.path_tolerance
 
         # Alignment
