@@ -81,6 +81,8 @@ def convert_segments(segments):
 def distance(point1, point2, parameters):
     """Compute distance between two points with convex gap costs.
        Point 2 must have higher x and y than point 1 (with a tolerance)."""
+    if point1[0] is None or point1[1] is None or point2[0] is None or point2[1] is None:
+        return None
     if point2[0] + parameters.path_tolerance >= point1[0] and point2[1] + parameters.path_tolerance >= point1[1]:
         # distance in x direction
         if point2[0] - point1[0] <= 0:
@@ -97,6 +99,62 @@ def distance(point1, point2, parameters):
         return float("inf")
 
 
+def distance_with_column_overlap(segment1, segment2, parameters):
+    # overlap in column dimension
+    col_start = segment2['start'][1]
+    stretches = segment1['stretches']
+    highest_intersect_row = None
+    for stretch_start, stretch_end in stretches:
+        if stretch_start[1] <= col_start <= stretch_end[1]:
+            intersect_row = stretch_start[0] + (col_start - stretch_start[1])
+            if highest_intersect_row is None or intersect_row > highest_intersect_row:
+                highest_intersect_row = intersect_row
+    dist1 = distance((highest_intersect_row, col_start), segment2['start'], parameters)
+    col_end = segment1['end'][1]
+    stretches = segment2['stretches']
+    lowest_intersect_row = None
+    for stretch_start, stretch_end in stretches:
+        if stretch_start[1] <= col_end <= stretch_end[1]:
+            intersect_row = stretch_start[0] + (col_end - stretch_start[1])
+            if lowest_intersect_row is None or intersect_row < lowest_intersect_row:
+                lowest_intersect_row = intersect_row
+    dist2 = distance(segment1['end'], (lowest_intersect_row, col_end), parameters)
+    if dist1 < dist2 and not dist1 is None:
+        return (highest_intersect_row, col_start), segment2['start']
+    elif not dist2 is None:
+        return segment1['end'], (lowest_intersect_row, col_end)
+    else:
+        return None
+
+
+def distance_with_row_overlap(segment1, segment2, parameters):
+    # overlap in row dimension
+    row_start = segment2['start'][0]
+    stretches = segment1['stretches']
+    rightmost_intersect_col = None
+    for stretch_start, stretch_end in stretches:
+        if stretch_start[0] <= row_start <= stretch_end[0]:
+            intersect_col = stretch_start[1] + (row_start - stretch_start[0])
+            if rightmost_intersect_col is None or intersect_col > rightmost_intersect_col:
+                rightmost_intersect_col = intersect_col
+    dist1 = distance((row_start, rightmost_intersect_col), segment2['start'], parameters)
+    row_end = segment1['end'][0]
+    stretches = segment2['stretches']
+    leftmost_intersect_col = None
+    for stretch_start, stretch_end in stretches:
+        if stretch_start[0] <= row_end <= stretch_end[0]:
+            intersect_col = stretch_start[1] + (row_end - stretch_start[0])
+            if leftmost_intersect_col is None or intersect_col < leftmost_intersect_col:
+                leftmost_intersect_col = intersect_col
+    dist2 = distance(segment1['end'], (row_end, leftmost_intersect_col), parameters)
+    if dist1 < dist2 and not dist1 is None:
+        return (row_start, rightmost_intersect_col), segment2['start']
+    elif not dist2 is None:
+        return segment1['end'], (row_end, leftmost_intersect_col)
+    else:
+        return None
+
+
 def find_best_path(segments, matrix_end, parameters, debug=False):
     """Find best path through alignment matrix using segments."""
     graph = nx.DiGraph()
@@ -105,9 +163,22 @@ def find_best_path(segments, matrix_end, parameters, debug=False):
     for i1, s1 in enumerate(segments):
         for i2, s2 in enumerate(segments):
             if i1 != i2:
-                dist = distance(s1['end'], s2['start'], parameters)
-                if dist < float('inf'):
+                if s2['start'][0] + parameters.path_tolerance >= s1['end'][0] and s2['start'][1] + parameters.path_tolerance >= s1['end'][1]:
+                    # normal
+                    dist = distance(s1['end'], s2['start'], parameters)
                     graph.add_edge(i1, i2, weight=dist)
+                elif s2['start'][0] + parameters.path_tolerance >= s1['end'][0]:
+                    # overlap in column dimension
+                    result = distance_with_column_overlap(s1, s2, parameters)
+                    if not result is None:
+                        dist = distance(result[0], result[1], parameters)
+                        graph.add_edge(i1, i2, weight=dist)
+                elif s2['start'][1] + parameters.path_tolerance >= s1['end'][1]:
+                    # overlap in row dimension
+                    result = distance_with_row_overlap(s1, s2, parameters)
+                    if not result is None:
+                        dist = distance(result[0], result[1], parameters)
+                        graph.add_edge(i1, i2, weight=dist)
         dist = distance((0, 0), s1['start'], parameters)
         if dist < float('inf'):
             graph.add_edge("start", i1, weight=dist)
@@ -266,20 +337,29 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     # Step 4: Path finding through segments #
     #########################################
     best_path = find_best_path(final_segments, (rows, cols), parameters, debug)
-
+    #print(best_path)
     ####################################
     # Step 5: Search best path for SVs #
     ####################################
     sv_results = []
     for index in xrange(len(best_path) - 1):
-        # end coordinates are inclusive ==> therefore subtract 1 from gap length
-        deletion_gap = best_path[index + 1]['start'][0] - best_path[index]['end'][0] - 1
-        insertion_gap = best_path[index + 1]['start'][1] - best_path[index]['end'][1] - 1
+        if best_path[index + 1]['start'][0] + parameters.path_tolerance >= best_path[index]['end'][0] and best_path[index + 1]['start'][1] + parameters.path_tolerance >= best_path[index]['end'][1]:
+            # normal
+            point1, point2 = best_path[index]['end'], best_path[index + 1]['start']
+        elif best_path[index + 1]['start'][0] + parameters.path_tolerance >= best_path[index]['end'][0]:
+            # overlap in column dimension
+            point1, point2 = distance_with_column_overlap(best_path[index], best_path[index + 1], parameters)
+        elif best_path[index + 1]['start'][1] + parameters.path_tolerance >= best_path[index]['end'][1]:
+            # overlap in row dimension
+            point1, point2 = distance_with_row_overlap(best_path[index], best_path[index + 1], parameters)
 
+        # end coordinates are inclusive ==> therefore subtract 1 from gap length
+        deletion_gap = point2[0] - point1[0] - 1
+        insertion_gap = point2[1] - point1[1] - 1
         if insertion_gap > 1 or deletion_gap > 1:
             # Find exact start of deletion
-            ref_window_start = (best_path[index]['end'][0], best_path[index]['end'][0] + 2)
-            read_window_start = (best_path[index]['end'][1], best_path[index]['end'][1] + 2)
+            ref_window_start = (point1[0], point1[0] + 2)
+            read_window_start = (point1[1], point1[1] + 2)
             matrix = nw_compute_matrix(ref[ref_window_start[0] * parameters.count_win_size: ref_window_start[1] * parameters.count_win_size],
                                        read[read_window_start[0] * parameters.count_win_size: read_window_start[1] * parameters.count_win_size], parameters.align_costs)
             start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * parameters.count_win_size,
@@ -289,8 +369,8 @@ def find_svs(ref, read, parameters, debug=False, times=False):
             # print_alignment(alin_a, alin_b)
 
             # Find exact end of deletion
-            ref_window_end = (max(best_path[index + 1]['start'][0] - 1, 0), best_path[index + 1]['start'][0] + 1)
-            read_window_end = (max(best_path[index + 1]['start'][1] - 1, 0), best_path[index + 1]['start'][1] + 1)
+            ref_window_end = (max(point2[0] - 1, 0), point2[0] + 1)
+            read_window_end = (max(point2[1] - 1, 0), point2[1] + 1)
             matrix = nw_compute_matrix(ref[ref_window_end[0] * parameters.count_win_size: ref_window_end[1] * parameters.count_win_size],
                                        read[read_window_end[0] * parameters.count_win_size: read_window_end[1] * parameters.count_win_size], parameters.align_costs, backwards=True)
             end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * parameters.count_win_size,
