@@ -19,10 +19,10 @@ def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, refere
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del":
-            print("Deletion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_end - end , left_ref_end - start, end - start), file=sys.stdout)
+            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_end - end , left_ref_end - start, end - start), file=sys.stdout)
             sv_evidences.append(EvidenceDeletion(contig, left_ref_end - end, left_ref_end - start, "kmer", left_tail.query_name))
         if typ == "ins":
-            print("Insertion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_end - start, left_ref_end - start + (end - start), end - start), file=sys.stdout)
+            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_end - start, left_ref_end - start + (end - start), end - start), file=sys.stdout)
             sv_evidences.append(EvidenceInsertion(contig, left_ref_end - start, left_ref_end - start + (end - start), "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -40,10 +40,10 @@ def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, referen
     sv_evidences = []
     for typ, start, end in sv_results:
         if typ == "del":
-            print("Deletion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_start + start, left_ref_start + end, end - start), file=sys.stdout)
+            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_start + start, left_ref_start + end, end - start), file=sys.stdout)
             sv_evidences.append(EvidenceDeletion(contig, left_ref_start + start, left_ref_start + end, "kmer", left_tail.query_name))
         if typ == "ins":
-            print("Insertion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_start + start, left_ref_start + end, end - start), file=sys.stdout)
+            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(contig, left_ref_start + start, left_ref_start + end, end - start), file=sys.stdout)
             sv_evidences.append(EvidenceInsertion(contig, left_ref_start + start, left_ref_start + end, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -65,7 +65,7 @@ def check_inv_1(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_start = left_ref_start + start
             inv_end = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
             if inv_end > inv_start:
-                print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
+                #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
                 sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -87,7 +87,7 @@ def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_start = left_ref_end - start
             inv_end = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
             if inv_end > inv_start:
-                print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
+                #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
                 sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -109,7 +109,7 @@ def check_inv_3(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_start = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
             inv_end = left_ref_start + start
             if inv_end > inv_start:
-                print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
+                #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
                 sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -130,7 +130,7 @@ def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_start = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
             inv_end = left_ref_end - start
             if inv_end > inv_start:
-                print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
+                #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
                 sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -151,7 +151,7 @@ def check_trans_candidate_1(left_tail, right_tail, left_contig, right_contig, fu
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
             breakpoint1 = left_ref_start + start
             breakpoint2 = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
-            print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
+            #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
             sv_evidences.append(EvidenceTranslocation(left_contig, breakpoint1, right_contig, breakpoint2, "kmer", left_tail.query_name))
     return sv_evidences
 
@@ -172,7 +172,7 @@ def check_trans_candidate_2(left_tail, right_tail, left_contig, right_contig, fu
         if typ == "del" and start < len(ref_snippet_1) and end > len(ref_snippet_1):
             breakpoint1 = left_ref_end - start
             breakpoint2 = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
-            print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
+            #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(left_contig, breakpoint1, right_contig, breakpoint2), file=sys.stdout)
             sv_evidences.append(EvidenceTranslocation(left_contig, breakpoint1, right_contig, breakpoint2, "kmer", left_tail.query_name))
     return sv_evidences
 

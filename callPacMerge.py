@@ -108,7 +108,7 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                     mean_destination = int(round((destination_from_start[1] + destination_from_end[1]) / 2))
                     all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_start] + translocation_partitions_dict[del_contig][closest_to_end]
                     insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_start[0], mean_destination, mean_destination + (del_end - del_start), all_members, del_cluster.score))
-                    print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
+                    #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                     to_delete.append(deletion_index)
         # if translocations found close to start of deletion
         elif abs(translocation_partition_means[closest_to_start] - del_start) < 10:
@@ -118,7 +118,7 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                 destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / float(len(destinations_from_start[0])))))
                 all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_start]
                 insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_start[0], destination_from_start[1], destination_from_start[1] + (del_end - del_start), all_members, del_cluster.score))
-                print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
+                #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                 to_delete.append(deletion_index)
         # if translocations found close to end of deletion
         elif abs(translocation_partition_means[closest_to_end] - del_end) < 10:
@@ -128,7 +128,7 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                 destination_from_end = (destinations_from_end[0][0][0], int(round(sum([pos for contig, pos in destinations_from_end[0]]) / float(len(destinations_from_end[0])))))
                 all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_end]
                 insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_end[0], destination_from_end[1], destination_from_end[1] + (del_end - del_start), all_members, del_cluster.score))
-                print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
+                #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                 to_delete.append(deletion_index)
 
     for deletion_index in to_delete[::-1]:

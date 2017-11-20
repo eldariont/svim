@@ -235,7 +235,7 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
     while True:
         try:
             full_iterator_object = full_it.next()
-            if int(full_iterator_object[0].split("_")[1]) % 1000 == 0:
+            if int(full_iterator_object[0].split("_")[1]) % 10000 == 0:
                 print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
             sv_evidences.extend(analyze_full_read(full_iterator_object, full_bam, parameters))
         except StopIteration:
