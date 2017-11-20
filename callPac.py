@@ -27,6 +27,7 @@ def parse_arguments():
     parser.add_argument('genome', default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
     parser.add_argument('temp_dir', type=str, help='temp directory')
 
+    parser.add_argument('--kmer', action='store_true', help='enable kmer counting')
     parser.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
     parser.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
     parser.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
@@ -285,7 +286,10 @@ def main():
             analyze_specific_read(options.temp_dir, options.genome, options.fasta, parameters, options.read_name)
             return
         else:
-            sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
+            if options.kmer:
+                sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
+            else:
+                sv_evidences = []
             sv_evidences.extend(analyze_full_reads(options.temp_dir, options.genome, options.fasta, parameters))
 
         evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'w')
