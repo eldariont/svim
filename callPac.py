@@ -202,8 +202,8 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
-    reads = SeqIO.index(fasta.name, "fasta")
-    reference = SeqIO.index(genome, "fasta")
+    reads = SeqIO.index_db(fasta.name + ".idx", fasta.name, "fasta")
+    reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
     print("INFO: Indexing reads and reference finished", file=sys.stderr)
 
     sv_evidences = []
@@ -253,8 +253,8 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
-    reads = SeqIO.index(fasta.name, "fasta")
-    reference = SeqIO.index(genome, "fasta")
+    reads = SeqIO.index_db(fasta.name + ".idx", fasta.name, "fasta")
+    reference = SeqIO.index_db(genome + ".idx", genome, "fasta")
     print("INFO: Indexing reads and reference finished", file=sys.stderr)
 
     left_iterator_object = left_it.next()
