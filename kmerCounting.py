@@ -88,12 +88,12 @@ def distance(point1, point2, parameters):
         if point2[0] - point1[0] <= 0:
             dist = 0
         else:
-            dist = parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[0] - point1[0]) + parameters.path_convex_gap_cost * math.sqrt(point2[0] - point1[0]) + parameters.path_root_gap_cost * (point2[0] - point1[0])
+            dist = parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[0] - point1[0]) + parameters.path_convex_gap_cost * math.log(point2[0] - point1[0]) + parameters.path_root_gap_cost * math.sqrt(point2[0] - point1[0])
         # distance in y direction
         if point2[1] - point1[1] <= 0:
             dist += 0
         else:
-            dist += parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[1] - point1[1]) + parameters.path_convex_gap_cost * math.sqrt(point2[1] - point1[1]) + parameters.path_root_gap_cost * (point2[1] - point1[1])
+            dist += parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[1] - point1[1]) + parameters.path_convex_gap_cost * math.log(point2[1] - point1[1]) + parameters.path_root_gap_cost * math.sqrt(point2[1] - point1[1])
         return dist
     else:
         return float("inf")
