@@ -250,12 +250,14 @@ def analyze_indel(bam_path, parameters):
     full_it = bam_iterator(full_bam)
 
     sv_evidences = []
+    read_nr = 0
 
     while True:
         try:
             full_iterator_object = full_it.next()
-            if int(full_iterator_object[0].split("_")[1]) % 10000 == 0:
-                print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
+            read_nr += 1
+            if read_nr % 10000 == 0:
+                print("INFO: Processed read", read_nr, file=sys.stderr)
             sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
@@ -270,12 +272,14 @@ def analyze_segments(bam_path, parameters):
     full_it = bam_iterator(full_bam)
 
     sv_evidences = []
+    read_nr = 0
 
     while True:
         try:
             full_iterator_object = full_it.next()
-            if int(full_iterator_object[0].split("_")[1]) % 10000 == 0:
-                print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
+            read_nr += 1
+            if read_nr % 10000 == 0:
+                print("INFO: Processed read", read_nr, file=sys.stderr)
             sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
@@ -335,6 +339,8 @@ def post_processing(sv_evidences, working_dir):
     insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
     # Print SV evidence clusters
+    if not os.path.exists(working_dir + '/evidences'):
+        os.mkdir(working_dir + '/evidences')
     deletion_evidence_output = open(working_dir + '/evidences/del.bed', 'w')
     insertion_evidence_output = open(working_dir + '/evidences/ins.bed', 'w')
     inversion_evidence_output = open(working_dir + '/evidences/inv.bed', 'w')
@@ -377,6 +383,8 @@ def post_processing(sv_evidences, working_dir):
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
+    if not os.path.exists(working_dir + '/candidates'):
+        os.mkdir(working_dir + '/candidates')
     deletion_candidate_output = open(working_dir + '/candidates/del.bed', 'w')
     insertion_candidate_source_output = open(working_dir + '/candidates/cand_insertions_source.bed', 'w')
     insertion_candidate_dest_output = open(working_dir + '/candidates/cand_insertions_dest.bed', 'w')
