@@ -27,28 +27,76 @@ class callPacParams:
         self.align_costs = (3, -12, -12)
 
     def set_with_options(self, options):
-        # Read tail mapping
-        self.tail_span = options.tail_span
-        self.tail_min_mapq =  options.tail_min_mapq
-        self.tail_min_deviation = options.tail_min_deviation
-        self.tail_max_deviation = options.tail_max_deviation
+        # Read tail mapping        
+        try:
+            self.tail_span = options.tail_span
+        except AttributeError:
+            pass
+        try:
+            self.tail_min_mapq =  options.tail_min_mapq
+        except AttributeError:
+            pass
+        try:
+            self.tail_min_deviation = options.tail_min_deviation
+        except AttributeError:
+            pass
+        try:
+            self.tail_max_deviation = options.tail_max_deviation
+        except AttributeError:
+            pass
 
         # Counting
-        self.count_win_size = options.count_win_size
-        self.count_k = options.count_k
-        self.count_band = options.count_band
+        try:
+            self.count_win_size = options.count_win_size
+        except AttributeError:
+            pass
+        try:
+            self.count_k = options.count_k
+        except AttributeError:
+            pass
+        try:
+            self.count_band = options.count_band
+        except AttributeError:
+            pass
 
         # Find stretches
-        self.stretch_threshold = options.stretch_threshold
-        self.stretch_tolerance = options.stretch_tolerance
-        self.stretch_min_length = options.stretch_min_length
+        try:
+            self.stretch_threshold = options.stretch_threshold
+        except AttributeError:
+            pass
+        try:
+            self.stretch_tolerance = options.stretch_tolerance
+        except AttributeError:
+            pass
+        try:
+            self.stretch_min_length = options.stretch_min_length
+        except AttributeError:
+            pass
 
         # Find best path through segments
-        self.path_constant_gap_cost = options.path_constant_gap_cost
-        self.path_linear_gap_cost = options.path_linear_gap_cost
-        self.path_convex_gap_cost = options.path_convex_gap_cost
-        self.path_root_gap_cost = options.path_root_gap_cost
-        self.path_tolerance = options.path_tolerance
+        try:
+            self.path_constant_gap_cost = options.path_constant_gap_cost
+        except AttributeError:
+            pass
+        try:
+            self.path_linear_gap_cost = options.path_linear_gap_cost
+        except AttributeError:
+            pass
+        try:
+            self.path_convex_gap_cost = options.path_convex_gap_cost
+        except AttributeError:
+            pass
+        try:
+            self.path_root_gap_cost = options.path_root_gap_cost
+        except AttributeError:
+            pass
+        try:
+            self.path_tolerance = options.path_tolerance
+        except AttributeError:
+            pass
 
         # Alignment
-        self.align_costs = (options.align_costs_match, options.align_costs_mismatch, options.align_costs_gap)
+        try:
+            self.align_costs = (options.align_costs_match, options.align_costs_mismatch, options.align_costs_gap)
+        except AttributeError:
+            pass
