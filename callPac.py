@@ -245,8 +245,8 @@ def analyze_read_tails(working_dir, genome, fasta, parameters):
     return sv_evidences
 
 
-def analyze_indel(working_dir, parameters):
-    full_bam = pysam.AlignmentFile(working_dir + '/full_aln.chained.rsorted.bam')
+def analyze_indel(bam_path, parameters):
+    full_bam = pysam.AlignmentFile(bam_path)
     full_it = bam_iterator(full_bam)
 
     sv_evidences = []
@@ -265,8 +265,8 @@ def analyze_indel(working_dir, parameters):
     return sv_evidences
 
 
-def analyze_segments(working_dir, parameters):
-    full_bam = pysam.AlignmentFile(working_dir + '/full_aln.chained.rsorted.bam')
+def analyze_segments(bam_path, parameters):
+    full_bam = pysam.AlignmentFile(bam_path)
     full_it = bam_iterator(full_bam)
 
     sv_evidences = []
@@ -420,14 +420,24 @@ def main():
         if not options.skip_kmer:
             sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, options.fasta, parameters))
         if not options.skip_indel:
-            sv_evidences.extend(analyze_indel(options.working_dir, parameters))
+            sv_evidences.extend(analyze_indel(options.working_dir + '/full_aln.chained.rsorted.bam', parameters))
         if not options.skip_segment:
-            sv_evidences.extend(analyze_segments(options.working_dir, parameters))
+            sv_evidences.extend(analyze_segments(options.working_dir + '/full_aln.chained.rsorted.bam', parameters))
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
         pickle.dump(sv_evidences, evidences_file) 
         evidences_file.close()
     elif options.sub == 'bam':
-        pass
+        if options.read_name != "all":
+            #analyze_specific_read(options.working_dir, options.genome, options.fasta, parameters, options.read_name)
+            return
+        sv_evidences = []
+        if not options.skip_indel:
+            sv_evidences.extend(analyze_indel(options.bam.name, parameters))
+        if not options.skip_segment:
+            sv_evidences.extend(analyze_segments(options.bam.name, parameters))
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+        pickle.dump(sv_evidences, evidences_file)
+        evidences_file.close()
 
     #Post-process SV evidences
     post_processing(sv_evidences, options.working_dir)    
