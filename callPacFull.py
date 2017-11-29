@@ -341,7 +341,7 @@ def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln
     return results
 
 
-def analyze_full_read(full_iterator_object, full_bam, parameters):
+def analyze_full_read_indel(full_iterator_object, full_bam, parameters):
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
     sv_evidences = []
@@ -359,6 +359,17 @@ def analyze_full_read(full_iterator_object, full_bam, parameters):
         elif typ == "ins":
             #print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
             sv_evidences.append(EvidenceInsertion(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, "cigar", full_read_name))
+
+    return sv_evidences
+
+
+def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
+    full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
+
+    sv_evidences = []
+
+    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters.tail_min_mapq:
+        return sv_evidences
 
     good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.tail_min_mapq]
     if len(good_suppl_alns) == 1:

@@ -15,38 +15,56 @@ from callPacParams import callPacParams
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
 from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem, CandidateDuplicationInterspersed
 
-from callPacFull import analyze_full_read
+from callPacFull import analyze_full_read_indel, analyze_full_read_segments
 from callPacTails import analyze_pair_of_read_tails
 from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
 from callPacMerge import merge_insertions_from, merge_translocations
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description="""""")
-    parser.add_argument('fasta', type=argparse.FileType('r'))
-    parser.add_argument('genome', default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", type=str)
-    parser.add_argument('temp_dir', type=str, help='temp directory')
+                                     description="""callPac is a tool for accurate detection of structural variants (SVs).""")
+    subparsers = parser.add_subparsers(help='subcommands', dest='sub')
 
-    parser.add_argument('--kmer', action='store_true', help='enable kmer counting')
-    parser.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
-    parser.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
-    parser.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
-    parser.add_argument('--tail_max_deviation', type=float, default=0.2, help='maximum deviation')
-    parser.add_argument('--count_win_size', type=int, default=50, help='window size for k-mer counting')
-    parser.add_argument('--count_k', type=int, default=7, help='k for k-mer counting')
-    parser.add_argument('--count_band', type=float, default=0.5, help='band width')
-    parser.add_argument('--stretch_threshold', type=int, default=7, help='z-score threshold')
-    parser.add_argument('--stretch_tolerance', type=int, default=2, help='tolerance for stretch finding')
-    parser.add_argument('--stretch_min_length', type=int, default=3, help='minimum stretch length')
-    parser.add_argument('--path_constant_gap_cost', type=float, default=0, help='constant gap cost for path finding')
-    parser.add_argument('--path_linear_gap_cost', type=float, default=0, help='linear gap cost for path finding')
-    parser.add_argument('--path_convex_gap_cost', type=float, default=3, help='convex gap cost for path finding')
-    parser.add_argument('--path_root_gap_cost', type=float, default=0, help='root gap cost for path finding')
-    parser.add_argument('--path_tolerance', type=int, default=2, help='tolerance for overlapping segments')
-    parser.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
-    parser.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
-    parser.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
-    parser.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
+    parser_bam = subparsers.add_parser('load', help='Load existing .obj file from working directory')
+    parser_bam.add_argument('working_dir', type=str, help='working directory')
+
+    parser_bam = subparsers.add_parser('bam', help='Detect SVs from an existing alignment')
+    parser_bam.add_argument('working_dir', type=str, help='working directory')
+    parser_bam.add_argument('bam', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads')
+    parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
+    parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_bam.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
+
+    parser_bam.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+
+    parser_fasta = subparsers.add_parser('fasta', help='Detect SVs from raw reads')
+    parser_fasta.add_argument('working_dir', type=str, help='working directory')
+    parser_fasta.add_argument('fasta', type=argparse.FileType('r'), help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_fasta.add_argument('genome', type=str, default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", help='Reference genome file (FASTA)')
+
+    parser_fasta.add_argument('--skip_kmer', action='store_true', help='disable kmer counting')
+    parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
+    parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_fasta.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
+
+    parser_fasta.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
+    parser_fasta.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+    parser_fasta.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
+    parser_fasta.add_argument('--tail_max_deviation', type=float, default=0.2, help='maximum deviation')
+    parser_fasta.add_argument('--count_win_size', type=int, default=50, help='window size for k-mer counting')
+    parser_fasta.add_argument('--count_k', type=int, default=7, help='k for k-mer counting')
+    parser_fasta.add_argument('--count_band', type=float, default=0.5, help='band width')
+    parser_fasta.add_argument('--stretch_threshold', type=int, default=7, help='z-score threshold')
+    parser_fasta.add_argument('--stretch_tolerance', type=int, default=2, help='tolerance for stretch finding')
+    parser_fasta.add_argument('--stretch_min_length', type=int, default=3, help='minimum stretch length')
+    parser_fasta.add_argument('--path_constant_gap_cost', type=float, default=0, help='constant gap cost for path finding')
+    parser_fasta.add_argument('--path_linear_gap_cost', type=float, default=0, help='linear gap cost for path finding')
+    parser_fasta.add_argument('--path_convex_gap_cost', type=float, default=3, help='convex gap cost for path finding')
+    parser_fasta.add_argument('--path_root_gap_cost', type=float, default=0, help='root gap cost for path finding')
+    parser_fasta.add_argument('--path_tolerance', type=int, default=2, help='tolerance for overlapping segments')
+    parser_fasta.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
+    parser_fasta.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
+    parser_fasta.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
     return parser.parse_args()
 
 
@@ -59,25 +77,25 @@ def parse_sam_file(sam, contig):
     return aln_dict
 
 
-def create_temp_files(temp_dir, fasta, span):
-    """Create temporary FASTA files if they do not exist."""
-    if not os.path.exists(temp_dir):
-        print("ERROR: Given temp directory does not exist", file=sys.stderr)
+def create_tail_files(working_dir, fasta, span):
+    """Create FASTA files with read tails if they do not exist."""
+    if not os.path.exists(working_dir):
+        print("ERROR: Given working directory does not exist", file=sys.stderr)
         sys.exit()
 
-    if not os.path.exists(temp_dir + '/left.fa'):
-        left_file = open(temp_dir + '/left.fa', 'w')
+    if not os.path.exists(working_dir + '/left.fa'):
+        left_file = open(working_dir + '/left.fa', 'w')
         write_left = True
     else:
         write_left = False
-        print("WARNING: Temp file for left sequences exists. Skip", file=sys.stderr)
+        print("WARNING: FASTA file for left tails exists. Skip", file=sys.stderr)
 
-    if not os.path.exists(temp_dir + '/right.fa'):
-        right_file = open(temp_dir + '/right.fa', 'w')
+    if not os.path.exists(working_dir + '/right.fa'):
+        right_file = open(working_dir + '/right.fa', 'w')
         write_right = True
     else:
         write_right = False
-        print("WARNING: Temp file for right sequences exists. Skip", file=sys.stderr)
+        print("WARNING: FASTA file for right tails exists. Skip", file=sys.stderr)
 
     if write_left or write_right:
         for line in fasta:
@@ -104,49 +122,49 @@ def create_temp_files(temp_dir, fasta, span):
     if write_right:
         right_file.close()
 
-    print("INFO: Temporary files written", file=sys.stderr)
+    print("INFO: Read tail files written", file=sys.stderr)
 
 
-def run_alignments(temp_dir, genome, fasta):
+def run_alignments(working_dir, genome, fasta):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
-    if not os.path.exists(temp_dir + '/left_aln.rsorted.bam'):
+    if not os.path.exists(working_dir + '/left_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', '30', genome, temp_dir + '/left.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', '30', genome, working_dir + '/left.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-n', '-o', temp_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', '10', '-n', '-o', working_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for left sequences exists. Skip", file=sys.stderr)
 
-    if not os.path.exists(temp_dir + '/right_aln.rsorted.bam'):
+    if not os.path.exists(working_dir + '/right_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', '30', genome, temp_dir + '/right.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', '30', genome, working_dir + '/right.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-n', '-o', temp_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', '10', '-n', '-o', working_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for right sequences exists. Skip", file=sys.stderr)
 
     # Align full reads with NGM-LR
-    if not os.path.exists(temp_dir + '/full_aln.chained.rsorted.bam'):
+    if not os.path.exists(working_dir + '/full_aln.chained.rsorted.bam'):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
                        '-t', '30', '-r', genome, '-q', os.path.realpath(fasta.name), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', '10', '-o', temp_dir + '/full_aln.rsorted.bam'],
+                      'sort', '-n', '-@', '10', '-o', working_dir + '/full_aln.rsorted.bam'],
                      stdin=view.stdout)
         sort.wait()
-        if call(['python', '/home/heller_d/bin/bamChain', temp_dir + '/full_aln.rsorted.bam',
-                 temp_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
+        if call(['python', '/home/heller_d/bin/bamChain', working_dir + '/full_aln.rsorted.bam',
+                 working_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
             print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
         if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10',
-                 temp_dir + '/full_aln.chained.bam', '-o',
-                 temp_dir + '/full_aln.chained.rsorted.bam']) != 0:
+                 working_dir + '/full_aln.chained.bam', '-o',
+                 working_dir + '/full_aln.chained.rsorted.bam']) != 0:
             print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
     else:
         print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
@@ -196,9 +214,9 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_read_tails(temp_dir, genome, fasta, parameters):
-    left_bam = pysam.AlignmentFile(temp_dir + '/left_aln.rsorted.bam')
-    right_bam = pysam.AlignmentFile(temp_dir + '/right_aln.rsorted.bam')
+def analyze_read_tails(working_dir, genome, fasta, parameters):
+    left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
+    right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
@@ -227,8 +245,8 @@ def analyze_read_tails(temp_dir, genome, fasta, parameters):
     return sv_evidences
 
 
-def analyze_full_reads(temp_dir, genome, fasta, parameters):
-    full_bam = pysam.AlignmentFile(temp_dir + '/full_aln.chained.rsorted.bam')
+def analyze_indel(working_dir, parameters):
+    full_bam = pysam.AlignmentFile(working_dir + '/full_aln.chained.rsorted.bam')
     full_it = bam_iterator(full_bam)
 
     sv_evidences = []
@@ -238,7 +256,7 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
             full_iterator_object = full_it.next()
             if int(full_iterator_object[0].split("_")[1]) % 10000 == 0:
                 print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
-            sv_evidences.extend(analyze_full_read(full_iterator_object, full_bam, parameters))
+            sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -247,9 +265,29 @@ def analyze_full_reads(temp_dir, genome, fasta, parameters):
     return sv_evidences
 
 
-def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
-    left_bam = pysam.AlignmentFile(temp_dir + '/left_aln.rsorted.bam')
-    right_bam = pysam.AlignmentFile(temp_dir + '/right_aln.rsorted.bam')
+def analyze_segments(working_dir, parameters):
+    full_bam = pysam.AlignmentFile(working_dir + '/full_aln.chained.rsorted.bam')
+    full_it = bam_iterator(full_bam)
+
+    sv_evidences = []
+
+    while True:
+        try:
+            full_iterator_object = full_it.next()
+            if int(full_iterator_object[0].split("_")[1]) % 10000 == 0:
+                print("INFO: Processed read", full_iterator_object[0].split("_")[1], file=sys.stderr)
+            sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+        except StopIteration:
+            break
+        except KeyboardInterrupt:
+            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            break
+    return sv_evidences
+
+
+def analyze_specific_read(working_dir, genome, fasta, parameters, read_name):
+    left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
+    right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
@@ -273,37 +311,7 @@ def analyze_specific_read(temp_dir, genome, fasta, parameters, read_name):
     analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
 
-def main():
-    options = parse_arguments()
-    parameters = callPacParams()
-    parameters.set_with_options(options)
-
-    # Run SV search only if raw SV results do not exist
-    if not os.path.exists(options.temp_dir + '/sv_evidences.obj'):
-        create_temp_files(options.temp_dir, options.fasta, parameters.tail_span)
-        run_alignments(options.temp_dir, options.genome, options.fasta)
-        if options.read_name != "all":
-            analyze_specific_read(options.temp_dir, options.genome, options.fasta, parameters, options.read_name)
-            return
-        else:
-            if options.kmer:
-                sv_evidences = analyze_read_tails(options.temp_dir, options.genome, options.fasta, parameters)
-            else:
-                sv_evidences = []
-            sv_evidences.extend(analyze_full_reads(options.temp_dir, options.genome, options.fasta, parameters))
-
-        evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'w')
-        pickle.dump(sv_evidences, evidences_file) 
-        evidences_file.close()
-    else:
-        if options.read_name != "all":
-            analyze_specific_read(options.temp_dir, options.genome, options.fasta, parameters, options.read_name)
-            return
-        print("WARNING: Stored file with SV evidences (sv_evidences.obj) already exists. Load..", file=sys.stderr)
-        evidences_file = open(options.temp_dir + '/sv_evidences.obj', 'r')
-        sv_evidences = pickle.load(evidences_file)
-        evidences_file.close()
-
+def post_processing(sv_evidences, working_dir):
     deletion_evidences = [ev for ev in sv_evidences if ev.type == 'del']
     insertion_evidences = [ev for ev in sv_evidences if ev.type == 'ins']
     inversion_evidences = [ev for ev in sv_evidences if ev.type == 'inv']
@@ -327,13 +335,13 @@ def main():
     insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
     # Print SV evidence clusters
-    deletion_evidence_output = open(options.temp_dir + '/evidences/del.bed', 'w')
-    insertion_evidence_output = open(options.temp_dir + '/evidences/ins.bed', 'w')
-    inversion_evidence_output = open(options.temp_dir + '/evidences/inv.bed', 'w')
-    tandem_duplication_evidence_source_output = open(options.temp_dir + '/evidences/dup_tan_source.bed', 'w')
-    tandem_duplication_evidence_dest_output = open(options.temp_dir + '/evidences/dup_tan_dest.bed', 'w')
-    translocation_evidence_output = open(options.temp_dir + '/evidences/trans.bed', 'w')
-    insertion_from_evidence_output = open(options.temp_dir + '/evidences/ins_dup.bed', 'w')
+    deletion_evidence_output = open(working_dir + '/evidences/del.bed', 'w')
+    insertion_evidence_output = open(working_dir + '/evidences/ins.bed', 'w')
+    inversion_evidence_output = open(working_dir + '/evidences/inv.bed', 'w')
+    tandem_duplication_evidence_source_output = open(working_dir + '/evidences/dup_tan_source.bed', 'w')
+    tandem_duplication_evidence_dest_output = open(working_dir + '/evidences/dup_tan_dest.bed', 'w')
+    translocation_evidence_output = open(working_dir + '/evidences/trans.bed', 'w')
+    insertion_from_evidence_output = open(working_dir + '/evidences/ins_dup.bed', 'w')
 
     for cluster in deletion_evidence_clusters:
         print(cluster.get_bed_entry(), file=deletion_evidence_output)
@@ -369,14 +377,14 @@ def main():
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
-    deletion_candidate_output = open(options.temp_dir + '/candidates/del.bed', 'w')
-    insertion_candidate_source_output = open(options.temp_dir + '/candidates/cand_insertions_source.bed', 'w')
-    insertion_candidate_dest_output = open(options.temp_dir + '/candidates/cand_insertions_dest.bed', 'w')
-    #inversion_candidate_output = open(options.temp_dir + '/candidates/inv.bed', 'w')
-    #tandem_duplication_candidate_output = open(options.temp_dir + '/candidates/dup_tan.bed', 'w')
-    interspersed_duplication_candidate_source_output = open(options.temp_dir + '/candidates/cand_int_duplications_source.bed', 'w')
-    interspersed_duplication_candidate_dest_output = open(options.temp_dir + '/candidates/cand_int_duplications_dest.bed', 'w')
-    #insertion_from_candidate_output = open(options.temp_dir + '/candidates/ins_dup.bed', 'w')
+    deletion_candidate_output = open(working_dir + '/candidates/del.bed', 'w')
+    insertion_candidate_source_output = open(working_dir + '/candidates/cand_insertions_source.bed', 'w')
+    insertion_candidate_dest_output = open(working_dir + '/candidates/cand_insertions_dest.bed', 'w')
+    #inversion_candidate_output = open(working_dir + '/candidates/inv.bed', 'w')
+    #tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
+    interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/cand_int_duplications_source.bed', 'w')
+    interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/cand_int_duplications_dest.bed', 'w')
+    #insertion_from_candidate_output = open(working_dir + '/candidates/ins_dup.bed', 'w')
 
     for candidate in insertion_candidates:
         bed_entries = candidate.get_bed_entries()
@@ -388,6 +396,41 @@ def main():
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
     for cluster in deletion_evidence_clusters:
         print(cluster.get_bed_entry(), file=deletion_candidate_output)
+
+
+def main():
+    #Fetch command-line options and set parameters accordingly
+    options = parse_arguments()
+    parameters = callPacParams()
+    parameters.set_with_options(options)
+
+    #Search for SV evidences
+    if options.sub == 'load':
+        print("INFO: Load sv_evidences.obj with SV evidences..", file=sys.stderr)
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        sv_evidences = pickle.load(evidences_file)
+        evidences_file.close()
+    elif options.sub == 'fasta':
+        create_tail_files(options.working_dir, options.fasta, parameters.tail_span)
+        run_alignments(options.working_dir, options.genome, options.fasta)
+        if options.read_name != "all":
+            analyze_specific_read(options.working_dir, options.genome, options.fasta, parameters, options.read_name)
+            return
+        sv_evidences = []
+        if not options.skip_kmer:
+            sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, options.fasta, parameters))
+        if not options.skip_indel:
+            sv_evidences.extend(analyze_indel(options.working_dir, parameters))
+        if not options.skip_segment:
+            sv_evidences.extend(analyze_segments(options.working_dir, parameters))
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+        pickle.dump(sv_evidences, evidences_file) 
+        evidences_file.close()
+    elif options.sub == 'bam':
+        pass
+
+    #Post-process SV evidences
+    post_processing(sv_evidences, options.working_dir)    
 
 if __name__ == "__main__":
     sys.exit(main())
