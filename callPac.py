@@ -7,6 +7,7 @@ import re
 from subprocess import call, Popen, PIPE
 from collections import defaultdict
 import pickle
+import gzip
 
 import pysam
 from Bio import SeqIO
@@ -28,18 +29,17 @@ def parse_arguments():
     parser_bam = subparsers.add_parser('load', help='Load existing .obj file from working directory')
     parser_bam.add_argument('working_dir', type=str, help='working directory')
 
-    parser_bam = subparsers.add_parser('bam', help='Detect SVs from an existing alignment')
+    parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=str, help='working directory')
-    parser_bam.add_argument('bam', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads')
+    parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (must be query-sorted)')
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
-    parser_bam.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
 
     parser_bam.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
 
-    parser_fasta = subparsers.add_parser('fasta', help='Detect SVs from raw reads')
+    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
-    parser_fasta.add_argument('fasta', type=argparse.FileType('r'), help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_fasta.add_argument('reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_fasta.add_argument('genome', type=str, default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", help='Reference genome file (FASTA)')
 
     parser_fasta.add_argument('--skip_kmer', action='store_true', help='disable kmer counting')
@@ -77,8 +77,25 @@ def parse_sam_file(sam, contig):
     return aln_dict
 
 
-def create_tail_files(working_dir, fasta, span):
-    """Create FASTA files with read tails if they do not exist."""
+def guess_file_type(reads_path):
+    if reads_path.endswith(".fa") or reads_path.endswith(".fasta") or reads_path.endswith(".FA"):
+        print("INFO: Recognized reads file as FASTA format.", file=sys.stderr)
+        return "fasta"
+    elif reads_path.endswith(".fq") or reads_path.endswith(".fastq") or reads_path.endswith(".FQ"):
+        print("INFO: Recognized reads file as FASTQ format.", file=sys.stderr)
+        return "fastq"
+    elif reads_path.endswith(".fa.gz") or reads_path.endswith(".fasta.gz") or reads_path.endswith(".fa.gzip") or reads_path.endswith(".fasta.gzip"):
+        print("INFO: Recognized reads file as gzipped FASTA format.", file=sys.stderr)
+        return "fasta_gzip"
+    elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip"):
+        print("INFO: Recognized reads file as gzipped FASTQ format.", file=sys.stderr)
+        return "fastq_gzip"
+    else:
+        print("ERROR: Unknown file ending of file {0}. Exiting.".format(reads_path), file=sys.stderr)
+        return "unknown"
+
+def create_tail_files(working_dir, reads_path, reads_type, span):
+    """Create FASTA files with read tails and full reads if they do not exist."""
     if not os.path.exists(working_dir):
         print("ERROR: Given working directory does not exist", file=sys.stderr)
         sys.exit()
@@ -97,35 +114,78 @@ def create_tail_files(working_dir, fasta, span):
         write_right = False
         print("WARNING: FASTA file for right tails exists. Skip", file=sys.stderr)
 
-    if write_left or write_right:
-        for line in fasta:
-            if line.startswith('>'):
-                read_name = line.strip()[1:]
-            else:
-                sequence = line.strip()
-                if len(sequence) < 2000:
-                    continue
+    if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+        full_reads_path = working_dir + '/full.fa'
+        if not os.path.exists(working_dir + '/full.fa'):
+            full_file = open(working_dir + '/full.fa', 'w')
+            write_full = True
+        else:
+            write_full = False
+            print("WARNING: FASTA file for full reads exists. Skip", file=sys.stderr)
+    else:
+        full_reads_path = reads_path
+        write_full = False
 
-                if write_left:
-                    prefix = sequence[:span]
-                    print(">" + read_name, file=left_file)
-                    print(prefix, file=left_file)
-
-                if write_right:
-                    suffix = sequence[-span:]
-                    print(">" + read_name, file=right_file)
-                    print(suffix, file=right_file)
-
-    fasta.close()
+    if write_left or write_right or write_full:
+        if reads_type == "fasta" or reads_type == "fastq":
+            reads_file = open(reads_path, "r")
+        elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+            reads_file = gzip.open(reads_path, "rb")
+        
+        if reads_type == "fasta" or reads_type == "fasta_gzip": 
+            for line in reads_file:
+                if line.startswith('>'):
+                    read_name = line.strip()[1:]
+                else:
+                    sequence = line.strip()
+                    if len(sequence) > 2000:
+                        if write_left:
+                            prefix = sequence[:span]
+                            print(">" + read_name, file=left_file)
+                            print(prefix, file=left_file)
+                        if write_right:
+                            suffix = sequence[-span:]
+                            print(">" + read_name, file=right_file)
+                            print(suffix, file=right_file)
+                    if write_full:
+                        print(">" + read_name, file=full_file)
+                        print(sequence, file=full_file)
+            reads_file.close()
+        elif reads_type == "fastq" or reads_type == "fastq_gzip": 
+            sequence_line_is_next = False
+            for line in reads_file:
+                if line.startswith('@'):
+                    read_name = line.strip()[1:]
+                    sequence_line_is_next = True
+                elif sequence_line_is_next:
+                    sequence_line_is_next = False
+                    sequence = line.strip()
+                    if len(sequence) > 2000:
+                        if write_left:
+                            prefix = sequence[:span]
+                            print(">" + read_name, file=left_file)
+                            print(prefix, file=left_file)
+                        if write_right:
+                            suffix = sequence[-span:]
+                            print(">" + read_name, file=right_file)
+                            print(suffix, file=right_file)
+                    if write_full:
+                        print(">" + read_name, file=full_file)
+                        print(sequence, file=full_file)
+            reads_file.close()
+    
     if write_left:
         left_file.close()
     if write_right:
         right_file.close()
+    if write_full:
+        full_file.close()
 
-    print("INFO: Read tail files written", file=sys.stderr)
+    print("INFO: Read tail and full read files written", file=sys.stderr)
+    return full_reads_path
 
 
-def run_alignments(working_dir, genome, fasta):
+def run_alignments(working_dir, genome, reads_path):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
     if not os.path.exists(working_dir + '/left_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
@@ -152,7 +212,7 @@ def run_alignments(working_dir, genome, fasta):
     # Align full reads with NGM-LR
     if not os.path.exists(working_dir + '/full_aln.chained.rsorted.bam'):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
-                       '-t', '30', '-r', genome, '-q', os.path.realpath(fasta.name), ], stdout=PIPE)
+                       '-t', '30', '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
@@ -179,7 +239,7 @@ def natural_representation(qname):
 
 
 def bam_iterator(bam):
-    """Returns an iterator for the given BAM file (must be query-sorted). 
+    """Returns an iterator for the given SAM/BAM file (must be query-sorted). 
     In each call, the alignments of a single read are yielded as a 4-tuple: (read_name, list of primary pysam.AlignedSegment, list of supplementary pysam.AlignedSegment, list of secondary pysam.AlignedSegment)."""
     alignments = bam.fetch(until_eof=True)
     current_aln = alignments.next()
@@ -214,13 +274,16 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_read_tails(working_dir, genome, fasta, parameters):
+def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
     left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
     right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
-    reads = SeqIO.index_db(fasta.name + ".idx", fasta.name, "fasta")
+    if reads_type == "fasta" or reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
+    elif reads_type == "fastq":
+        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
     reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
     print("INFO: Indexing reads and reference finished", file=sys.stderr)
 
@@ -289,13 +352,16 @@ def analyze_segments(bam_path, parameters):
     return sv_evidences
 
 
-def analyze_specific_read(working_dir, genome, fasta, parameters, read_name):
+def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameters, read_name):
     left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
     right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
-    reads = SeqIO.index_db(fasta.name + ".idx", fasta.name, "fasta")
+    if reads_type == "fasta" or reads_type == "fasta_gzip":
+        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
+    elif reads_type == "fastq" or reads_type == "fastq_gzip":
+        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
     reference = SeqIO.index_db(genome + ".idx", genome, "fasta")
     print("INFO: Indexing reads and reference finished", file=sys.stderr)
 
@@ -418,15 +484,18 @@ def main():
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
         evidences_file.close()
-    elif options.sub == 'fasta':
-        create_tail_files(options.working_dir, options.fasta, parameters.tail_span)
-        run_alignments(options.working_dir, options.genome, options.fasta)
+    elif options.sub == 'reads':
+        reads_type = guess_file_type(options.reads_file)
+        if reads_type == "unknown":
+            return
+        full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters.tail_span)
+        run_alignments(options.working_dir, options.genome, full_reads_path)
         if options.read_name != "all":
-            analyze_specific_read(options.working_dir, options.genome, options.fasta, parameters, options.read_name)
+            analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
             return
         sv_evidences = []
         if not options.skip_kmer:
-            sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, options.fasta, parameters))
+            sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
         if not options.skip_indel:
             sv_evidences.extend(analyze_indel(options.working_dir + '/full_aln.chained.rsorted.bam', parameters))
         if not options.skip_segment:
@@ -434,15 +503,12 @@ def main():
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
         pickle.dump(sv_evidences, evidences_file) 
         evidences_file.close()
-    elif options.sub == 'bam':
-        if options.read_name != "all":
-            #analyze_specific_read(options.working_dir, options.genome, options.fasta, parameters, options.read_name)
-            return
+    elif options.sub == 'alignment':
         sv_evidences = []
         if not options.skip_indel:
-            sv_evidences.extend(analyze_indel(options.bam.name, parameters))
+            sv_evidences.extend(analyze_indel(options.bam_file.name, parameters))
         if not options.skip_segment:
-            sv_evidences.extend(analyze_segments(options.bam.name, parameters))
+            sv_evidences.extend(analyze_segments(options.bam_file.name, parameters))
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
         pickle.dump(sv_evidences, evidences_file)
         evidences_file.close()
