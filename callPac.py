@@ -47,6 +47,7 @@ def parse_arguments():
     parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
     parser_fasta.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
 
+    parser_fasta.add_argument('--cores', type=int, default=4, help='number of CPU cores to utilize for alignment')
     parser_fasta.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
     parser_fasta.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
     parser_fasta.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
@@ -185,26 +186,26 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
     return full_reads_path
 
 
-def run_alignments(working_dir, genome, reads_path):
+def run_alignments(working_dir, genome, reads_path, cores):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
     if not os.path.exists(working_dir + '/left_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', '30', genome, working_dir + '/left.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', str(cores), genome, working_dir + '/left.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
+                      'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-n', '-o', working_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-n', '-o', working_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for left sequences exists. Skip", file=sys.stderr)
 
     if not os.path.exists(working_dir + '/right_aln.rsorted.bam'):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', '30', genome, working_dir + '/right.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', str(cores), genome, working_dir + '/right.fa'], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', '10'], stdin=bwa.stdout, stdout=PIPE)
+                      'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', '10', '-n', '-o', working_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-n', '-o', working_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for right sequences exists. Skip", file=sys.stderr)
@@ -212,17 +213,17 @@ def run_alignments(working_dir, genome, reads_path):
     # Align full reads with NGM-LR
     if not os.path.exists(working_dir + '/full_aln.chained.rsorted.bam'):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
-                       '-t', '30', '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
+                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', '10'], stdin=ngmlr.stdout, stdout=PIPE)
+                      'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', '10', '-o', working_dir + '/full_aln.rsorted.bam'],
+                      'sort', '-n', '-@', str(cores), '-o', working_dir + '/full_aln.rsorted.bam'],
                      stdin=view.stdout)
         sort.wait()
         if call(['python', '/home/heller_d/bin/bamChain', working_dir + '/full_aln.rsorted.bam',
                  working_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
             print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', '10',
+        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', str(cores),
                  working_dir + '/full_aln.chained.bam', '-o',
                  working_dir + '/full_aln.chained.rsorted.bam']) != 0:
             print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
@@ -489,7 +490,7 @@ def main():
         if reads_type == "unknown":
             return
         full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters.tail_span)
-        run_alignments(options.working_dir, options.genome, full_reads_path)
+        run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
         if options.read_name != "all":
             analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
             return
