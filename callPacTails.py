@@ -209,7 +209,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                 percent_shift = (individual_dist - reference_dist) / float(read_length)
                 if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
-                    if size_estimate > -10000:
+                    if size_estimate > -parameters.max_deletion_size:
                         #INDEL candidate, check with k-mer counting
                         return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:
@@ -225,7 +225,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                 percent_shift = (individual_dist - reference_dist) / float(read_length)
                 if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
-                    if size_estimate > -10000:
+                    if size_estimate > -parameters.max_deletion_size:
                         #INDEL candidate, check with k-mer counting
                         return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:

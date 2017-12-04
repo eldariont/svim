@@ -26,6 +26,13 @@ class callPacParams:
         # Alignment
         self.align_costs = (3, -12, -12)
 
+        # Read segments
+        self.min_length = 50
+        self.max_segment_gap_tolerance = 10
+        self.max_deletion_size = 10000
+        self.segment_overlap_tolerance = 5
+
+
     def set_with_options(self, options):
         # Read tail mapping        
         try:
@@ -98,5 +105,23 @@ class callPacParams:
         # Alignment
         try:
             self.align_costs = (options.align_costs_match, options.align_costs_mismatch, options.align_costs_gap)
+        except AttributeError:
+            pass
+
+        # Read segments
+        try:
+            self.min_length = options.min_length
+        except AttributeError:
+            pass
+        try:
+            self.max_segment_gap_tolerance = options.max_segment_gap_tolerance
+        except AttributeError:
+            pass
+        try:
+            self.max_deletion_size = options.max_deletion_size
+        except AttributeError:
+            pass
+        try:
+            self.segment_overlap_tolerance = options.segment_overlap_tolerance
         except AttributeError:
             pass

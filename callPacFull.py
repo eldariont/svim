@@ -24,7 +24,7 @@ def find_indels_in_cigar_tuples(tuples, min_length=50):
     return indels
 
 
-def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
+def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam, parameters):
     read_name = primary_aln.query_name
     primary_ref_chr = full_bam.getrname(primary_aln.reference_id)
     primary_ref_start = primary_aln.reference_start
@@ -40,59 +40,59 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
 
     if primary_ref_chr == supplementary_ref_chr:
         if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
-            if supplementary_q_start >= primary_q_end:
+            if supplementary_q_start - primary_q_end >= -parameters.segment_overlap_tolerance:
                 individual_dist = supplementary_q_start - primary_q_end
                 reference_dist = supplementary_ref_start - primary_ref_end
                 if reference_dist >= 0:                    
                     deviation = individual_dist - reference_dist
-                    if deviation > 50:
+                    if deviation > parameters.min_length:
                         #INS candidate
-                        if reference_dist <= 10:
+                        if reference_dist <= parameters.max_segment_gap_tolerance:
                             #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
                             return EvidenceInsertion(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, "suppl", read_name)
                         else:
                             pass
                             #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -10000 < deviation < -50:
+                    elif -parameters.max_deletion_size < deviation < -parameters.min_length:
                         #DEL candidate
-                        if individual_dist <= 10:
+                        if individual_dist <= parameters.max_segment_gap_tolerance:
                             #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
                             return EvidenceDeletion(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, "suppl", read_name)
                         else:
                             pass
                             #print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
-                    elif deviation <= -10000:
+                    elif deviation <= -parameters.max_deletion_size:
                         #Either very large DEL or TRANS
                         pass
-                elif reference_dist < -50 and supplementary_ref_end > primary_ref_start:
+                elif reference_dist < -parameters.min_length and supplementary_ref_end > primary_ref_start:
                     #Tandem Duplication
                     #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_end, primary_ref_end - supplementary_ref_start), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, supplementary_ref_start, primary_ref_end, 1, "suppl", read_name)
-            elif primary_q_start >= supplementary_q_end:
+            elif primary_q_start - supplementary_q_end >= -parameters.segment_overlap_tolerance:
                 reference_dist = primary_ref_start - supplementary_ref_end
                 individual_dist = primary_q_start - supplementary_q_end
                 if reference_dist >= 0:
                     deviation = individual_dist - reference_dist
-                    if deviation > 50:
+                    if deviation > parameters.min_length:
                         #INS candidate
-                        if reference_dist <= 10:
+                        if reference_dist <= parameters.max_segment_gap_tolerance:
                             #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
                             return EvidenceInsertion(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, "suppl", read_name)
                         else:
                             pass
                             #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -10000 < deviation < -50:
+                    elif -parameters.max_deletion_size < deviation < -parameters.min_length:
                         #DEL candidate
-                        if individual_dist <= 10:
+                        if individual_dist <= parameters.max_segment_gap_tolerance:
                             #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
                             return EvidenceDeletion(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, "suppl", read_name)
                         else:
                             pass
                             #print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
-                    elif deviation <= -10000:
+                    elif deviation <= -parameters.max_deletion_size:
                         #Either very large DEL or TRANS
                         pass
-                elif reference_dist < -50 and primary_ref_end > supplementary_ref_start:
+                elif reference_dist < -parameters.min_length and primary_ref_end > supplementary_ref_start:
                     #Tandem Duplication
                     #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_end, supplementary_ref_start - primary_ref_end), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, primary_ref_start, supplementary_ref_end, 1, "suppl", read_name)
@@ -102,24 +102,20 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
         elif not primary_aln.is_reverse and supplementary_aln.is_reverse:
             supplementary_q_end = primary_aln.infer_read_length() - supplementary_aln.query_alignment_start
             supplementary_q_start = primary_aln.infer_read_length() - supplementary_aln.query_alignment_end
-            if supplementary_q_start - primary_q_end >= -5:
-                individual_dist = supplementary_q_start - primary_q_end
-                if individual_dist <= 10:
-                    if supplementary_ref_start >= primary_ref_start: # Case 1
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
-                    else: # Case 3
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
-            elif primary_q_start - supplementary_q_end >= -5:
-                individual_dist = primary_q_start - supplementary_q_end
-                if individual_dist <= 10:
-                    if primary_ref_start >= supplementary_ref_start: # Case 2
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
-                    else: # Case 4
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
+            if -parameters.segment_overlap_tolerance <= supplementary_q_start - primary_q_end <= parameters.max_segment_gap_tolerance:
+                if supplementary_ref_start >= primary_ref_start: # Case 1
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
+                else: # Case 3
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
+            elif -parameters.segment_overlap_tolerance <= primary_q_start - supplementary_q_end <= parameters.max_segment_gap_tolerance:
+                if primary_ref_start >= supplementary_ref_start: # Case 2
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
+                else: # Case 4
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
             elif supplementary_q_start >= primary_q_start and supplementary_q_end <= primary_q_end:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, supplementary_ref_end, supplementary_ref_end - supplementary_ref_start), file=sys.stdout)
                 return EvidenceInversion(primary_ref_chr, supplementary_ref_start, supplementary_ref_end, "suppl", read_name)
@@ -129,24 +125,20 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
         elif primary_aln.is_reverse and not supplementary_aln.is_reverse:
             primary_q_end = primary_aln.infer_read_length() - primary_aln.query_alignment_start
             primary_q_start = primary_aln.infer_read_length() - primary_aln.query_alignment_end
-            if supplementary_q_start - primary_q_end > -5:
-                individual_dist = supplementary_q_start - primary_q_end
-                if individual_dist <= 10:
-                    if supplementary_ref_start >= primary_ref_start: # Case 2
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
-                    else: # Case 4
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
-            elif primary_q_start - supplementary_q_end >= -5:
-                individual_dist = primary_q_start - supplementary_q_end
-                if individual_dist <= 10:
-                    if primary_ref_start >= supplementary_ref_start: # Case 1
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
-                    else: # Case 3
-                        #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                        return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
+            if -parameters.segment_overlap_tolerance <= supplementary_q_start - primary_q_end <= parameters.max_segment_gap_tolerance:
+                if supplementary_ref_start >= primary_ref_start: # Case 2
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
+                else: # Case 4
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
+            elif -parameters.segment_overlap_tolerance <= primary_q_start - supplementary_q_end <= parameters.max_segment_gap_tolerance:
+                if primary_ref_start >= supplementary_ref_start: # Case 1
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
+                else: # Case 3
+                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
             elif supplementary_q_start >= primary_q_start and supplementary_q_end <= primary_q_end:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, supplementary_ref_end, supplementary_ref_end - supplementary_ref_start), file=sys.stdout)
                 return EvidenceInversion(primary_ref_chr, supplementary_ref_start, supplementary_ref_end, "suppl", read_name)
@@ -155,20 +147,20 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
                 #print("Overlapping read segments in read", read_name)
     else:
         if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
-            if supplementary_q_start >= primary_q_end:
-                individual_dist = supplementary_q_start - primary_q_end
-                if individual_dist <= 10:
+            if -parameters.segment_overlap_tolerance <= supplementary_q_start - primary_q_end:
+                if supplementary_q_start - primary_q_end <= parameters.max_segment_gap_tolerance:
                     #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
                     return EvidenceTranslocation(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start, "suppl", read_name)
                 else:
                     pass
                     #print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
-            elif primary_q_start >= supplementary_q_end:
-                individual_dist = primary_q_start - supplementary_q_end
-                if individual_dist <= 10:
+            elif -parameters.segment_overlap_tolerance <= primary_q_start - supplementary_q_end:
+                if primary_q_start - supplementary_q_end <= parameters.max_segment_gap_tolerance:
                     #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
                     return EvidenceTranslocation(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start, "suppl", read_name)
                     #print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
+                else:
+                    pass
             else:
                 pass
                 #print("Overlapping read segments in read", read_name)
@@ -178,7 +170,7 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam):
     return None
 
 
-def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam):
+def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam, parameters):
     read_name = primary_aln.query_name
     alns = [primary_aln, supplementary_aln1, supplementary_aln2]
 
@@ -191,25 +183,25 @@ def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln
     if ordered_alns_reference_names[0] == ordered_alns_reference_names[1] == ordered_alns_reference_names[2]:
         query_order_nice = True
         for i in xrange(len(ordered_alns) - 1):
-            if abs(ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1]) > 10:
+            if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters.segment_overlap_tolerance or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters.max_segment_gap_tolerance:
                 query_order_nice = False
         
         reference_012 = True
         for i in xrange(len(ordered_alns) - 1):
-            if abs(ordered_alns[i+1].reference_start - ordered_alns[i].reference_end) > 10:
+            if ordered_alns[i+1].reference_start - ordered_alns[i].reference_end < -parameters.segment_overlap_tolerance or ordered_alns[i+1].reference_start - ordered_alns[i].reference_end > parameters.max_segment_gap_tolerance:
                 reference_012 = False
 
         reference_210 = True
         for i in xrange(len(ordered_alns) - 1):
-            if abs(ordered_alns[i].reference_start - ordered_alns[i+1].reference_end) > 10:
+            if ordered_alns[i].reference_start - ordered_alns[i+1].reference_end < -parameters.segment_overlap_tolerance or ordered_alns[i].reference_start - ordered_alns[i+1].reference_end > parameters.max_segment_gap_tolerance:
                 reference_210 = False
         
-        if abs(ordered_alns[2].reference_start - ordered_alns[0].reference_end) <= 10:
+        if -parameters.segment_overlap_tolerance <= ordered_alns[2].reference_start - ordered_alns[0].reference_end <= parameters.max_segment_gap_tolerance:
             reference_02 = True
         else:
             reference_02 = False
 
-        if abs(ordered_alns[0].reference_start - ordered_alns[2].reference_end) <= 10:
+        if -parameters.segment_overlap_tolerance <= ordered_alns[0].reference_start - ordered_alns[2].reference_end <= parameters.max_segment_gap_tolerance:
             reference_20 = True
         else:
             reference_20 = False
@@ -310,15 +302,15 @@ def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln
     elif ordered_alns_reference_names[0] == ordered_alns_reference_names[2]:
         query_order_nice = True
         for i in xrange(len(ordered_alns) - 1):
-            if abs(ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1]) > 10:
+            if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters.segment_overlap_tolerance or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters.max_segment_gap_tolerance:
                 query_order_nice = False
 
-        if abs(ordered_alns[2].reference_start - ordered_alns[0].reference_end) <= 10:
+        if -parameters.segment_overlap_tolerance <= ordered_alns[2].reference_start - ordered_alns[0].reference_end <= parameters.max_segment_gap_tolerance:
             reference_02 = True
         else:
             reference_02 = False
 
-        if abs(ordered_alns[0].reference_start - ordered_alns[2].reference_end) <= 10:
+        if -parameters.segment_overlap_tolerance <= ordered_alns[0].reference_start - ordered_alns[2].reference_end <= parameters.max_segment_gap_tolerance:
             reference_20 = True
         else:
             reference_20 = False
@@ -373,11 +365,11 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
 
     good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.tail_min_mapq]
     if len(good_suppl_alns) == 1:
-        result = analyze_one_supplementary(full_prim[0], good_suppl_alns[0], full_bam)
+        result = analyze_one_supplementary(full_prim[0], good_suppl_alns[0], full_bam, parameters)
         if result != None:
             sv_evidences.append(result)
     elif len(good_suppl_alns) == 2:
-        results = analyze_two_supplementary(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam)
+        results = analyze_two_supplementary(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam, parameters)
         sv_evidences.extend(results)
     elif 2 < len(good_suppl_alns) < 6:
         pass
