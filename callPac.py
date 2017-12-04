@@ -30,7 +30,7 @@ def parse_arguments():
     parser_bam.add_argument('working_dir', type=str, help='working directory')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
-    parser_bam.add_argument('working_dir', type=str, help='working directory')
+    parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
     parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (must be query-sorted)')
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
@@ -91,6 +91,9 @@ def guess_file_type(reads_path):
     elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip"):
         print("INFO: Recognized reads file as gzipped FASTQ format.", file=sys.stderr)
         return "fastq_gzip"
+    elif reads_path.endswith(".fa.fn"):
+        print("INFO: Recognized reads file as FASTA file list format.", file=sys.stderr)
+        return "list" 
     else:
         print("ERROR: Unknown file ending of file {0}. Exiting.".format(reads_path), file=sys.stderr)
         return "unknown"
@@ -101,24 +104,26 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
         print("ERROR: Given working directory does not exist", file=sys.stderr)
         sys.exit()
 
-    if not os.path.exists(working_dir + '/left.fa'):
-        left_file = open(working_dir + '/left.fa', 'w')
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+
+    if not os.path.exists("{0}/{1}_left.fa".format(working_dir, reads_file_prefix)):
+        left_file = open("{0}/{1}_left.fa".format(working_dir, reads_file_prefix), 'w')
         write_left = True
     else:
         write_left = False
         print("WARNING: FASTA file for left tails exists. Skip", file=sys.stderr)
 
-    if not os.path.exists(working_dir + '/right.fa'):
-        right_file = open(working_dir + '/right.fa', 'w')
+    if not os.path.exists("{0}/{1}_right.fa".format(working_dir, reads_file_prefix)):
+        right_file = open("{0}/{1}_right.fa".format(working_dir, reads_file_prefix), 'w')
         write_right = True
     else:
         write_right = False
         print("WARNING: FASTA file for right tails exists. Skip", file=sys.stderr)
 
     if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-        full_reads_path = working_dir + '/full.fa'
-        if not os.path.exists(working_dir + '/full.fa'):
-            full_file = open(working_dir + '/full.fa', 'w')
+        full_reads_path = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
+        if not os.path.exists(full_reads_path):
+            full_file = open(full_reads_path, 'w')
             write_full = True
         else:
             write_full = False
@@ -188,44 +193,53 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
 
 def run_alignments(working_dir, genome, reads_path, cores):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
-    if not os.path.exists(working_dir + '/left_aln.rsorted.bam'):
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
+    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    full_aln_1 = "{0}/{1}_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    full_aln_2 = "{0}/{1}_aln.chained.bam".format(working_dir, reads_file_prefix)
+    full_aln_3 = "{0}/{1}_aln.chained.rsorted.bam".format(working_dir, reads_file_prefix)
+
+    if not os.path.exists(left_aln):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', str(cores), genome, working_dir + '/left.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', str(cores), genome, left_fa], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-n', '-o', working_dir + '/left_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-n', '-o', left_aln], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for left sequences exists. Skip", file=sys.stderr)
 
-    if not os.path.exists(working_dir + '/right_aln.rsorted.bam'):
+    if not os.path.exists(right_aln):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', str(cores), genome, working_dir + '/right.fa'], stdout=PIPE)
+                     'mem', '-x', 'pacbio', '-t', str(cores), genome, right_fa], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-n', '-o', working_dir + '/right_aln.rsorted.bam'], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-n', '-o', right_aln], stdin=view.stdout)
         sort.wait()
     else:
         print("WARNING: Alignment for right sequences exists. Skip", file=sys.stderr)
 
     # Align full reads with NGM-LR
-    if not os.path.exists(working_dir + '/full_aln.chained.rsorted.bam'):
+    if not os.path.exists(full_aln_3):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
                        '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', str(cores), '-o', working_dir + '/full_aln.rsorted.bam'],
+                      'sort', '-n', '-@', str(cores), '-o', full_aln_1],
                      stdin=view.stdout)
         sort.wait()
-        if call(['python', '/home/heller_d/bin/bamChain', working_dir + '/full_aln.rsorted.bam',
-                 working_dir + '/full_aln.chained.bam', '--minmapq', '40']) != 0:
+        if call(['python', '/home/heller_d/bin/bamChain', full_aln_1,
+                 full_aln_2, '--minmapq', '40']) != 0:
             print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
         if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', str(cores),
-                 working_dir + '/full_aln.chained.bam', '-o',
-                 working_dir + '/full_aln.chained.rsorted.bam']) != 0:
+                 full_aln_2, '-o',
+                 full_aln_3]) != 0:
             print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
     else:
         print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
@@ -276,8 +290,12 @@ def bam_iterator(bam):
 
 
 def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
-    left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
-    right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
@@ -354,8 +372,11 @@ def analyze_segments(bam_path, parameters):
 
 
 def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameters, read_name):
-    left_bam = pysam.AlignmentFile(working_dir + '/left_aln.rsorted.bam')
-    right_bam = pysam.AlignmentFile(working_dir + '/right_aln.rsorted.bam')
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
 
@@ -371,13 +392,13 @@ def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameter
         try:
             left_iterator_object = left_it.next()
         except StopIteration:
-            break
+            return
     right_iterator_object = right_it.next()
     while right_iterator_object[0] != read_name:
         try:
             right_iterator_object = right_it.next()
         except StopIteration:
-            break
+            return
 
     analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
@@ -473,6 +494,13 @@ def post_processing(sv_evidences, working_dir):
         print(cluster.get_bed_entry(), file=deletion_candidate_output)
 
 
+def read_file_list(path):
+    file_list = open(path, "r")
+    for line in file_list:
+        yield line.strip()
+    file_list.close()
+
+
 def main():
     #Fetch command-line options and set parameters accordingly
     options = parse_arguments()
@@ -489,21 +517,47 @@ def main():
         reads_type = guess_file_type(options.reads_file)
         if reads_type == "unknown":
             return
-        full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters.tail_span)
-        run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
-        if options.read_name != "all":
-            analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
-            return
-        sv_evidences = []
-        if not options.skip_kmer:
-            sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
-        if not options.skip_indel:
-            sv_evidences.extend(analyze_indel(options.working_dir + '/full_aln.chained.rsorted.bam', parameters))
-        if not options.skip_segment:
-            sv_evidences.extend(analyze_segments(options.working_dir + '/full_aln.chained.rsorted.bam', parameters))
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
-        pickle.dump(sv_evidences, evidences_file) 
-        evidences_file.close()
+        elif reads_type == "list":
+            # List of read files
+            sv_evidences = []
+            for file_path in read_file_list(options.reads_file):
+                reads_type = guess_file_type(file_path)
+                full_reads_path = create_tail_files(options.working_dir, file_path, reads_type, parameters.tail_span)
+                run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
+                if options.read_name != "all":
+                    analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
+                    continue
+
+                reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
+                full_aln = "{0}/{1}_aln.chained.rsorted.bam".format(options.working_dir, reads_file_prefix)
+                if not options.skip_kmer:
+                    sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
+                if not options.skip_indel:
+                    sv_evidences.extend(analyze_indel(full_aln, parameters))
+                if not options.skip_segment:
+                    sv_evidences.extend(analyze_segments(full_aln, parameters))
+            evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+            pickle.dump(sv_evidences, evidences_file) 
+            evidences_file.close()
+        else:
+            # Single read file
+            full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters.tail_span)
+            run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
+            if options.read_name != "all":
+                analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
+                return
+            sv_evidences = []
+            reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
+            full_aln = "{0}/{1}_aln.chained.rsorted.bam".format(options.working_dir, reads_file_prefix)
+            if not options.skip_kmer:
+                sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
+            if not options.skip_indel:
+                sv_evidences.extend(analyze_indel(full_aln, parameters))
+            if not options.skip_segment:
+                sv_evidences.extend(analyze_segments(full_aln, parameters))
+            evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+            pickle.dump(sv_evidences, evidences_file) 
+            evidences_file.close()
     elif options.sub == 'alignment':
         sv_evidences = []
         if not options.skip_indel:
