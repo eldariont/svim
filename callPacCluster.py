@@ -3,6 +3,7 @@ from __future__ import print_function
 import sys
 
 import networkx as nx
+from random import sample
 
 from SVEvidence import EvidenceClusterUniLocal, EvidenceClusterBiLocal
 
@@ -31,20 +32,24 @@ def clusters_from_partitions(partitions, max_delta=1):
     clusters_full = []
     # Find clusters in each partition individually.
     for num, partition in enumerate(partitions):
-        largest_evidence = sorted(partition, key=lambda evi: (evi.end - evi.start))[-1]
+        if len(partition) > 100:
+            partition_sample = sample(partition, 100)
+        else:
+            partition_sample = partition
+        largest_evidence = sorted(partition_sample, key=lambda evi: (evi.end - evi.start))[-1]
         largest_indel_size = largest_evidence.end - largest_evidence.start
         connection_graph = nx.Graph()
-        connection_graph.add_nodes_from(range(len(partition)))
-        for i1 in range(len(partition)):
-            for i2 in range(len(partition)):
-                if i1 == i2 or partition[i1].gowda_diday_distance(partition[i2], largest_indel_size) > max_delta:
+        connection_graph.add_nodes_from(range(len(partition_sample)))
+        for i1 in range(len(partition_sample)):
+            for i2 in range(len(partition_sample)):
+                if i1 == i2 or partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) > max_delta:
                     pass
                 else:
                     # Add edge in graph only if two indels are close to each other (distance <= max_delta)
                     connection_graph.add_edge(i1, i2)
         clusters_indices = nx.find_cliques(connection_graph)
         for cluster in clusters_indices:
-            clusters_full.append([partition[index] for index in cluster])
+            clusters_full.append([partition_sample[index] for index in cluster])
     return clusters_full
 
 
