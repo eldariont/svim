@@ -480,14 +480,13 @@ def post_processing(sv_evidences, working_dir):
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')
-    deletion_candidate_output = open(working_dir + '/candidates/del.bed', 'w')
-    insertion_candidate_source_output = open(working_dir + '/candidates/cand_insertions_source.bed', 'w')
-    insertion_candidate_dest_output = open(working_dir + '/candidates/cand_insertions_dest.bed', 'w')
-    #inversion_candidate_output = open(working_dir + '/candidates/inv.bed', 'w')
-    #tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
-    interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/cand_int_duplications_source.bed', 'w')
-    interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/cand_int_duplications_dest.bed', 'w')
-    #insertion_from_candidate_output = open(working_dir + '/candidates/ins_dup.bed', 'w')
+    deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
+    insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
+    insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
+    # inversion_candidate_output = open(working_dir + '/candidates/inv.bed', 'w')
+    # tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
+    interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
+    interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
 
     for candidate in insertion_candidates:
         bed_entries = candidate.get_bed_entries()
@@ -509,12 +508,12 @@ def read_file_list(path):
 
 
 def main():
-    #Fetch command-line options and set parameters accordingly
+    # Fetch command-line options and set parameters accordingly
     options = parse_arguments()
     parameters = callPacParams()
     parameters.set_with_options(options)
 
-    #Search for SV evidences
+    # Search for SV evidences
     if options.sub == 'load':
         print("INFO: Load sv_evidences.obj with SV evidences..", file=sys.stderr)
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
@@ -575,7 +574,7 @@ def main():
         pickle.dump(sv_evidences, evidences_file)
         evidences_file.close()
 
-    #Post-process SV evidences
+    # Post-process SV evidences
     post_processing(sv_evidences, options.working_dir)    
 
 if __name__ == "__main__":

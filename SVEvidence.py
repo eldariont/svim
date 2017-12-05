@@ -1,4 +1,6 @@
 class Evidence:
+    """Evidence class for basic evidences of structural variants. An evidence is always detected from a single read.
+    """
     def __init__(self, contig, start, end, evidence, read):
         self.contig = contig
         self.start = start

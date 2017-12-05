@@ -1,4 +1,6 @@
 class Candidate:
+    """Candidate class for structural variant candidates. Candidates reflect the final SV types and can be merged from evidences of several reads.
+    """
     def __init__(self, source_contig, source_start, source_end, members, score):
         self.source_contig = source_contig
         self.source_start = source_start
