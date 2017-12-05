@@ -19,7 +19,7 @@ from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversio
 from callPacFull import analyze_full_read_indel, analyze_full_read_segments
 from callPacTails import analyze_pair_of_read_tails
 from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
-from callPacMerge import merge_insertions_from, merge_translocations
+from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -452,24 +452,31 @@ def post_processing(sv_evidences, working_dir):
         print(bed_entries[0], file=insertion_from_evidence_output)
         print(bed_entries[1], file=insertion_from_evidence_output)
 
+    # Generate a complete list of translocation by adding all reversed translocations
+    reversed_translocations = []
+    for evidence in translocation_evidences:
+        reversed_translocations.append(EvidenceTranslocation(evidence.contig2, evidence.pos2, evidence.contig1, evidence.pos1, evidence.evidence, evidence.read))
+    all_translocations = translocation_evidences + reversed_translocations
     
+    for translocation in all_translocations:
+        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
+
     # Merge evidences to candidates
     insertion_candidates = []
-    int_duplication_candidates = []        
+    int_duplication_candidates = []
 
-    #Merge insertions with source
-    new_insertion_candidates,new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
+    # Merge translocation breakpoints
+    new_insertion_candidates = merge_translocations_at_deletions(all_translocations, deletion_evidence_clusters)
+    insertion_candidates.extend(new_insertion_candidates)
+
+    new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(all_translocations, insertion_evidence_clusters, deletion_evidence_clusters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
-    #Merge translocation breakpoints
-    new_insertion_candidates,new_int_duplication_candidates = merge_translocations(translocation_evidences, deletion_evidence_clusters, insertion_evidence_clusters)
+    # Merge insertions with source
+    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    for translocation in translocation_evidences:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig2, translocation.pos2, translocation.pos2+1, ">{0}:{1}".format(translocation.contig1, translocation.pos1), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')

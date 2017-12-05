@@ -4,7 +4,7 @@ import sys
 from bisect import bisect_left
 from collections import defaultdict
 
-from SVEvidence import EvidenceTranslocation
+from SVEvidence import EvidenceTranslocation, EvidenceInsertionFrom, EvidenceClusterBiLocal
 from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 from callPacCluster import form_partitions
 
@@ -71,23 +71,16 @@ def cluster_positions_simple(positions, max_delta=1000):
     return partitions
 
 
-def merge_translocations(translocation_evidences, deletion_evidence_clusters, insertion_evidence_clusters):
+def merge_translocations_at_deletions(translocation_evidences, deletion_evidence_clusters):
     insertion_candidates = []
-    int_duplication_candidates = [] 
-    
-    # Generate a complete list of translocation by adding all reversed translocations
-    reversed_translocations = []
-    for evidence in translocation_evidences:
-        reversed_translocations.append(EvidenceTranslocation(evidence.contig2, evidence.pos2, evidence.contig1, evidence.pos1, evidence.evidence, evidence.read))
-    all_translocations = translocation_evidences + reversed_translocations
     
     # Cluster translocations by contig and pos1
-    translocation_partitions = form_partitions(all_translocations)
+    translocation_partitions = form_partitions(translocation_evidences)
     translocation_partitions_dict = defaultdict(list)
     for partition in translocation_partitions:
         translocation_partitions_dict[partition[0].contig1].append(partition)
     
-    to_delete = []
+    # to_delete = []
     for deletion_index, del_cluster in enumerate(deletion_evidence_clusters):
         del_contig, del_start, del_end = del_cluster.get_source()
         translocation_partition_means = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[del_contig]]
@@ -109,7 +102,7 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                     all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_start] + translocation_partitions_dict[del_contig][closest_to_end]
                     insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_start[0], mean_destination, mean_destination + (del_end - del_start), all_members, del_cluster.score))
                     #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
-                    to_delete.append(deletion_index)
+                    # to_delete.append(deletion_index)
         # if translocations found close to start of deletion
         elif abs(translocation_partition_means[closest_to_start] - del_start) < 10 and del_cluster.score > 6:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_start]])
@@ -119,7 +112,7 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                 all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_start]
                 insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_start[0], destination_from_start[1], destination_from_start[1] + (del_end - del_start), all_members, del_cluster.score))
                 #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
-                to_delete.append(deletion_index)
+                # to_delete.append(deletion_index)
         # if translocations found close to end of deletion
         elif abs(translocation_partition_means[closest_to_end] - del_end) < 10 and del_cluster.score > 6:
             destinations_from_end = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_end]])
@@ -129,9 +122,61 @@ def merge_translocations(translocation_evidences, deletion_evidence_clusters, in
                 all_members = del_cluster.members + translocation_partitions_dict[del_contig][closest_to_end]
                 insertion_candidates.append(CandidateInsertion(del_contig, del_start, del_end, destination_from_end[0], destination_from_end[1], destination_from_end[1] + (del_end - del_start), all_members, del_cluster.score))
                 #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
-                to_delete.append(deletion_index)
+                # to_delete.append(deletion_index)
 
-    for deletion_index in to_delete[::-1]:
-        del(deletion_evidence_clusters[deletion_index])
+    # for deletion_index in to_delete[::-1]:
+    #     del(deletion_evidence_clusters[deletion_index])
+
+    return insertion_candidates
+
+
+def merge_translocations_at_insertions(translocation_evidences, insertion_evidence_clusters, deletion_evidence_clusters):
+    # Cluster translocations by contig and pos1
+    translocation_partitions = form_partitions(translocation_evidences)
+    translocation_partitions_dict = defaultdict(list)
+    for partition in translocation_partitions:
+        translocation_partitions_dict[partition[0].contig1].append(partition)
     
+    # to_delete = []
+    insertion_from_evidence_clusters = []
+    for ins_cluster in insertion_evidence_clusters:
+        ins_contig, ins_start, ins_end = ins_cluster.get_source()
+        translocation_partition_means = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[ins_contig]]
+        if len(translocation_partition_means) < 1:
+            continue
+        closest_to_start = get_closest_index(translocation_partition_means, ins_start)
+        # if translocations found close to start of insertion
+        if abs(translocation_partition_means[closest_to_start] - ins_start) < 10:
+            destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[ins_contig][closest_to_start]])
+            # if translocations close to start point to two destinations
+            if len(destinations_from_start) == 2:
+                destination1 = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / float(len(destinations_from_start[0])))))
+                destination2 = (destinations_from_start[1][0][0], int(round(sum([pos for contig, pos in destinations_from_start[1]]) / float(len(destinations_from_start[1])))))
+                # if the two destinations have the right distance
+                distance = abs(destination1[1] - destination2[1])
+                if destination1[0] == destination2[0] and abs(distance - (ins_end - ins_start)) < 100:
+                    members = ins_cluster.members + translocation_partitions_dict[ins_contig][closest_to_start]
+                    insertion_from_evidence_clusters.append(EvidenceClusterBiLocal(destination1[0], min(destination1[1], destination2[1]), max(destination1[1], destination2[1]), ins_contig, ins_start, ins_start + distance, ins_cluster.score, len(members), members, "ins_dup"))
+                    #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(ins_contig, ins_start, ins_end), file=sys.stderr)
+                    # to_delete.append(insertion_index)
+
+    insertion_candidates = []
+    int_duplication_candidates = []
+    print("Number of ins_dup from insertions and translocations:", len(insertion_from_evidence_clusters))
+    for ins_dup_cluster in insertion_from_evidence_clusters:    
+        distances = [(ind, del_cluster.gowda_diday_distance(ins_dup_cluster, max(ins_dup_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
+        closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
+        source_contig, source_start, source_end = ins_dup_cluster.get_source()
+        dest_contig, dest_start, dest_end = ins_dup_cluster.get_destination()
+        if closest_deletion[1] <= 1.0:
+            #Insertion
+            all_members = ins_dup_cluster.members + deletion_evidence_clusters[closest_deletion[0]].members
+            print("Insertion", source_contig, source_start, source_end, dest_contig, dest_start, dest_end)
+            insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_dup_cluster.score))
+        else:
+            #Duplication
+            print("Duplication", source_contig, source_start, source_end, dest_contig, dest_start, dest_end)
+            int_duplication_candidates.append(CandidateDuplicationInterspersed(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, ins_dup_cluster.members, ins_dup_cluster.score))
+    # for insertion_index in to_delete[::-1]:
+    #     del(insertion_evidence_clusters[insertion_index])
     return (insertion_candidates, int_duplication_candidates)
