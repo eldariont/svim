@@ -322,7 +322,7 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            print('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
@@ -344,7 +344,7 @@ def analyze_indel(bam_path, parameters):
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            print('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
@@ -366,7 +366,7 @@ def analyze_segments(bam_path, parameters):
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with clustering..')
+            print('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
