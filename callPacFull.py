@@ -5,7 +5,7 @@ import sys
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
 from callPacCluster import consolidate_clusters_bilocal, clusters_from_partitions
 
-def find_indels_in_cigar_tuples(tuples, min_length=50):
+def analyze_cigar_indel(tuples, min_length=50):
     """Parses CIGAR tuples (op, len) and returns Indels with a length > minLength"""
     pos = 0
     indels = []
@@ -24,7 +24,22 @@ def find_indels_in_cigar_tuples(tuples, min_length=50):
     return indels
 
 
-def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam, parameters):
+def analyze_alignment_indel(alignment, full_bam, full_read_name):
+    sv_evidences = []
+    full_ref_chr = full_bam.getrname(alignment.reference_id)
+    full_ref_start = alignment.reference_start
+    indels = analyze_cigar_indel(alignment.cigartuples)
+    for pos, length, typ in indels:
+        if typ == "del":
+            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_start, pos, full_ref_start + pos + length, length), file=sys.stdout)
+            sv_evidences.append(EvidenceDeletion(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, "cigar", full_read_name))
+        elif typ == "ins":
+            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
+            sv_evidences.append(EvidenceInsertion(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, "cigar", full_read_name))
+    return sv_evidences
+
+
+def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, parameters):
     read_name = primary_aln.query_name
     primary_ref_chr = full_bam.getrname(primary_aln.reference_id)
     primary_ref_start = primary_aln.reference_start
@@ -172,7 +187,7 @@ def analyze_one_supplementary(primary_aln, supplementary_aln, full_bam, paramete
     return None
 
 
-def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln2, full_bam, parameters):
+def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplementary_aln2, full_bam, parameters):
     read_name = primary_aln.query_name
     alns = [primary_aln, supplementary_aln1, supplementary_aln2]
 
@@ -336,6 +351,7 @@ def analyze_two_supplementary(primary_aln, supplementary_aln1, supplementary_aln
 
 
 def analyze_full_read_indel(full_iterator_object, full_bam, parameters):
+    """Search the (primary and supplementary) alignments of a full read for contained insertions and deletions"""
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
     sv_evidences = []
@@ -343,21 +359,19 @@ def analyze_full_read_indel(full_iterator_object, full_bam, parameters):
     if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters.tail_min_mapq:
         return sv_evidences
 
-    full_ref_chr = full_bam.getrname(full_prim[0].reference_id)
-    full_ref_start = full_prim[0].reference_start
-    indels = find_indels_in_cigar_tuples(full_prim[0].cigartuples)
-    for pos, length, typ in indels:
-        if typ == "del":
-            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_start, pos, full_ref_start + pos + length, length), file=sys.stdout)
-            sv_evidences.append(EvidenceDeletion(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, "cigar", full_read_name))
-        elif typ == "ins":
-            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, length), file=sys.stdout)
-            sv_evidences.append(EvidenceInsertion(full_ref_chr, full_ref_start + pos, full_ref_start + pos + length, "cigar", full_read_name))
+    # Search indels in primary alignment
+    sv_evidences.extend(analyze_alignment_indel(full_prim[0], full_bam, full_read_name))
+
+    # Search indels in good supplementary alignments
+    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.tail_min_mapq]
+    for alignment in good_suppl_alns:
+        sv_evidences.extend(analyze_alignment_indel(alignment, full_bam, full_read_name))    
 
     return sv_evidences
 
 
 def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
+    """Analyze the positions and orientations of primary and supplementary alignments of a full read for signatures of SVs."""
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
     sv_evidences = []
@@ -367,11 +381,11 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
 
     good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.tail_min_mapq]
     if len(good_suppl_alns) == 1:
-        result = analyze_one_supplementary(full_prim[0], good_suppl_alns[0], full_bam, parameters)
+        result = analyze_full_read_segments_two(full_prim[0], good_suppl_alns[0], full_bam, parameters)
         if result != None:
             sv_evidences.append(result)
     elif len(good_suppl_alns) == 2:
-        results = analyze_two_supplementary(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam, parameters)
+        results = analyze_full_read_segments_three(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam, parameters)
         sv_evidences.extend(results)
     elif 2 < len(good_suppl_alns) < 6:
         pass
