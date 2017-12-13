@@ -83,11 +83,11 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
     """Write evidence clusters into working directory in BED format."""
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
-    # Print SV evidence clusters
     if not os.path.exists(working_dir + '/evidences'):
         os.mkdir(working_dir + '/evidences')
     vcf_output = open(working_dir + '/evidences/all.vcf', 'w')
 
+    # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
     print("##source=callPacV1.0", file=vcf_output)
     print("##reference={0}".format(genome), file=vcf_output)
@@ -101,16 +101,19 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
     print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
 
+    vcf_entries = []
     for cluster in deletion_evidence_clusters:
-        print(cluster.get_vcf_entry(), file=vcf_output)
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
     for cluster in insertion_evidence_clusters:
-        print(cluster.get_vcf_entry(), file=vcf_output)
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
     for cluster in inversion_evidence_clusters:
-        print(cluster.get_vcf_entry(), file=vcf_output)
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
     for cluster in tandem_duplication_evidence_clusters:
-        bed_entries = cluster.get_bed_entries()
-        print(bed_entries[0], file=vcf_output)
-        print(bed_entries[1], file=vcf_output)
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
+
+    # Sort and write entries to VCF
+    for source, entry in sorted(vcf_entries, key=lambda pair: pair[0]):
+        print(entry, file=vcf_output)
 
     vcf_output.close()
 

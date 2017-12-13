@@ -476,7 +476,10 @@ def main():
         evidences_file.close()
 
     # Post-process SV evidences
-    post_processing(sv_evidences, options.working_dir, options.genome)
+    try:
+        post_processing(sv_evidences, options.working_dir, options.genome)
+    except AttributeError:
+        post_processing(sv_evidences, options.working_dir, "unknown")
 
 if __name__ == "__main__":
     sys.exit(main())
