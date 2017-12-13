@@ -476,7 +476,7 @@ def main():
         evidences_file.close()
 
     # Post-process SV evidences
-    post_processing(sv_evidences, options.working_dir)    
+    post_processing(sv_evidences, options.working_dir, options.genome)
 
 if __name__ == "__main__":
     sys.exit(main())

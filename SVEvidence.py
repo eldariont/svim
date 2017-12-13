@@ -229,6 +229,18 @@ class EvidenceClusterUniLocal(Evidence):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.contig, self.start, self.end, "{0};{1}".format(self.type, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
+    def get_vcf_entry(self):
+        if self.type == "del":
+            svtype = "DEL"
+        elif self.type == "ins":
+            svtype = "INS"
+        elif self.type == "inv":
+            svtype = "INV"
+        else:
+            return
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.end, self.end - self.start))
+
+
     def get_length(self):
         return self.end - self.start
 
@@ -259,6 +271,14 @@ class EvidenceClusterBiLocal(Evidence):
         source_entry = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}_source;{1}:{2}-{3};{4}".format(self.type, self.dest_contig, self.dest_start, self.dest_end, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         dest_entry = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0}_dest;{1}:{2}-{3};{4}".format(self.type, self.source_contig, self.source_start, self.source_end, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         return (source_entry, dest_entry)
+
+
+    def get_vcf_entry(self):
+        if self.type == "dup":
+            svtype = "DUP:TANDEM"
+        else:
+            return
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.source_end, self.source_end - self.source_start))
 
 
     def get_source_length(self):

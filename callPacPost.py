@@ -46,7 +46,7 @@ def cluster_sv_evidences(sv_evidences):
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))
 
 
-def write_evidence_clusters(working_dir, clusters):
+def write_evidence_clusters_bed(working_dir, clusters):
     """Write evidence clusters into working directory in BED format."""
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
@@ -79,6 +79,41 @@ def write_evidence_clusters(working_dir, clusters):
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
 
+def write_evidence_clusters_vcf(working_dir, clusters, genome):
+    """Write evidence clusters into working directory in BED format."""
+    deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
+
+    # Print SV evidence clusters
+    if not os.path.exists(working_dir + '/evidences'):
+        os.mkdir(working_dir + '/evidences')
+    vcf_output = open(working_dir + '/evidences/all.vcf', 'w')
+
+    print("##fileformat=VCFv4.3", file=vcf_output)
+    print("##source=callPacV1.0", file=vcf_output)
+    print("##reference={0}".format(genome), file=vcf_output)
+    print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
+    print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
+    print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
+    print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
+    print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
+    print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
+    print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
+    print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
+    print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
+
+    for cluster in deletion_evidence_clusters:
+        print(cluster.get_vcf_entry(), file=vcf_output)
+    for cluster in insertion_evidence_clusters:
+        print(cluster.get_vcf_entry(), file=vcf_output)
+    for cluster in inversion_evidence_clusters:
+        print(cluster.get_vcf_entry(), file=vcf_output)
+    for cluster in tandem_duplication_evidence_clusters:
+        bed_entries = cluster.get_bed_entries()
+        print(bed_entries[0], file=vcf_output)
+        print(bed_entries[1], file=vcf_output)
+
+    vcf_output.close()
+
 def write_candidates(working_dir, candidates):
     insertion_candidates, int_duplication_candidates = candidates
 
@@ -102,12 +137,13 @@ def write_candidates(working_dir, candidates):
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
 
 
-def post_processing(sv_evidences, working_dir):
+def post_processing(sv_evidences, working_dir, genome):
     # Cluster evidences
     clusters = cluster_sv_evidences(sv_evidences)
 
     # Write evidences
-    write_evidence_clusters(working_dir, clusters)
+    write_evidence_clusters_bed(working_dir, clusters)
+    write_evidence_clusters_vcf(working_dir, clusters, genome)
 
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
