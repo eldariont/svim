@@ -13,13 +13,10 @@ import pysam
 from Bio import SeqIO
 
 from callPacParams import callPacParams
-from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
-from SVCandidate import CandidateDeletion, CandidateInsertion, CandidateInversion, CandidateDuplicationTandem, CandidateDuplicationInterspersed
-
 from callPacFull import analyze_full_read_indel, analyze_full_read_segments
 from callPacTails import analyze_pair_of_read_tails
-from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
-from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
+from callPacPost import post_processing
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -402,102 +399,6 @@ def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameter
 
     analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
 
-
-def post_processing(sv_evidences, working_dir):
-    deletion_evidences = [ev for ev in sv_evidences if ev.type == 'del']
-    insertion_evidences = [ev for ev in sv_evidences if ev.type == 'ins']
-    inversion_evidences = [ev for ev in sv_evidences if ev.type == 'inv']
-    tandem_duplication_evidences = [ev for ev in sv_evidences if ev.type == 'dup']
-    translocation_evidences = [ev for ev in sv_evidences if ev.type == 'tra']
-    insertion_from_evidences = [ev for ev in sv_evidences if ev.type == 'ins_dup']
-
-    print("INFO: Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
-        len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)), file=sys.stderr)
-    
-    # Cluster SV evidences
-    print("INFO: Cluster deletion evidences..", file=sys.stderr)
-    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences)
-    print("INFO: Cluster insertion evidences..", file=sys.stderr)
-    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences)
-    print("INFO: Cluster inversion evidences..", file=sys.stderr)
-    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences)
-    print("INFO: Cluster tandem duplication evidences..", file=sys.stderr)
-    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences)
-    print("INFO: Cluster insertion evidences with source..", file=sys.stderr)
-    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
-
-    # Print SV evidence clusters
-    if not os.path.exists(working_dir + '/evidences'):
-        os.mkdir(working_dir + '/evidences')
-    deletion_evidence_output = open(working_dir + '/evidences/del.bed', 'w')
-    insertion_evidence_output = open(working_dir + '/evidences/ins.bed', 'w')
-    inversion_evidence_output = open(working_dir + '/evidences/inv.bed', 'w')
-    tandem_duplication_evidence_source_output = open(working_dir + '/evidences/dup_tan_source.bed', 'w')
-    tandem_duplication_evidence_dest_output = open(working_dir + '/evidences/dup_tan_dest.bed', 'w')
-    translocation_evidence_output = open(working_dir + '/evidences/trans.bed', 'w')
-    insertion_from_evidence_output = open(working_dir + '/evidences/ins_dup.bed', 'w')
-
-    for cluster in deletion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=deletion_evidence_output)
-    for cluster in insertion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=insertion_evidence_output)
-    for cluster in inversion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=inversion_evidence_output)
-    for cluster in tandem_duplication_evidence_clusters:
-        bed_entries = cluster.get_bed_entries()
-        print(bed_entries[0], file=tandem_duplication_evidence_source_output)
-        print(bed_entries[1], file=tandem_duplication_evidence_dest_output)
-    for cluster in insertion_from_evidence_clusters:
-        bed_entries = cluster.get_bed_entries()
-        print(bed_entries[0], file=insertion_from_evidence_output)
-        print(bed_entries[1], file=insertion_from_evidence_output)
-
-    # Generate a complete list of translocation by adding all reversed translocations
-    reversed_translocations = []
-    for evidence in translocation_evidences:
-        reversed_translocations.append(EvidenceTranslocation(evidence.contig2, evidence.pos2, evidence.contig1, evidence.pos1, evidence.evidence, evidence.read))
-    all_translocations = translocation_evidences + reversed_translocations
-    
-    for translocation in all_translocations:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
-
-    # Merge evidences to candidates
-    insertion_candidates = []
-    int_duplication_candidates = []
-
-    # Merge translocation breakpoints
-    new_insertion_candidates = merge_translocations_at_deletions(all_translocations, deletion_evidence_clusters)
-    insertion_candidates.extend(new_insertion_candidates)
-
-    new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(all_translocations, insertion_evidence_clusters, deletion_evidence_clusters)
-    insertion_candidates.extend(new_insertion_candidates)
-    int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    # Merge insertions with source
-    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
-    insertion_candidates.extend(new_insertion_candidates)
-    int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    if not os.path.exists(working_dir + '/candidates'):
-        os.mkdir(working_dir + '/candidates')
-    deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
-    insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
-    insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
-    # inversion_candidate_output = open(working_dir + '/candidates/inv.bed', 'w')
-    # tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
-    interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
-    interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
-
-    for candidate in insertion_candidates:
-        bed_entries = candidate.get_bed_entries()
-        print(bed_entries[0], file=insertion_candidate_source_output)
-        print(bed_entries[1], file=insertion_candidate_dest_output)
-    for candidate in int_duplication_candidates:
-        bed_entries = candidate.get_bed_entries()
-        print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
-        print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
-    for cluster in deletion_evidence_clusters:
-        print(cluster.get_bed_entry(), file=deletion_candidate_output)
 
 
 def read_file_list(path):
