@@ -278,7 +278,7 @@ class EvidenceClusterBiLocal(Evidence):
             svtype = "DUP:TANDEM"
         else:
             return
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.source_end, self.source_end - self.source_start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.source_contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.source_end, self.source_end - self.source_start))
 
 
     def get_source_length(self):
