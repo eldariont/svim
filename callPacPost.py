@@ -32,15 +32,15 @@ def cluster_sv_evidences(sv_evidences):
         len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)), file=sys.stderr)
     
     # Cluster SV evidences
-    print("INFO: Cluster deletion evidences..", file=sys.stderr)
+    print("INFO: Cluster deletion evidences:", file=sys.stderr)
     deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences)
-    print("INFO: Cluster insertion evidences..", file=sys.stderr)
+    print("INFO: Cluster insertion evidences:", file=sys.stderr)
     insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences)
-    print("INFO: Cluster inversion evidences..", file=sys.stderr)
+    print("INFO: Cluster inversion evidences:", file=sys.stderr)
     inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences)
-    print("INFO: Cluster tandem duplication evidences..", file=sys.stderr)
+    print("INFO: Cluster tandem duplication evidences:", file=sys.stderr)
     tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences)
-    print("INFO: Cluster insertion evidences with source..", file=sys.stderr)
+    print("INFO: Cluster insertion evidences with source:", file=sys.stderr)
     insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))

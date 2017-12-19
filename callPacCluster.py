@@ -143,15 +143,13 @@ def partition_and_cluster_candidates(candidates):
 
 def partition_and_cluster_unilocal(evidences):
     partitions = form_partitions(evidences)
-    print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
     clusters = clusters_from_partitions(partitions)
-    print("Subdivided partitions into {0} clusters".format(len(clusters)), file=sys.stderr)
+    print("INFO: Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)), file=sys.stderr)
     return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(evidences):
     partitions = form_partitions(evidences)
-    print("Formed {0} partitions".format(len(partitions)), file=sys.stderr)
     clusters = clusters_from_partitions(partitions)
-    print("Subdivided partitions into {0} clusters".format(len(clusters)), file=sys.stderr)
+    print("INFO: Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)), file=sys.stderr)
     return consolidate_clusters_bilocal(clusters)

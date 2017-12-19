@@ -195,7 +195,7 @@ def merge_translocations_at_insertions(translocation_evidences, insertion_eviden
 
     insertion_candidates = []
     int_duplication_candidates = []
-    print("Number of insertions/duplications detected from inserted regions and translocations:", len(insertion_from_evidence_clusters))
+    # print("INFO: Number of insertions/duplications detected from inserted regions and translocations:", len(insertion_from_evidence_clusters))
     for ins_dup_cluster in insertion_from_evidence_clusters:    
         distances = [(ind, del_cluster.gowda_diday_distance(ins_dup_cluster, max(ins_dup_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
         closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
