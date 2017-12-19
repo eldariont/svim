@@ -140,7 +140,7 @@ def write_candidates(working_dir, candidates):
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
 
 
-def post_processing(sv_evidences, working_dir, genome):
+def post_processing(sv_evidences, working_dir, genome, parameters):
     # Cluster evidences
     clusters = cluster_sv_evidences(sv_evidences)
 
@@ -154,10 +154,10 @@ def post_processing(sv_evidences, working_dir, genome):
     int_duplication_candidates = []
 
     # Merge translocation breakpoints
-    new_insertion_candidates = merge_translocations_at_deletions(completed_translocations, deletion_evidence_clusters)
+    new_insertion_candidates = merge_translocations_at_deletions(completed_translocations, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
-    new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(completed_translocations, insertion_evidence_clusters, deletion_evidence_clusters)
+    new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(completed_translocations, insertion_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 

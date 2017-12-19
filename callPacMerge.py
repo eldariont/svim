@@ -71,7 +71,7 @@ def cluster_positions_simple(positions, max_delta=1000):
     return partitions
 
 
-def merge_translocations_at_deletions(translocation_evidences, deletion_evidence_clusters):
+def merge_translocations_at_deletions(translocation_evidences, deletion_evidence_clusters, parameters):
     insertion_candidates = []
     
     # Cluster translocations by contig and pos1
@@ -89,7 +89,7 @@ def merge_translocations_at_deletions(translocation_evidences, deletion_evidence
         closest_to_start = get_closest_index(translocation_partition_means, del_start)
         closest_to_end = get_closest_index(translocation_partition_means, del_end)
         # if translocations found close to start and end of deletion
-        if abs(translocation_partition_means[closest_to_start] - del_start) < 10 and abs(translocation_partition_means[closest_to_end] - del_end) < 10:
+        if abs(translocation_partition_means[closest_to_start] - del_start) <= parameters.max_translocation_distance and abs(translocation_partition_means[closest_to_end] - del_end) <= parameters.max_translocation_distance:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_start]])
             destinations_from_end = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_end]])
             # if translocations close to start and end point to only one destination each
@@ -104,7 +104,7 @@ def merge_translocations_at_deletions(translocation_evidences, deletion_evidence
                     #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                     # to_delete.append(deletion_index)
         # if translocations found close to start of deletion
-        elif abs(translocation_partition_means[closest_to_start] - del_start) < 10 and del_cluster.score > 6:
+        elif abs(translocation_partition_means[closest_to_start] - del_start) <= parameters.max_translocation_distance and del_cluster.score > 6:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_start]])
             # if translocations close to start point to the same destination
             if len(destinations_from_start) == 1:
@@ -114,7 +114,7 @@ def merge_translocations_at_deletions(translocation_evidences, deletion_evidence
                 #print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                 # to_delete.append(deletion_index)
         # if translocations found close to end of deletion
-        elif abs(translocation_partition_means[closest_to_end] - del_end) < 10 and del_cluster.score > 6:
+        elif abs(translocation_partition_means[closest_to_end] - del_end) <= parameters.max_translocation_distance and del_cluster.score > 6:
             destinations_from_end = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_end]])
             # if translocations close to end point to the same destination
             if len(destinations_from_end) == 1:
@@ -130,7 +130,7 @@ def merge_translocations_at_deletions(translocation_evidences, deletion_evidence
     return insertion_candidates
 
 
-def merge_translocations_at_insertions(translocation_evidences, insertion_evidence_clusters, deletion_evidence_clusters):
+def merge_translocations_at_insertions(translocation_evidences, insertion_evidence_clusters, deletion_evidence_clusters, parameters):
     # Cluster translocations by contig and pos1
     translocation_partitions = form_partitions(translocation_evidences)
     translocation_partitions_dict = defaultdict(list)
@@ -146,7 +146,7 @@ def merge_translocations_at_insertions(translocation_evidences, insertion_eviden
             continue
         closest_to_start = get_closest_index(translocation_partition_means, ins_start)
         # if translocations found close to start of insertion
-        if abs(translocation_partition_means[closest_to_start] - ins_start) < 10:
+        if abs(translocation_partition_means[closest_to_start] - ins_start) <= parameters.max_translocation_distance:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[ins_contig][closest_to_start]])
             # if translocations close to start point to two destinations
             if len(destinations_from_start) == 2:

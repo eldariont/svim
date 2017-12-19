@@ -32,6 +32,9 @@ class callPacParams:
         self.max_deletion_size = 10000
         self.segment_overlap_tolerance = 5
 
+        # Merging translocations
+        self.max_translocation_distance = 10
+
 
     def set_with_options(self, options):
         # Read tail mapping        
@@ -125,3 +128,5 @@ class callPacParams:
             self.segment_overlap_tolerance = options.segment_overlap_tolerance
         except AttributeError:
             pass
+
+
