@@ -6,6 +6,7 @@ import networkx as nx
 from random import sample
 
 from SVEvidence import EvidenceClusterUniLocal, EvidenceClusterBiLocal
+from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
 
 def form_partitions(sv_evidences, max_delta=1000):
@@ -111,6 +112,33 @@ def consolidate_clusters_bilocal(clusters):
             consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
+
+
+def partition_and_cluster_candidates(candidates):
+    partitions = form_partitions(candidates)
+    clusters = clusters_from_partitions(partitions)
+    print("INFO: Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)), file=sys.stderr)
+
+    final_candidates = []
+    for cluster in clusters:
+        combined_score = sum([candidate.score for candidate in cluster])
+        combined_members = [member for candidate in cluster for member in candidate.members]
+
+        #Source
+        source_average_start = (sum([candidate.get_source()[1] for candidate in cluster]) / float(len(cluster)))
+        source_average_end = (sum([candidate.get_source()[2] for candidate in cluster]) / float(len(cluster)))
+
+        #Destination
+        destination_average_start = (sum([candidate.get_destination()[1] for candidate in cluster]) / float(len(cluster)))
+        destination_average_end = (sum([candidate.get_destination()[2] for candidate in cluster]) / float(len(cluster)))
+
+        if cluster[0].type == "ins":
+            final_candidates.append(CandidateInsertion(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                       cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), combined_members, combined_score))
+        elif cluster[0].type == "dup_int":
+            final_candidates.append(CandidateDuplicationInterspersed(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                       cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), combined_members, combined_score))
+    return final_candidates
 
 
 def partition_and_cluster_unilocal(evidences):

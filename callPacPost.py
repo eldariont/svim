@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 import os
 
-from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal
+from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates
 from SVEvidence import EvidenceTranslocation
 from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 
@@ -44,6 +44,21 @@ def cluster_sv_evidences(sv_evidences):
     insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))
+
+
+def cluster_sv_candidates(insertion_candidates, int_duplication_candidates):
+    """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
+    (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
+
+    print("INFO: Found {0}/{1} candidates for insertions and interspersed duplications.".format(
+        len(insertion_candidates), len(int_duplication_candidates)), file=sys.stderr)
+
+    print("INFO: Cluster insertion candidates:", file=sys.stderr)
+    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates)
+    print("INFO: Cluster interspersed duplication candidates:", file=sys.stderr)
+    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates)
+
+    return (final_insertion_candidates, final_int_duplication_candidates)
 
 
 def write_evidence_clusters_bed(working_dir, clusters):
@@ -142,13 +157,13 @@ def write_candidates(working_dir, candidates):
 
 def post_processing(sv_evidences, working_dir, genome, parameters):
     # Cluster evidences
-    clusters = cluster_sv_evidences(sv_evidences)
+    evidence_clusters = cluster_sv_evidences(sv_evidences)
 
     # Write evidences
-    write_evidence_clusters_bed(working_dir, clusters)
-    write_evidence_clusters_vcf(working_dir, clusters, genome)
+    write_evidence_clusters_bed(working_dir, evidence_clusters)
+    write_evidence_clusters_vcf(working_dir, evidence_clusters, genome)
 
-    deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
+    deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
 
     insertion_candidates = []
     int_duplication_candidates = []
@@ -166,5 +181,8 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
+    # Cluster candidates
+    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates)
+
     #Write candidates
-    write_candidates(working_dir, (insertion_candidates, int_duplication_candidates))
+    write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates))
