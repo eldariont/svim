@@ -53,6 +53,18 @@ def clusters_from_partitions(partitions, max_delta=1):
     return clusters_full
 
 
+def calculate_score(cigar_evidences, kmer_evidences, suppl_evidences):
+    num_evidences = cigar_evidences + kmer_evidences + suppl_evidences
+    evidence_boost = 0
+    if cigar_evidences > 0:
+        evidence_boost += 6
+    if kmer_evidences > 0:
+        evidence_boost += 4
+    if suppl_evidences > 0:
+        evidence_boost += 10
+    return num_evidences + evidence_boost
+
+
 def consolidate_clusters_unilocal(clusters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
@@ -60,13 +72,7 @@ def consolidate_clusters_unilocal(clusters):
         cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
         kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
         suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
-        score = len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences)
-        if len(cigar_evidences) > 0:
-            score += 5
-        if len(kmer_evidences) > 0:
-            score += 5
-        if len(suppl_evidences) > 0:
-            score += 5
+        score = calculate_score(len(cigar_evidences), len(kmer_evidences), len(suppl_evidences))
         average_start = (2 * sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
         average_end = (2 * sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
         consolidated_clusters.append(EvidenceClusterUniLocal(cluster[0].get_source()[0], int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
@@ -80,13 +86,7 @@ def consolidate_clusters_bilocal(clusters):
         cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
         kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
         suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
-        score = len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences)
-        if len(cigar_evidences) > 0:
-            score += 5
-        if len(kmer_evidences) > 0:
-            score += 5
-        if len(suppl_evidences) > 0:
-            score += 5
+        score = calculate_score(len(cigar_evidences), len(kmer_evidences), len(suppl_evidences))
         
         #Source
         source_average_start = (sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
