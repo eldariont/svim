@@ -36,8 +36,8 @@ def clusters_from_partitions(partitions, max_delta=1):
             partition_sample = sample(partition, 100)
         else:
             partition_sample = partition
-        largest_evidence = sorted(partition_sample, key=lambda evi: (evi.end - evi.start))[-1]
-        largest_indel_size = largest_evidence.end - largest_evidence.start
+        largest_evidence = sorted(partition_sample, key=lambda evi: (evi.get_source()[2] - evi.get_source()[1]))[-1]
+        largest_indel_size = largest_evidence.get_source()[2] - largest_evidence.get_source()[1]
         connection_graph = nx.Graph()
         connection_graph.add_nodes_from(range(len(partition_sample)))
         for i1 in range(len(partition_sample)):
