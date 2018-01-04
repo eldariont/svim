@@ -215,6 +215,10 @@ def run_alignments(working_dir, genome, reads_path, cores):
     full_aln_2 = "{0}/{1}_aln.chained.bam".format(working_dir, reads_file_prefix)
     full_aln_3 = "{0}/{1}_aln.chained.rsorted.bam".format(working_dir, reads_file_prefix)
 
+    if not os.path.exists(genome + ".bwt") and (not os.path.exists(left_aln) or not os.path.exists(right_aln)):
+        if call(['/scratch/ngsvin/bin/bwa.kit/bwa', 'index', genome]) != 0:
+            print("ERROR: Calling bwa index on genome failed", file=sys.stderr)
+
     if not os.path.exists(left_aln):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
                      'mem', '-x', 'pacbio', '-t', str(cores), genome, left_fa], stdout=PIPE)
