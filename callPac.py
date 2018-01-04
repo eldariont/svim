@@ -135,24 +135,40 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
         elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
             reads_file = gzip.open(reads_path, "rb")
         
-        if reads_type == "fasta" or reads_type == "fasta_gzip": 
+        if reads_type == "fasta" or reads_type == "fasta_gzip":
+            sequence = ""
             for line in reads_file:
                 if line.startswith('>'):
+                    if sequence != "":
+                        if len(sequence) > 2000:
+                            if write_left:
+                                prefix = sequence[:span]
+                                print(">" + read_name, file=left_file)
+                                print(prefix, file=left_file)
+                            if write_right:
+                                suffix = sequence[-span:]
+                                print(">" + read_name, file=right_file)
+                                print(suffix, file=right_file)
+                        if write_full:
+                            print(">" + read_name, file=full_file)
+                            print(sequence, file=full_file)
                     read_name = line.strip()[1:]
+                    sequence = ""
                 else:
-                    sequence = line.strip()
-                    if len(sequence) > 2000:
-                        if write_left:
-                            prefix = sequence[:span]
-                            print(">" + read_name, file=left_file)
-                            print(prefix, file=left_file)
-                        if write_right:
-                            suffix = sequence[-span:]
-                            print(">" + read_name, file=right_file)
-                            print(suffix, file=right_file)
-                    if write_full:
-                        print(">" + read_name, file=full_file)
-                        print(sequence, file=full_file)
+                    sequence += line.strip()
+            if sequence != "":
+                if len(sequence) > 2000:
+                    if write_left:
+                        prefix = sequence[:span]
+                        print(">" + read_name, file=left_file)
+                        print(prefix, file=left_file)
+                    if write_right:
+                        suffix = sequence[-span:]
+                        print(">" + read_name, file=right_file)
+                        print(suffix, file=right_file)
+                if write_full:
+                    print(">" + read_name, file=full_file)
+                    print(sequence, file=full_file)
             reads_file.close()
         elif reads_type == "fastq" or reads_type == "fastq_gzip": 
             sequence_line_is_next = False
