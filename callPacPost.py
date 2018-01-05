@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import os
+import logging
 
 from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates
 from SVEvidence import EvidenceTranslocation
@@ -28,19 +29,19 @@ def cluster_sv_evidences(sv_evidences):
     translocation_evidences = [ev for ev in sv_evidences if ev.type == 'tra']
     insertion_from_evidences = [ev for ev in sv_evidences if ev.type == 'ins_dup']
 
-    print("INFO: Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
-        len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)), file=sys.stderr)
+    logging.info("Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
+        len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)))
     
     # Cluster SV evidences
-    print("INFO: Cluster deletion evidences:", file=sys.stderr)
+    logging.info("Cluster deletion evidences:")
     deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences)
-    print("INFO: Cluster insertion evidences:", file=sys.stderr)
+    logging.info("Cluster insertion evidences:")
     insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences)
-    print("INFO: Cluster inversion evidences:", file=sys.stderr)
+    logging.info("Cluster inversion evidences:")
     inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences)
-    print("INFO: Cluster tandem duplication evidences:", file=sys.stderr)
+    logging.info("Cluster tandem duplication evidences:")
     tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences)
-    print("INFO: Cluster insertion evidences with source:", file=sys.stderr)
+    logging.info("Cluster insertion evidences with source:")
     insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
 
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))
@@ -50,12 +51,12 @@ def cluster_sv_candidates(insertion_candidates, int_duplication_candidates):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
     (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
 
-    print("INFO: Found {0}/{1} candidates for insertions and interspersed duplications.".format(
-        len(insertion_candidates), len(int_duplication_candidates)), file=sys.stderr)
+    logging.info("Found {0}/{1} candidates for insertions and interspersed duplications.".format(
+        len(insertion_candidates), len(int_duplication_candidates)))
 
-    print("INFO: Cluster insertion candidates:", file=sys.stderr)
+    logging.info("Cluster insertion candidates:")
     final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates)
-    print("INFO: Cluster interspersed duplication candidates:", file=sys.stderr)
+    logging.info("Cluster interspersed duplication candidates:")
     final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates)
 
     return (final_insertion_candidates, final_int_duplication_candidates)

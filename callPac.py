@@ -11,6 +11,7 @@ from subprocess import call, Popen, PIPE
 from collections import defaultdict
 import pickle
 import gzip
+import logging
 
 import pysam
 from Bio import SeqIO
@@ -81,28 +82,28 @@ def parse_sam_file(sam, contig):
 
 def guess_file_type(reads_path):
     if reads_path.endswith(".fa") or reads_path.endswith(".fasta") or reads_path.endswith(".FA"):
-        print("INFO: Recognized reads file as FASTA format.", file=sys.stderr)
+        logging.info("Recognized reads file as FASTA format.")
         return "fasta"
     elif reads_path.endswith(".fq") or reads_path.endswith(".fastq") or reads_path.endswith(".FQ"):
-        print("INFO: Recognized reads file as FASTQ format.", file=sys.stderr)
+        logging.info("Recognized reads file as FASTQ format.")
         return "fastq"
     elif reads_path.endswith(".fa.gz") or reads_path.endswith(".fasta.gz") or reads_path.endswith(".fa.gzip") or reads_path.endswith(".fasta.gzip"):
-        print("INFO: Recognized reads file as gzipped FASTA format.", file=sys.stderr)
+        logging.info("Recognized reads file as gzipped FASTA format.")
         return "fasta_gzip"
     elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip"):
-        print("INFO: Recognized reads file as gzipped FASTQ format.", file=sys.stderr)
+        logging.info("Recognized reads file as gzipped FASTQ format.")
         return "fastq_gzip"
     elif reads_path.endswith(".fa.fn"):
-        print("INFO: Recognized reads file as FASTA file list format.", file=sys.stderr)
+        logging.info("Recognized reads file as FASTA file list format.")
         return "list" 
     else:
-        print("ERROR: Unknown file ending of file {0}. Exiting.".format(reads_path), file=sys.stderr)
+        logging.error("Unknown file ending of file {0}. Exiting.".format(reads_path))
         return "unknown"
 
 def create_tail_files(working_dir, reads_path, reads_type, span):
     """Create FASTA files with read tails and full reads if they do not exist."""
     if not os.path.exists(working_dir):
-        print("ERROR: Given working directory does not exist", file=sys.stderr)
+        logging.error("Given working directory does not exist")
         sys.exit()
 
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
@@ -112,14 +113,14 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
         write_left = True
     else:
         write_left = False
-        print("WARNING: FASTA file for left tails exists. Skip", file=sys.stderr)
+        logging.warning("FASTA file for left tails exists. Skip")
 
     if not os.path.exists("{0}/{1}_right.fa".format(working_dir, reads_file_prefix)):
         right_file = open("{0}/{1}_right.fa".format(working_dir, reads_file_prefix), 'w')
         write_right = True
     else:
         write_right = False
-        print("WARNING: FASTA file for right tails exists. Skip", file=sys.stderr)
+        logging.warning("FASTA file for right tails exists. Skip")
 
     if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
         full_reads_path = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
@@ -128,7 +129,7 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
             write_full = True
         else:
             write_full = False
-            print("WARNING: FASTA file for full reads exists. Skip", file=sys.stderr)
+            logging.warning("FASTA file for full reads exists. Skip")
     else:
         full_reads_path = reads_path
         write_full = False
@@ -204,7 +205,7 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
     if write_full:
         full_file.close()
 
-    print("INFO: Read tail and full read files written", file=sys.stderr)
+    logging.info("Read tail and full read files written")
     return full_reads_path
 
 
@@ -221,7 +222,7 @@ def run_alignments(working_dir, genome, reads_path, cores):
 
     if not os.path.exists(genome + ".bwt") and (not os.path.exists(left_aln) or not os.path.exists(right_aln)):
         if call(['/scratch/ngsvin/bin/bwa.kit/bwa', 'index', genome]) != 0:
-            print("ERROR: Calling bwa index on genome failed", file=sys.stderr)
+            logging.error("Calling bwa index on genome failed")
 
     if not os.path.exists(left_aln):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
@@ -232,7 +233,7 @@ def run_alignments(working_dir, genome, reads_path, cores):
                       'sort', '-@', str(cores), '-n', '-o', left_aln], stdin=view.stdout)
         sort.wait()
     else:
-        print("WARNING: Alignment for left sequences exists. Skip", file=sys.stderr)
+        logging.warning("Alignment for left sequences exists. Skip")
 
     if not os.path.exists(right_aln):
         bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
@@ -243,7 +244,7 @@ def run_alignments(working_dir, genome, reads_path, cores):
                       'sort', '-@', str(cores), '-n', '-o', right_aln], stdin=view.stdout)
         sort.wait()
     else:
-        print("WARNING: Alignment for right sequences exists. Skip", file=sys.stderr)
+        logging.warning("Alignment for right sequences exists. Skip")
 
     # Align full reads with NGM-LR
     if not os.path.exists(full_aln_3):
@@ -257,15 +258,15 @@ def run_alignments(working_dir, genome, reads_path, cores):
         sort.wait()
         if call(['python', '/home/heller_d/bin/bamChain', full_aln_1,
                  full_aln_2, '--minmapq', '40']) != 0:
-            print("ERROR: Calling bamchain on full sequences failed", file=sys.stderr)
+            logging.error("Calling bamchain on full sequences failed")
         if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', str(cores),
                  full_aln_2, '-o',
                  full_aln_3]) != 0:
-            print("ERROR: Calling samtools sort on full sequences failed", file=sys.stderr)
+            logging.error("Calling samtools sort on full sequences failed")
     else:
-        print("WARNING: Alignment for full sequences exists. Skip", file=sys.stderr)
+        logging.warning("Alignment for full sequences exists. Skip")
 
-    print("INFO: Alignment finished", file=sys.stderr)
+    logging.info("Alignment finished")
 
 
 def natural_representation(qname): 
@@ -325,7 +326,7 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
     elif reads_type == "fastq":
         reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
     reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
-    print("INFO: Indexing reads and reference finished", file=sys.stderr)
+    logging.info("Indexing reads and reference finished")
 
     sv_evidences = []
 
@@ -337,13 +338,13 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
                 left_iterator_object = left_it.next()
             if left_iterator_object[0] == right_iterator_object[0]:
                 if int(left_iterator_object[0].split("_")[1]) % 1000 == 0:
-                    print("INFO: Processed read", left_iterator_object[0].split("_")[1], file=sys.stderr)
+                    logging.info("Processed read {0}".format(left_iterator_object[0].split("_")[1]))
                 sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
                 left_iterator_object = left_it.next()
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with next step..')
+            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
@@ -360,12 +361,12 @@ def analyze_indel(bam_path, parameters):
             full_iterator_object = full_it.next()
             read_nr += 1
             if read_nr % 10000 == 0:
-                print("INFO: Processed read", read_nr, file=sys.stderr)
+                logging.info("Processed read {0}".format(read_nr))
             sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with next step..')
+            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
@@ -382,12 +383,12 @@ def analyze_segments(bam_path, parameters):
             full_iterator_object = full_it.next()
             read_nr += 1
             if read_nr % 10000 == 0:
-                print("INFO: Processed read", read_nr, file=sys.stderr)
+                logging.info("Processed read {0}".format(read_nr))
             sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
-            print('Execution interrupted by user. Stop detection and continue with next step..')
+            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
     return sv_evidences
 
@@ -406,7 +407,7 @@ def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameter
     elif reads_type == "fastq" or reads_type == "fastq_gzip":
         reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
     reference = SeqIO.index_db(genome + ".idx", genome, "fasta")
-    print("INFO: Indexing reads and reference finished", file=sys.stderr)
+    logging.info("Indexing reads and reference finished")
 
     left_iterator_object = left_it.next()
     while left_iterator_object[0] != read_name:
@@ -438,9 +439,25 @@ def main():
     parameters = callPacParams()
     parameters.set_with_options(options)
 
+    # Set up logging
+    logFormatter = logging.Formatter("%(asctime)s [%(levelname)-7.7s]  %(message)s")
+    rootLogger = logging.getLogger()
+    rootLogger.setLevel(logging.INFO)
+
+    fileHandler = logging.FileHandler("{0}/log.log".format(options.working_dir), mode="w")
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+
+    logging.info("****************** Start callPac, version {0} ******************".format(__version__))
+    logging.info("CMD: python {0}".format(" ".join(sys.argv)))
+
     # Search for SV evidences
     if options.sub == 'load':
-        print("INFO: Load sv_evidences.obj with SV evidences..", file=sys.stderr)
+        logging.info("Load sv_evidences.obj with SV evidences..")
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
         evidences_file.close()
