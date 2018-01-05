@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+__version__ = '0.1'
+__author__ = 'David Heller'
+
 import sys
 import argparse
 import os
@@ -22,6 +25,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""callPac is a tool for accurate detection of structural variants (SVs).""")
     subparsers = parser.add_subparsers(help='subcommands', dest='sub')
+    parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
     parser_bam = subparsers.add_parser('load', help='Load existing .obj file from working directory')
     parser_bam.add_argument('working_dir', type=str, help='working directory')
