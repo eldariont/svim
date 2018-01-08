@@ -25,7 +25,7 @@ from callPacPost import post_processing
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""callPac is a tool for accurate detection of structural variants (SVs).""")
-    subparsers = parser.add_subparsers(help='subcommands', dest='sub')
+    subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
     parser_bam = subparsers.add_parser('load', help='Load existing .obj file from working directory')
@@ -457,11 +457,14 @@ def main():
 
     # Search for SV evidences
     if options.sub == 'load':
-        logging.info("Load sv_evidences.obj with SV evidences..")
+        logging.info("Started mode 'load'")
+        logging.info("Load existing sv_evidences.obj with SV evidences..")
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
         evidences_file.close()
     elif options.sub == 'reads':
+        logging.info("Started mode 'reads'")
+        logging.info("Loading reads file..")
         reads_type = guess_file_type(options.reads_file)
         if reads_type == "unknown":
             return
@@ -479,12 +482,16 @@ def main():
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.chained.rsorted.bam".format(options.working_dir, reads_file_prefix)
                 if not options.skip_kmer:
+                    logging.info("Analyzing read tails..")
                     sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
                 if not options.skip_indel:
+                    logging.info("Analyzing indels..")
                     sv_evidences.extend(analyze_indel(full_aln, parameters))
                 if not options.skip_segment:
+                    logging.info("Analyzing read segments..")
                     sv_evidences.extend(analyze_segments(full_aln, parameters))
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+            logging.info("Storing collected evidences into sv_evidences.obj..")
             pickle.dump(sv_evidences, evidences_file) 
             evidences_file.close()
         else:
@@ -504,15 +511,21 @@ def main():
             if not options.skip_segment:
                 sv_evidences.extend(analyze_segments(full_aln, parameters))
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+            logging.info("Storing collected evidences into sv_evidences.obj..")
             pickle.dump(sv_evidences, evidences_file) 
             evidences_file.close()
     elif options.sub == 'alignment':
+        logging.info("Started mode 'alignment'")
+        logging.info("Loading alignment file..")
         sv_evidences = []
         if not options.skip_indel:
+            logging.info("Analyzing indels..")
             sv_evidences.extend(analyze_indel(options.bam_file.name, parameters))
         if not options.skip_segment:
+            logging.info("Analyzing read segments..")
             sv_evidences.extend(analyze_segments(options.bam_file.name, parameters))
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+        logging.info("Storing collected evidences into sv_evidences.obj..")
         pickle.dump(sv_evidences, evidences_file)
         evidences_file.close()
 
