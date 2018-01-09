@@ -9,6 +9,7 @@ import os
 import re
 from subprocess import call, Popen, PIPE
 from collections import defaultdict
+from time import strftime, localtime
 import pickle
 import gzip
 import logging
@@ -444,7 +445,7 @@ def main():
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
-    fileHandler = logging.FileHandler("{0}/log.log".format(options.working_dir), mode="w")
+    fileHandler = logging.FileHandler("{0}/log_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
@@ -530,6 +531,7 @@ def main():
         evidences_file.close()
 
     # Post-process SV evidences
+    logging.info("Starting post-processing..")
     try:
         post_processing(sv_evidences, options.working_dir, options.genome, parameters)
     except AttributeError:

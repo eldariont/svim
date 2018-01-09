@@ -158,9 +158,11 @@ def write_candidates(working_dir, candidates):
 
 def post_processing(sv_evidences, working_dir, genome, parameters):
     # Cluster evidences
+    logging.info("Cluster SV evidences..")
     evidence_clusters = cluster_sv_evidences(sv_evidences)
 
     # Write evidences
+    logging.info("Write evidence clusters..")
     write_evidence_clusters_bed(working_dir, evidence_clusters)
     write_evidence_clusters_vcf(working_dir, evidence_clusters, genome)
 
@@ -170,20 +172,25 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     int_duplication_candidates = []
 
     # Merge translocation breakpoints
+    logging.info("Merge translocations at deletions..")
     new_insertion_candidates = merge_translocations_at_deletions(completed_translocations, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
+    logging.info("Merge translocations at insertions..")
     new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(completed_translocations, insertion_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
     # Merge insertions with source
+    logging.info("Merge translocations at duplications/insertions..")
     new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
     # Cluster candidates
+    logging.info("Cluster SV candidates..")
     final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates)
 
     #Write candidates
+    logging.info("Write SV candidates..")
     write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates))
