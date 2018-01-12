@@ -1,3 +1,5 @@
+import logging
+
 class Evidence:
     """Evidence class for basic evidences of structural variants. An evidence is always detected from a single read.
     """
@@ -8,6 +10,8 @@ class Evidence:
         self.evidence = evidence
         self.read = read
         self.type = "unk"
+        if self.end < self.start:
+            logging.warning("Evidence with invalid coordinates (end < start): " + self.as_string())
 
 
     def get_source(self):
