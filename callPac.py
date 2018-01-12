@@ -214,12 +214,10 @@ def run_alignments(working_dir, genome, reads_path, cores):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
-    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
     right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
-    full_aln_1 = "{0}/{1}_aln.rsorted.bam".format(working_dir, reads_file_prefix)
-    full_aln_2 = "{0}/{1}_aln.chained.bam".format(working_dir, reads_file_prefix)
-    full_aln_3 = "{0}/{1}_aln.chained.rsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+    full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(genome + ".bwt") and (not os.path.exists(left_aln) or not os.path.exists(right_aln)):
         if call(['/scratch/ngsvin/bin/bwa.kit/bwa', 'index', genome]) != 0:
@@ -248,22 +246,15 @@ def run_alignments(working_dir, genome, reads_path, cores):
         logging.warning("Alignment for right sequences exists. Skip")
 
     # Align full reads with NGM-LR
-    if not os.path.exists(full_aln_3):
+    if not os.path.exists(full_aln):
         ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
                        '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', str(cores), '-o', full_aln_1],
+                      'sort', '-n', '-@', str(cores), '-o', full_aln],
                      stdin=view.stdout)
         sort.wait()
-        if call(['python', '/home/heller_d/bin/bamChain', full_aln_1,
-                 full_aln_2, '--minmapq', '40']) != 0:
-            logging.error("Calling bamchain on full sequences failed")
-        if call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools', 'sort', '-n', '-@', str(cores),
-                 full_aln_2, '-o',
-                 full_aln_3]) != 0:
-            logging.error("Calling samtools sort on full sequences failed")
     else:
         logging.warning("Alignment for full sequences exists. Skip")
 
@@ -314,8 +305,8 @@ def bam_iterator(bam):
 
 def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     left_bam = pysam.AlignmentFile(left_aln)
     right_bam = pysam.AlignmentFile(right_aln)
@@ -396,8 +387,8 @@ def analyze_segments(bam_path, parameters):
 
 def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameters, read_name):
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_aln = "{0}/{1}_left_aln.rsorted.bam".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.rsorted.bam".format(working_dir, reads_file_prefix)
+    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
     left_bam = pysam.AlignmentFile(left_aln)
     right_bam = pysam.AlignmentFile(right_aln)
     left_it = bam_iterator(left_bam)
@@ -481,7 +472,7 @@ def main():
                     continue
 
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-                full_aln = "{0}/{1}_aln.chained.rsorted.bam".format(options.working_dir, reads_file_prefix)
+                full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 if not options.skip_kmer:
                     logging.info("Analyzing read tails..")
                     sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
@@ -504,7 +495,7 @@ def main():
                 return
             sv_evidences = []
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-            full_aln = "{0}/{1}_aln.chained.rsorted.bam".format(options.working_dir, reads_file_prefix)
+            full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             if not options.skip_kmer:
                 sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
             if not options.skip_indel:
