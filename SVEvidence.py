@@ -79,13 +79,19 @@ class EvidenceInsertion(Evidence):
 
 class EvidenceInversion(Evidence):
     """SV Evidence: a region (contig:start-end) has been inverted in the sample"""
-    def __init__(self, contig, start, end, evidence, read):
+    def __init__(self, contig, start, end, evidence, read, direction):
         self.contig = contig
         self.start = start
         self.end = end
         self.evidence = evidence
         self.read = read
         self.type = "inv"
+        self.direction = direction
+
+
+    def as_string(self, sep="\t"):
+        contig, start, end = self.get_source()
+        return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1};{2}".format(self.type, self.direction, self.evidence), self.read)
 
 
 class EvidenceInsertionFrom(Evidence):

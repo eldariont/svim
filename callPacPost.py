@@ -6,7 +6,7 @@ import logging
 
 from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates
 from SVEvidence import EvidenceTranslocation
-from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
+from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
 
 
 def complete_translocations(translocation_evidences):
@@ -134,14 +134,14 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
     vcf_output.close()
 
 def write_candidates(working_dir, candidates):
-    insertion_candidates, int_duplication_candidates = candidates
+    insertion_candidates, int_duplication_candidates, inversion_candidates = candidates
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')
     #deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
     insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
     insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
-    # inversion_candidate_output = open(working_dir + '/candidates/inv.bed', 'w')
+    inversion_candidate_output = open(working_dir + '/candidates/candidates_inversions.bed', 'w')
     # tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
     interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
     interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
@@ -154,6 +154,8 @@ def write_candidates(working_dir, candidates):
         bed_entries = candidate.get_bed_entries()
         print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
+    for candidate in inversion_candidates:
+        print(candidate.get_bed_entry(), file=inversion_candidate_output)
 
 
 def post_processing(sv_evidences, working_dir, genome, parameters):
@@ -187,10 +189,13 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
+    logging.info("Filter inversions..")
+    inversion_candidates = filter_inversions(inversion_evidence_clusters)
+
     # Cluster candidates
     logging.info("Cluster SV candidates..")
     final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates)
 
     #Write candidates
     logging.info("Write SV candidates..")
-    write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates))
+    write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates))

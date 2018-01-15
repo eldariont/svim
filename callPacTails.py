@@ -66,7 +66,7 @@ def check_inv_1(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_end = right_ref_start + (len(ref_snippet_1 + ref_snippet_2) - end)
             if inv_end > inv_start:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
-                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
+                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name, "left_fwd"))
     return sv_evidences
 
 
@@ -88,7 +88,7 @@ def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_end = right_ref_end - (len(ref_snippet_1 + ref_snippet_2) - end)
             if inv_end > inv_start:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
-                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
+                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name, "right_fwd"))
     return sv_evidences
 
 
@@ -110,7 +110,7 @@ def check_inv_3(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_end = left_ref_start + start
             if inv_end > inv_start:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
-                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
+                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name, "left_rev"))
     return sv_evidences
 
 
@@ -131,7 +131,7 @@ def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters)
             inv_end = left_ref_end - start
             if inv_end > inv_start:
                 #print("Inversion detected: {0}:{1}-{2} (length {3})".format(contig, inv_start, inv_end, inv_end - inv_start), file=sys.stdout)
-                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name))
+                sv_evidences.append(EvidenceInversion(contig, inv_start, inv_end, "kmer", left_tail.query_name, "right_rev"))
     return sv_evidences
 
 

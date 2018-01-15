@@ -46,12 +46,24 @@ class Candidate:
         dist_content = (span1 + span2 - 2 * inter) / float(span_total)
         return dist_pos + dist_span + dist_content
 
+
+    def get_bed_entry(self):
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}".format(self.type), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+
+
 class CandidateDeletion(Candidate):
     pass
 
 
 class CandidateInversion(Candidate):
-    pass
+    def __init__(self, source_contig, source_start, source_end, members, score):
+        self.source_contig = source_contig
+        self.source_start = source_start
+        self.source_end = source_end
+
+        self.members = members
+        self.score = score
+        self.type = "inv"
 
 
 class CandidateInsertion(Candidate):

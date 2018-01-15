@@ -122,17 +122,17 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
             if -parameters.segment_overlap_tolerance <= supplementary_q_start - primary_q_end <= parameters.max_segment_gap_tolerance:
                 if supplementary_ref_start - primary_ref_end >= -parameters.segment_overlap_tolerance: # Case 1
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name, "left_fwd")
                 elif primary_ref_start - supplementary_ref_end >= -parameters.segment_overlap_tolerance: # Case 3
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name, "left_rev")
             elif -parameters.segment_overlap_tolerance <= primary_q_start - supplementary_q_end <= parameters.max_segment_gap_tolerance:
                 if primary_ref_start - supplementary_ref_end >= -parameters.segment_overlap_tolerance: # Case 2
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name, "right_fwd")
                 elif supplementary_ref_start - primary_ref_end >= -parameters.segment_overlap_tolerance: # Case 4
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name, "right_rev")
             else:
                 pass
                 #print("Overlapping read segments in read", read_name)
@@ -142,17 +142,17 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
             if -parameters.segment_overlap_tolerance <= supplementary_q_start - primary_q_end <= parameters.max_segment_gap_tolerance:
                 if supplementary_ref_start - primary_ref_end >= -parameters.segment_overlap_tolerance: # Case 2
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name, "right_fwd")
                 elif primary_ref_start - supplementary_ref_end >= -parameters.segment_overlap_tolerance: # Case 4
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name, "right_rev")
             elif -parameters.segment_overlap_tolerance <= primary_q_start - supplementary_q_end <= parameters.max_segment_gap_tolerance:
                 if primary_ref_start - supplementary_ref_end >= -parameters.segment_overlap_tolerance: # Case 1
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name, "left_fwd")
                 elif supplementary_ref_start - primary_ref_end >= -parameters.segment_overlap_tolerance: # Case 3
                     #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name)
+                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name, "left_rev")
             else:
                 pass
                 #print("Overlapping read segments in read", read_name)
@@ -247,10 +247,10 @@ def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplement
             if reference_012 or reference_210:
                 if not ordered_alns[0].is_reverse and ordered_alns[1].is_reverse and not ordered_alns[2].is_reverse:
                     #print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name))
+                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name, "all"))
                 elif ordered_alns[0].is_reverse and not ordered_alns[1].is_reverse and ordered_alns[2].is_reverse:
                     #print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name))
+                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name, "all"))
             # segments 0 and 2 are mapped right after another and are from the + strand
             elif reference_02 and not ordered_alns[0].is_reverse and not ordered_alns[2].is_reverse:
                 if ordered_alns[1].reference_start >= ordered_alns[2].reference_end or ordered_alns[1].reference_end <= ordered_alns[0].reference_start:

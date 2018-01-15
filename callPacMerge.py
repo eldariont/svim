@@ -6,7 +6,7 @@ from collections import defaultdict
 from math import pow, sqrt
 
 from SVEvidence import EvidenceTranslocation, EvidenceInsertionFrom, EvidenceClusterBiLocal
-from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
+from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed, CandidateInversion
 from callPacCluster import form_partitions
 
 def merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters):
@@ -95,6 +95,36 @@ def calculate_score_insertion(main_score, translocation_distance, translocation_
     final_score = int(2 * main_score - 0.5 * translocation_distance - 0.2 * translocation_std - 0.1 * sum(destination_stds))
     # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distance, translocation_std, destination_stds))
     return max(0, final_score)
+
+
+def calculate_score_inversion(cigar_evidences, direction_counts):
+    left_evidences = direction_counts[0] + direction_counts[1]
+    right_evidences = direction_counts[2] + direction_counts[3]
+    valid_suppl_evidences = min(left_evidences, right_evidences) + direction_counts[4]
+    evidence_boost = 0
+    if cigar_evidences > 0:
+        evidence_boost += 6
+    if valid_suppl_evidences > 0:
+        evidence_boost += 10
+    return valid_suppl_evidences + cigar_evidences + evidence_boost
+
+
+def filter_inversions(inversion_evidence_clusters):
+    inversion_candidates = []
+    for inv_cluster in inversion_evidence_clusters:
+        directions = [ev.direction for ev in inv_cluster.members]
+        direction_counts = [0, 0, 0, 0, 0]
+        for direction in directions:
+            if direction == "left_fwd": direction_counts[0] += 1
+            if direction == "left_rev": direction_counts[1] += 1
+            if direction == "right_fwd": direction_counts[2] += 1
+            if direction == "right_rev": direction_counts[3] += 1
+            if direction == "all": direction_counts[4] += 1
+        num_cigar_evidences = len([ev for ev in inv_cluster.members if ev.evidence == "cigar"])
+        score = calculate_score_inversion(num_cigar_evidences, direction_counts)
+        contig, start, end = inv_cluster.get_source()
+        inversion_candidates.append(CandidateInversion(contig, start, end, inv_cluster.members, score))
+    return inversion_candidates
 
 
 def merge_translocations_at_deletions(translocation_evidences, deletion_evidence_clusters, parameters):
