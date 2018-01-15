@@ -4,7 +4,10 @@ import sys
 import os
 import logging
 
-from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates
+from collections import defaultdict
+from math import pow, sqrt
+
+from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
 from SVEvidence import EvidenceTranslocation
 from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
 
@@ -181,14 +184,30 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     # Merge translocation breakpoints #
     ###################################
 
+    # Cluster translocations by contig and pos1
+    logging.info("Cluster translocations..")
+    translocation_partitions = form_partitions(completed_translocations)
+
+    logging.info("Compile translocation dict..")
+    translocation_partitions_dict = defaultdict(list)
+    for partition in translocation_partitions:
+        translocation_partitions_dict[partition[0].contig1].append(partition)
+
+    logging.info("Compute translocation means and std deviations..")
+    translocation_partition_means_dict = {}
+    translocation_partition_stds_dict = {}
+    for contig in translocation_partitions_dict.keys():
+        translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[contig]]
+        translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / float(len(partition))))) for index, partition in enumerate(translocation_partitions_dict[contig])]
+
     logging.info("Merge translocations at deletions..")
-    new_insertion_candidates = merge_translocations_at_deletions(completed_translocations, deletion_evidence_clusters, parameters)
+    new_insertion_candidates = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Merge translocations at insertions..")
-    new_insertion_candidates, new_int_duplication_candidates = merge_translocations_at_insertions(completed_translocations, insertion_evidence_clusters, deletion_evidence_clusters, parameters)
-    insertion_candidates.extend(new_insertion_candidates)
-    int_duplication_candidates.extend(new_int_duplication_candidates)
+    insertion_from_evidence_clusters.extend(merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, deletion_evidence_clusters, parameters))
+    # insertion_candidates.extend(new_insertion_candidates)
+    # int_duplication_candidates.extend(new_int_duplication_candidates)
 
     # Merge insertions with source
     logging.info("Classify insertion/duplication evidence clusters..")
