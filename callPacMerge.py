@@ -10,13 +10,16 @@ from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed, Ca
 from callPacCluster import form_partitions
 
 def merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters):
+    """Classify insertion/duplication evidence clusters as insertion or duplication"""
     insertion_candidates = []
     int_duplication_candidates = []  
-    for ins_cluster in insertion_from_evidence_clusters:    
+    for ins_cluster in insertion_from_evidence_clusters:
+        # Compute distances of every deletion cluster to the current insertion/duplication
         distances = [(ind, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
         closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
+        # If close deletion cluster found
         if closest_deletion[1] <= 1.0:
             #Insertion
             all_members = ins_cluster.members + deletion_evidence_clusters[closest_deletion[0]].members
@@ -128,6 +131,7 @@ def filter_inversions(inversion_evidence_clusters):
 
 
 def merge_translocations_at_deletions(translocation_evidences, deletion_evidence_clusters, parameters):
+    """Analyze all deletion evidence clusters and look for flanking translocations that might indicate insertions."""
     insertion_candidates = []
     
     # Cluster translocations by contig and pos1
