@@ -321,6 +321,7 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
     logging.info("Indexing reads and reference finished")
 
     sv_evidences = []
+    read_nr = 0
 
     left_iterator_object = left_it.next()
     while True:
@@ -329,8 +330,9 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
             while natural_representation(left_iterator_object[0]) < natural_representation(right_iterator_object[0]):
                 left_iterator_object = left_it.next()
             if left_iterator_object[0] == right_iterator_object[0]:
-                if int(left_iterator_object[0].split("_")[1]) % 1000 == 0:
-                    logging.info("Processed read {0}".format(left_iterator_object[0].split("_")[1]))
+                read_nr += 1
+                if read_nr % 10000 == 0:
+                    logging.info("Processed read {0}".format(read_nr))
                 sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
                 left_iterator_object = left_it.next()
         except StopIteration:
