@@ -497,10 +497,13 @@ def main():
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             if not options.skip_kmer:
+                logging.info("Analyzing read tails..")
                 sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
             if not options.skip_indel:
+                logging.info("Analyzing indels..")
                 sv_evidences.extend(analyze_indel(full_aln, parameters))
             if not options.skip_segment:
+                logging.info("Analyzing read segments..")
                 sv_evidences.extend(analyze_segments(full_aln, parameters))
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
             logging.info("Storing collected evidences into sv_evidences.obj..")
