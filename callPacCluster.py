@@ -52,14 +52,14 @@ def clusters_from_partitions(partitions, max_delta):
 
 
 def calculate_score(cigar_evidences, kmer_evidences, suppl_evidences):
-    num_evidences = cigar_evidences + kmer_evidences + suppl_evidences
+    num_evidences = min(20, cigar_evidences) + min(20, kmer_evidences) + min(20, suppl_evidences)
     evidence_boost = 0
     if cigar_evidences > 0:
-        evidence_boost += 6
-    if kmer_evidences > 0:
-        evidence_boost += 4
-    if suppl_evidences > 0:
         evidence_boost += 10
+    if kmer_evidences > 0:
+        evidence_boost += 10
+    if suppl_evidences > 0:
+        evidence_boost += 20
     return num_evidences + evidence_boost
 
 
