@@ -41,7 +41,7 @@ def parse_arguments():
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
 
-    parser_bam.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+    parser_bam.add_argument('--min_mapq', type=int, default=25, help='minimum mapping quality')
     parser_bam.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
     parser_bam.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
 
@@ -57,7 +57,7 @@ def parse_arguments():
 
     parser_fasta.add_argument('--cores', type=int, default=4, help='number of CPU cores to utilize for alignment')
     parser_fasta.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
-    parser_fasta.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+    parser_fasta.add_argument('--min_mapq', type=int, default=25, help='minimum mapping quality')
     parser_fasta.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
     parser_fasta.add_argument('--tail_max_deviation', type=float, default=0.2, help='maximum deviation')
     parser_fasta.add_argument('--count_win_size', type=int, default=50, help='window size for k-mer counting')

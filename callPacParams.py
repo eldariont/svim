@@ -1,8 +1,9 @@
 class callPacParams:
     def __init__(self):
+        self.min_mapq = 30
+
         # Read tail mapping
         self.tail_span = 1000
-        self.tail_min_mapq = 30
         self.tail_min_deviation = -0.02
         self.tail_max_deviation = 0.1
 
@@ -50,7 +51,7 @@ class callPacParams:
         except AttributeError:
             pass
         try:
-            self.tail_min_mapq =  options.tail_min_mapq
+            self.min_mapq =  options.min_mapq
         except AttributeError:
             pass
         try:

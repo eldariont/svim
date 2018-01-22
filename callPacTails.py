@@ -181,9 +181,9 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
     left_read_name, left_prim, left_suppl, left_sec = left_iterator_object
     right_read_name, right_prim, right_suppl, right_sec = right_iterator_object
 
-    if len(left_prim) != 1 or left_prim[0].is_unmapped or left_prim[0].mapping_quality < parameters.tail_min_mapq:
+    if len(left_prim) != 1 or left_prim[0].is_unmapped or left_prim[0].mapping_quality < parameters.min_mapq:
         return []
-    if len(right_prim) != 1 or right_prim[0].is_unmapped or right_prim[0].mapping_quality < parameters.tail_min_mapq:
+    if len(right_prim) != 1 or right_prim[0].is_unmapped or right_prim[0].mapping_quality < parameters.min_mapq:
         return []
 
     left_ref_chr = left_bam.getrname(left_prim[0].reference_id)
