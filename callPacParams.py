@@ -43,6 +43,8 @@ class callPacParams:
         self.trans_partition_max_distance = 200
         self.trans_sv_max_distance = 500
 
+        # Filtering
+        self.max_sv_size = 1000000
 
     def set_with_options(self, options):
         # Read tail mapping        

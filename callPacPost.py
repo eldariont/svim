@@ -216,7 +216,7 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
     logging.info("Filter inversions..")
-    inversion_candidates = filter_inversions(inversion_evidence_clusters)
+    inversion_candidates = filter_inversions(inversion_evidence_clusters, parameters)
 
     # Cluster candidates
     logging.info("Cluster SV candidates..")
