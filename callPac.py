@@ -32,6 +32,8 @@ def parse_arguments():
     parser_load = subparsers.add_parser('load', help='Load existing .obj file from working directory')
     parser_load.add_argument('working_dir', type=str, help='working directory')
     parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
+    parser_load.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
+    parser_load.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -40,6 +42,8 @@ def parse_arguments():
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
 
     parser_bam.add_argument('--tail_min_mapq', type=int, default=30, help='minimum mapping quality')
+    parser_bam.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
+    parser_bam.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
 
     parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
@@ -70,6 +74,8 @@ def parse_arguments():
     parser_fasta.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
     parser_fasta.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
     parser_fasta.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
+    parser_fasta.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
+    parser_fasta.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
     return parser.parse_args()
 
 

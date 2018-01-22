@@ -10,7 +10,7 @@ from SVEvidence import EvidenceClusterUniLocal, EvidenceClusterBiLocal
 from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
 
-def form_partitions(sv_evidences, max_delta=1000):
+def form_partitions(sv_evidences, max_delta):
     """Form partitions of evidences using mean distance."""
     sorted_evidences = sorted(sv_evidences, key=lambda evi: evi.get_key())
     partitions = []
@@ -25,7 +25,7 @@ def form_partitions(sv_evidences, max_delta=1000):
     return partitions
 
 
-def clusters_from_partitions(partitions, max_delta=1):
+def clusters_from_partitions(partitions, max_delta):
     """Form clusters in partitions using Gowda-Diday distance and clique finding in a distance graph."""
     clusters_full = []
     # Find clusters in each partition individually.
@@ -111,9 +111,9 @@ def consolidate_clusters_bilocal(clusters):
     return consolidated_clusters
 
 
-def partition_and_cluster_candidates(candidates):
-    partitions = form_partitions(candidates)
-    clusters = clusters_from_partitions(partitions)
+def partition_and_cluster_candidates(candidates, parameters):
+    partitions = form_partitions(candidates, parameters.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
 
     final_candidates = []
@@ -138,15 +138,15 @@ def partition_and_cluster_candidates(candidates):
     return final_candidates
 
 
-def partition_and_cluster_unilocal(evidences):
-    partitions = form_partitions(evidences)
-    clusters = clusters_from_partitions(partitions)
+def partition_and_cluster_unilocal(evidences, parameters):
+    partitions = form_partitions(evidences, parameters.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
-def partition_and_cluster_bilocal(evidences):
-    partitions = form_partitions(evidences)
-    clusters = clusters_from_partitions(partitions)
+def partition_and_cluster_bilocal(evidences, parameters):
+    partitions = form_partitions(evidences, parameters.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return consolidate_clusters_bilocal(clusters)

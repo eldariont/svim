@@ -270,7 +270,7 @@ def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplement
                                                       ordered_alns[0].reference_end, 1, "suppl", read_name),
                                 EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[2].reference_start,
                                                       ordered_alns[1].reference_end, 1, "suppl", read_name)]
-                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps]))
+                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps], parameters.cluster_max_distance))
                     if len(clustered_overlaps) > 1:
                         results.extend(overlaps)
                     else:
@@ -290,7 +290,7 @@ def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplement
                                                       ordered_alns[1].reference_end, 1, "suppl", read_name),
                                 EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[1].reference_start,
                                                       ordered_alns[2].reference_end, 1, "suppl", read_name)]
-                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps]))
+                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps], parameters.cluster_max_distance))
                     if len(clustered_overlaps) > 1:
                         results.extend(overlaps)
                     else:

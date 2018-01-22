@@ -34,6 +34,9 @@ class callPacParams:
 
         # Merging translocations
         self.max_translocation_distance = 10
+        # Clustering
+        self.partition_max_distance = 1000
+        self.cluster_max_distance = 1.0
 
 
     def set_with_options(self, options):
@@ -129,4 +132,13 @@ class callPacParams:
         except AttributeError:
             pass
 
+        # Clustering
+        try:
+            self.partition_max_distance = options.partition_max_distance
+        except AttributeError:
+            pass
+        try:
+            self.cluster_max_distance = options.cluster_max_distance
+        except AttributeError:
+            pass
 

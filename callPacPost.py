@@ -21,7 +21,7 @@ def complete_translocations(translocation_evidences):
     return translocation_evidences + reversed_translocations
 
 
-def cluster_sv_evidences(sv_evidences):
+def cluster_sv_evidences(sv_evidences, parameters):
     """Takes a list of SVEvidences and splits them up by type. The SVEvidences of each type are clustered and returned as a tuple of
     (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
 
@@ -37,20 +37,20 @@ def cluster_sv_evidences(sv_evidences):
     
     # Cluster SV evidences
     logging.info("Cluster deletion evidences:")
-    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences)
+    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences, parameters)
     logging.info("Cluster insertion evidences:")
-    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences)
+    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences, parameters)
     logging.info("Cluster inversion evidences:")
-    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences)
+    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences, parameters)
     logging.info("Cluster tandem duplication evidences:")
-    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences)
+    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences, parameters)
     logging.info("Cluster insertion evidences with source:")
-    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences)
+    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences, parameters)
 
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))
 
 
-def cluster_sv_candidates(insertion_candidates, int_duplication_candidates):
+def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
     (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
 
@@ -58,9 +58,9 @@ def cluster_sv_candidates(insertion_candidates, int_duplication_candidates):
         len(insertion_candidates), len(int_duplication_candidates)))
 
     logging.info("Cluster insertion candidates:")
-    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates)
+    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters)
     logging.info("Cluster interspersed duplication candidates:")
-    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates)
+    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters)
 
     return (final_insertion_candidates, final_int_duplication_candidates)
 
@@ -166,7 +166,7 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     # Cluster evidences #
     #####################
     logging.info("Cluster SV evidences..")
-    evidence_clusters = cluster_sv_evidences(sv_evidences)
+    evidence_clusters = cluster_sv_evidences(sv_evidences, parameters)
 
     ##################
     # Write clusters #
@@ -220,7 +220,7 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
 
     # Cluster candidates
     logging.info("Cluster SV candidates..")
-    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates)
+    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters)
 
     #Write candidates
     logging.info("Write SV candidates..")
