@@ -32,11 +32,15 @@ class callPacParams:
         self.max_deletion_size = 10000
         self.segment_overlap_tolerance = 5
 
-        # Merging translocations
-        self.max_translocation_distance = 10
         # Clustering
         self.partition_max_distance = 1000
         self.cluster_max_distance = 1.0
+
+        # Merging
+        self.del_ins_dup_max_distance = 1.0
+        self.trans_destination_partition_max_distance = 1000
+        self.trans_partition_max_distance = 200
+        self.trans_sv_max_distance = 500
 
 
     def set_with_options(self, options):

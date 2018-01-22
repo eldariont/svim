@@ -186,7 +186,7 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
 
     # Cluster translocations by contig and pos1
     logging.info("Cluster translocations..")
-    translocation_partitions = form_partitions(completed_translocations)
+    translocation_partitions = form_partitions(completed_translocations, parameters.trans_partition_max_distance)
 
     logging.info("Compile translocation dict..")
     translocation_partitions_dict = defaultdict(list)
@@ -211,7 +211,7 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
 
     # Merge insertions with source
     logging.info("Classify insertion/duplication evidence clusters..")
-    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters)
+    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
