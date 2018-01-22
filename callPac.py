@@ -29,8 +29,9 @@ def parse_arguments():
     subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
-    parser_bam = subparsers.add_parser('load', help='Load existing .obj file from working directory')
-    parser_bam.add_argument('working_dir', type=str, help='working directory')
+    parser_load = subparsers.add_parser('load', help='Load existing .obj file from working directory')
+    parser_load.add_argument('working_dir', type=str, help='working directory')
+    parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -453,7 +454,10 @@ def main():
     if options.sub == 'load':
         logging.info("Started mode 'load'")
         logging.info("Load existing sv_evidences.obj with SV evidences..")
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        if options.obj_file:
+            evidences_file = options.obj_file
+        else:
+            evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
         evidences_file.close()
     elif options.sub == 'reads':
