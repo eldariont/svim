@@ -137,10 +137,13 @@ def merge_translocations_at_deletions(translocation_partitions_dict, translocati
     for deletion_index, del_cluster in enumerate(deletion_evidence_clusters):
         del_contig, del_start, del_end = del_cluster.get_source()
 
-        closest_to_start_index = get_closest_index(translocation_partition_means_dict[del_contig], del_start)
-        closest_to_start_mean = translocation_partition_means_dict[del_contig][closest_to_start_index]
-        closest_to_end_index = get_closest_index(translocation_partition_means_dict[del_contig], del_end)
-        closest_to_end_mean = translocation_partition_means_dict[del_contig][closest_to_end_index]
+        try:
+            closest_to_start_index = get_closest_index(translocation_partition_means_dict[del_contig], del_start)
+            closest_to_start_mean = translocation_partition_means_dict[del_contig][closest_to_start_index]
+            closest_to_end_index = get_closest_index(translocation_partition_means_dict[del_contig], del_end)
+            closest_to_end_mean = translocation_partition_means_dict[del_contig][closest_to_end_index]
+        except KeyError:
+            continue
         # if translocations found close to start and end of deletion
         if abs(closest_to_start_mean - del_start) <= parameters.trans_sv_max_distance and abs(closest_to_end_mean - del_end) <= parameters.trans_sv_max_distance:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[del_contig][closest_to_start_index]], parameters.trans_destination_partition_max_distance)
@@ -191,8 +194,11 @@ def merge_translocations_at_insertions(translocation_partitions_dict, translocat
     insertion_from_evidence_clusters = []
     for ins_cluster in insertion_evidence_clusters:
         ins_contig, ins_start, ins_end = ins_cluster.get_source()
-        closest_to_start_index = get_closest_index(translocation_partition_means_dict[ins_contig], ins_start)
-        closest_to_start_mean = translocation_partition_means_dict[ins_contig][closest_to_start_index]
+        try:
+            closest_to_start_index = get_closest_index(translocation_partition_means_dict[ins_contig], ins_start)
+            closest_to_start_mean = translocation_partition_means_dict[ins_contig][closest_to_start_index]
+        except KeyError:
+            continue
         # if translocations found close to start of insertion
         if abs(closest_to_start_mean - ins_start) <= parameters.trans_sv_max_distance:
             destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_dict[ins_contig][closest_to_start_index]], parameters.trans_destination_partition_max_distance)
