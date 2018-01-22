@@ -16,13 +16,9 @@ def form_partitions(sv_evidences, max_delta=1000):
     partitions = []
     current_partition = []
     for evidence in sorted_evidences:
-        if len(current_partition) < 1:
-            current_partition.append(evidence)
-            continue
-        if current_partition[0].mean_distance_to(evidence) > max_delta:
+        if len(current_partition) > 0 and current_partition[0].mean_distance_to(evidence) > max_delta:
             partitions.append(current_partition[:])
-            while len(current_partition) > 0 and current_partition[0].mean_distance_to(evidence) > max_delta:
-                current_partition.pop(0)
+            current_partition = []
         current_partition.append(evidence)
     if len(current_partition) > 0:
         partitions.append(current_partition[:])
