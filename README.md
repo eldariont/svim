@@ -1,2 +1,6 @@
-# callPac
-SV calling with PacBio long reads
+## SVIM - Structural variant identification using long reads
+
+
+
+ 
+
