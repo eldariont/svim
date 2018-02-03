@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+__version__ = '0.1'
+__author__ = 'David Heller'
+
 import sys
 import os
 import logging
@@ -108,7 +111,7 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=callPacV1.0", file=vcf_output)
+    print("##source=callPacV{0}".format(__version__), file=vcf_output)
     print("##reference={0}".format(genome), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
@@ -160,6 +163,42 @@ def write_candidates(working_dir, candidates):
     for candidate in inversion_candidates:
         print(candidate.get_bed_entry(), file=inversion_candidate_output)
 
+
+def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
+    vcf_output = open(working_dir + '/final_results.vcf', 'w')
+
+    # Write header lines
+    print("##fileformat=VCFv4.3", file=vcf_output)
+    print("##source=callPacV{0}".format(__version__), file=vcf_output)
+    print("##reference={0}".format(genome), file=vcf_output)
+    print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
+    print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
+    print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
+    print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
+    print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
+    print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
+    print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
+    print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
+    print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
+    print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
+
+    vcf_entries = []
+    for cluster in deletion_evidence_clusters:
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
+    for cluster in tandem_duplication_evidence_clusters:
+        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
+    for candidate in insertion_candidates:
+        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
+    for candidate in int_duplication_candidates:
+        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
+    for candidate in inversion_candidates:
+        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
+
+    # Sort and write entries to VCF
+    for source, entry in sorted(vcf_entries, key=lambda pair: pair[0]):
+        print(entry, file=vcf_output)
+
+    vcf_output.close()
 
 def post_processing(sv_evidences, working_dir, genome, parameters):
     #####################
@@ -225,3 +264,4 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     #Write candidates
     logging.info("Write SV candidates..")
     write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates))
+    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters)

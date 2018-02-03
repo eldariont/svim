@@ -51,6 +51,31 @@ class Candidate:
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}".format(self.type), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
+    def get_vcf_entry(self):
+        if self.type == "inv":
+            contig = self.source_contig
+            start = self.source_start
+            end = self.source_end
+            svtype = "INV"
+        elif self.type == "ins":
+            contig = self.dest_contig
+            start = self.dest_start
+            end = self.dest_end
+            svtype = "INS"
+        elif self.type == "dup_tan":
+            contig = self.source_contig
+            start = self.source_end
+            end = self.source_end + self.copies * (self.source_end - self.source_start)
+            svtype = "DUP:TANDEM"
+        elif self.type == "dup_int":
+            contig = self.dest_contig
+            start = self.dest_start
+            end = self.dest_end
+            svtype = "DUP:INT"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+
+
+
 class CandidateDeletion(Candidate):
     pass
 
