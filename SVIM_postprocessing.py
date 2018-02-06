@@ -10,9 +10,9 @@ import logging
 from collections import defaultdict
 from math import pow, sqrt
 
-from callPacCluster import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
+from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
 from SVEvidence import EvidenceTranslocation
-from callPacMerge import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
+from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
 
 
 def complete_translocations(translocation_evidences):

@@ -17,10 +17,11 @@ import logging
 import pysam
 from Bio import SeqIO
 
-from callPacParams import callPacParams
-from callPacFull import analyze_full_read_indel, analyze_full_read_segments
-from callPacTails import analyze_pair_of_read_tails
-from callPacPost import post_processing
+from SVIM_parameters import SVIMParameters
+from SVIM_fullread import analyze_full_read_indel
+from SVIM_splitread import analyze_full_read_segments
+from SVIM_readtails import analyze_pair_of_read_tails
+from SVIM_postprocessing import post_processing
 
 
 def parse_arguments():
@@ -437,7 +438,7 @@ def read_file_list(path):
 def main():
     # Fetch command-line options and set parameters accordingly
     options = parse_arguments()
-    parameters = callPacParams()
+    parameters = SVIMParameters()
     parameters.set_with_options(options)
 
     # Set up logging

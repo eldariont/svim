@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from scipy import stats
 
-from callPacParams import callPacParams
-from semiglobal import nw_compute_matrix, get_end_of_alignment
+from SVIM_parameters import SVIMParameters
+from SVIM_semiglobal import nw_compute_matrix, get_end_of_alignment
 
 
 def parse_arguments():
@@ -402,7 +402,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
 
 def main():
     options = parse_arguments()
-    parameters = callPacParams()
+    parameters = SVIMParameters()
 
     # Read fasta file
     sequences = read_fasta(options.fasta)

@@ -1,4 +1,4 @@
-class callPacParams:
+class SVIMParameters:
     def __init__(self):
         self.min_mapq = 30
 

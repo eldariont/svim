@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation
-from kmerCounting import find_svs
+from SVIM_kmercounting import find_svs
 
 
 def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, reference, parameters):
