@@ -111,7 +111,7 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=callPacV{0}".format(__version__), file=vcf_output)
+    print("##source=SVIMV{0}".format(__version__), file=vcf_output)
     print("##reference={0}".format(genome), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
@@ -169,7 +169,7 @@ def write_final_vcf(working_dir, genome, insertion_candidates, int_duplication_c
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=callPacV{0}".format(__version__), file=vcf_output)
+    print("##source=SVIMV{0}".format(__version__), file=vcf_output)
     print("##reference={0}".format(genome), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)

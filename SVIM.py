@@ -26,7 +26,7 @@ from SVIM_postprocessing import post_processing
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description="""callPac is a tool for accurate detection of structural variants (SVs).""")
+                                     description="""SVIM is a tool for accurate detection of structural variants (SVs).""")
     subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
@@ -454,7 +454,7 @@ def main():
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
 
-    logging.info("****************** Start callPac, version {0} ******************".format(__version__))
+    logging.info("****************** Start SVIM, version {0} ******************".format(__version__))
     logging.info("CMD: python {0}".format(" ".join(sys.argv)))
 
     # Search for SV evidences
