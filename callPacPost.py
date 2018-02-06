@@ -164,7 +164,7 @@ def write_candidates(working_dir, candidates):
         print(candidate.get_bed_entry(), file=inversion_candidate_output)
 
 
-def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
+def write_final_vcf(working_dir, genome, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
@@ -264,4 +264,4 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
     #Write candidates
     logging.info("Write SV candidates..")
     write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates))
-    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters)
+    write_final_vcf(working_dir, genome, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters)
