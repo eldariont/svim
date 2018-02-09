@@ -456,20 +456,23 @@ def main():
 
     logging.info("****************** Start SVIM, version {0} ******************".format(__version__))
     logging.info("CMD: python {0}".format(" ".join(sys.argv)))
+    logging.info("WORKING DIR: {0}".format(os.path.abspath(options.working_dir)))
 
     # Search for SV evidences
     if options.sub == 'load':
-        logging.info("Started mode 'load'")
-        logging.info("Load existing sv_evidences.obj with SV evidences..")
+        logging.info("MODE: load")
         if options.obj_file:
+            logging.info("INPUT: {0}".format(os.path.abspath(options.obj_file.name)))
             evidences_file = options.obj_file
         else:
+            logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
         sv_evidences = pickle.load(evidences_file)
         evidences_file.close()
     elif options.sub == 'reads':
-        logging.info("Started mode 'reads'")
-        logging.info("Loading reads file..")
+        logging.info("MODE: reads")
+        logging.info("INPUT: {0}".format(os.path.abspath(options.reads_file)))
+        logging.info("GENOME: {0}".format(os.path.abspath(options.genome)))
         reads_type = guess_file_type(options.reads_file)
         if reads_type == "unknown":
             return
@@ -523,8 +526,8 @@ def main():
             pickle.dump(sv_evidences, evidences_file) 
             evidences_file.close()
     elif options.sub == 'alignment':
-        logging.info("Started mode 'alignment'")
-        logging.info("Loading alignment file..")
+        logging.info("MODE: alignment")
+        logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
         sv_evidences = []
         if not options.skip_indel:
             logging.info("Analyzing indels..")
