@@ -258,6 +258,8 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     # Step 2: Counts to Z-Scores#
     #############################
     s3 = time()
+    # If standard deviation of a row or column is 0, zscore is not defined and return as NAN
+    np.seterr(divide='ignore', invalid='ignore')
     counts2 = np.nan_to_num(stats.zscore(counts, axis=1) + stats.zscore(counts, axis=0))
     if times:
         print "Z-Score computation finished ({0} s)".format(time() - s3)
