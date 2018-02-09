@@ -229,12 +229,17 @@ def find_svs(ref, read, parameters, debug=False, times=False):
                 bucketkmers.add(read[(ybucket * parameters.count_win_size + i): (ybucket * parameters.count_win_size + i + parameters.count_k)])
         ykmers.append(bucketkmers)
 
+    xkmers = []
     for xbucket in xrange(rows):
+        bucketkmers = set()
         for i in xrange(parameters.count_win_size):
-            for ybucket in xrange(cols):
-                if (xbucket * parameters.count_win_size + i + parameters.count_k) <= len(ref):
-                    if ref[(xbucket * parameters.count_win_size + i): (xbucket * parameters.count_win_size + i + parameters.count_k)] in ykmers[ybucket]:
-                        counts[xbucket, ybucket] += 1
+            if (xbucket * parameters.count_win_size + i + parameters.count_k) <= len(ref):
+                bucketkmers.add(ref[(xbucket * parameters.count_win_size + i): (xbucket * parameters.count_win_size + i + parameters.count_k)])
+        xkmers.append(bucketkmers)
+
+    for xbucket in xrange(rows):
+        for ybucket in xrange(cols):
+            counts[xbucket, ybucket] = len(xkmers[xbucket].intersection(ykmers[ybucket]))
 
     if last_row_size > (parameters.count_win_size / 3):
         for col in xrange(len(read) / parameters.count_win_size):
