@@ -307,15 +307,36 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
+def analyze_read_full_and_tails(full_iterator_object, left_iterator_object, right_iterator_object, full_bam, left_bam, right_bam, reads, reference, parameters):
+    sv_evidences = []
+
+    sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+    sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+    sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
+
+    return sv_evidences
+
+
+def analyze_read_full(full_iterator_object, full_bam, parameters):
+    sv_evidences = []
+
+    sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+    sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+
+    return sv_evidences
+
+
+def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, parameters):
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     left_bam = pysam.AlignmentFile(left_aln)
     right_bam = pysam.AlignmentFile(right_aln)
+    full_bam = pysam.AlignmentFile(bam_path)
     left_it = bam_iterator(left_bam)
     right_it = bam_iterator(right_bam)
+    full_it = bam_iterator(full_bam)
 
     if reads_type == "fasta" or reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
         reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
@@ -328,61 +349,68 @@ def analyze_read_tails(working_dir, genome, reads_path, reads_type, parameters):
     read_nr = 0
 
     left_iterator_object = left_it.next()
-    while True:
-        try:
-            right_iterator_object = right_it.next()             
-            while natural_representation(left_iterator_object[0]) < natural_representation(right_iterator_object[0]):
-                left_iterator_object = left_it.next()
-            if left_iterator_object[0] == right_iterator_object[0]:
-                read_nr += 1
-                if read_nr % 10000 == 0:
-                    logging.info("Processed read {0}".format(read_nr))
-                sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
-                left_iterator_object = left_it.next()
-        except StopIteration:
-            break
-        except KeyboardInterrupt:
-            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
-            break
-    return sv_evidences
-
-
-def analyze_indel(bam_path, parameters):
-    full_bam = pysam.AlignmentFile(bam_path)
-    full_it = bam_iterator(full_bam)
-
-    sv_evidences = []
-    read_nr = 0
-
+    right_iterator_object = right_it.next()
     while True:
         try:
             full_iterator_object = full_it.next()
-            read_nr += 1
-            if read_nr % 10000 == 0:
-                logging.info("Processed read {0}".format(read_nr))
-            sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-        except StopIteration:
-            break
-        except KeyboardInterrupt:
-            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
-            break
-    return sv_evidences
 
-
-def analyze_segments(bam_path, parameters):
-    full_bam = pysam.AlignmentFile(bam_path)
-    full_it = bam_iterator(full_bam)
-
-    sv_evidences = []
-    read_nr = 0
-
-    while True:
-        try:
-            full_iterator_object = full_it.next()
-            read_nr += 1
-            if read_nr % 10000 == 0:
-                logging.info("Processed read {0}".format(read_nr))
-            sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+            while natural_representation(left_iterator_object[0]) < natural_representation(full_iterator_object[0]):
+                #left tail with no matching full read
+                while natural_representation(right_iterator_object[0]) < natural_representation(left_iterator_object[0]):
+                    #right tail with no matching full read or left tail
+                    read_nr += 1
+                    #print("R")
+                    right_iterator_object = right_it.next()
+                if left_iterator_object[0] == right_iterator_object[0]:
+                    #left and right tail with no matching full read
+                    read_nr += 1
+                    #print("LR")
+                    sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
+                    left_iterator_object = left_it.next()
+                    right_iterator_object = right_it.next()
+                else:
+                    #left tail with no matching full read or right tail
+                    read_nr += 1
+                    #print("L")
+                    left_iterator_object = left_it.next()
+            if left_iterator_object[0] == full_iterator_object[0]:
+                #left tail with matching full read
+                while natural_representation(right_iterator_object[0]) < natural_representation(left_iterator_object[0]):
+                    #right tail with no matching full read or left tail
+                    read_nr += 1
+                    #print("R")
+                    right_iterator_object = right_it.next()
+                if left_iterator_object[0] == right_iterator_object[0]:
+                    #left and right tail with matching full read
+                    read_nr += 1
+                    #print("LFR")
+                    sv_evidences.extend(analyze_read_full_and_tails(full_iterator_object, left_iterator_object, right_iterator_object, full_bam, left_bam, right_bam, reads, reference, parameters))
+                    if read_nr % 100 == 0:
+                        logging.info("Processed read {0}".format(read_nr))
+                    left_iterator_object = left_it.next()
+                    right_iterator_object = right_it.next()
+                else:
+                    #left tail with matching full read but no right tail
+                    read_nr += 1
+                    #print("LF")
+                    left_iterator_object = left_it.next()
+            else:
+                #full read with no matching left tail
+                while natural_representation(right_iterator_object[0]) < natural_representation(full_iterator_object[0]):
+                    #right tail with no matching full read or left tail
+                    read_nr += 1
+                    #print("R")
+                    right_iterator_object = right_it.next()
+                if full_iterator_object[0] == right_iterator_object[0]:
+                    #right tail with matching full read but no left tail
+                    read_nr += 1
+                    #print("FR")
+                    right_iterator_object = right_it.next()
+                else:
+                    #full read with no matching left or right tail
+                    read_nr += 1
+                    #print("F", full_iterator_object[0])
+                    sv_evidences.extend(analyze_read_full(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -485,15 +513,7 @@ def main():
 
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-                if not options.skip_kmer:
-                    logging.info("Analyzing read tails..")
-                    sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
-                if not options.skip_indel:
-                    logging.info("Analyzing indels..")
-                    sv_evidences.extend(analyze_indel(full_aln, parameters))
-                if not options.skip_segment:
-                    logging.info("Analyzing read segments..")
-                    sv_evidences.extend(analyze_segments(full_aln, parameters))
+                sv_evidences.extend(analyze_reads(options.working_dir, options.genome, full_reads_path, full_aln, reads_type, parameters))
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
             logging.info("Storing collected evidences into sv_evidences.obj..")
             pickle.dump(sv_evidences, evidences_file) 
@@ -505,18 +525,9 @@ def main():
             if options.read_name != "all":
                 analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
                 return
-            sv_evidences = []
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-            if not options.skip_kmer:
-                logging.info("Analyzing read tails..")
-                sv_evidences.extend(analyze_read_tails(options.working_dir, options.genome, full_reads_path, reads_type, parameters))
-            if not options.skip_indel:
-                logging.info("Analyzing indels..")
-                sv_evidences.extend(analyze_indel(full_aln, parameters))
-            if not options.skip_segment:
-                logging.info("Analyzing read segments..")
-                sv_evidences.extend(analyze_segments(full_aln, parameters))
+            sv_evidences = analyze_reads(options.working_dir, options.genome, full_reads_path, full_aln, reads_type, parameters)
             evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
             logging.info("Storing collected evidences into sv_evidences.obj..")
             pickle.dump(sv_evidences, evidences_file) 
