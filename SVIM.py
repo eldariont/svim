@@ -307,22 +307,28 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_read_full_and_tails(full_iterator_object, left_iterator_object, right_iterator_object, full_bam, left_bam, right_bam, reads, reference, parameters):
+def analyze_alignment(bam_path, parameters):
+    full_bam = pysam.AlignmentFile(bam_path)
+    full_it = bam_iterator(full_bam)
+
     sv_evidences = []
+    read_nr = 0
 
-    sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-    sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
-    sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
-
-    return sv_evidences
-
-
-def analyze_read_full(full_iterator_object, full_bam, parameters):
-    sv_evidences = []
-
-    sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-    sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
-
+    while True:
+        try:
+            full_iterator_object = full_it.next()
+            read_nr += 1
+            if read_nr % 100 == 0:
+                logging.info("Processed read {0}".format(read_nr))
+            if not parameters.skip_indel:
+                sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+            if not parameters.skip_segment:
+                sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+        except StopIteration:
+            break
+        except KeyboardInterrupt:
+            logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
+            break
     return sv_evidences
 
 
@@ -365,7 +371,8 @@ def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, paramet
                     #left and right tail with no matching full read
                     read_nr += 1
                     #print("LR")
-                    sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
+                    if not parameters.skip_kmer:
+                        sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
                     left_iterator_object = left_it.next()
                     right_iterator_object = right_it.next()
                 else:
@@ -384,7 +391,12 @@ def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, paramet
                     #left and right tail with matching full read
                     read_nr += 1
                     #print("LFR")
-                    sv_evidences.extend(analyze_read_full_and_tails(full_iterator_object, left_iterator_object, right_iterator_object, full_bam, left_bam, right_bam, reads, reference, parameters))
+                    if not parameters.skip_indel:
+                        sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+                    if not parameters.skip_segment:
+                        sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+                    if not parameters.skip_kmer:
+                        sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
                     if read_nr % 100 == 0:
                         logging.info("Processed read {0}".format(read_nr))
                     left_iterator_object = left_it.next()
@@ -410,7 +422,10 @@ def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, paramet
                     #full read with no matching left or right tail
                     read_nr += 1
                     #print("F", full_iterator_object[0])
-                    sv_evidences.extend(analyze_read_full(full_iterator_object, full_bam, parameters))
+                    if not parameters.skip_indel:
+                        sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+                    if not parameters.skip_segment:
+                        sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -535,13 +550,7 @@ def main():
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
-        sv_evidences = []
-        if not options.skip_indel:
-            logging.info("Analyzing indels..")
-            sv_evidences.extend(analyze_indel(options.bam_file.name, parameters))
-        if not options.skip_segment:
-            logging.info("Analyzing read segments..")
-            sv_evidences.extend(analyze_segments(options.bam_file.name, parameters))
+        sv_evidences = analyze_alignment(options.bam_file.name, parameters)
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
         logging.info("Storing collected evidences into sv_evidences.obj..")
         pickle.dump(sv_evidences, evidences_file)

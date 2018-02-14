@@ -2,6 +2,10 @@ class SVIMParameters:
     def __init__(self):
         self.min_mapq = 30
 
+        self.skip_indel = False
+        self.skip_segment = False
+        self.skip_kmer = False
+
         # Read tail mapping
         self.tail_span = 1000
         self.tail_min_deviation = -0.02
@@ -47,6 +51,19 @@ class SVIMParameters:
         self.max_sv_size = 1000000
 
     def set_with_options(self, options):
+        try:
+            self.skip_indel =  options.skip_indel
+        except AttributeError:
+            pass
+        try:
+            self.skip_segment =  options.skip_segment
+        except AttributeError:
+            pass
+        try:
+            self.skip_kmer =  options.skip_kmer
+        except AttributeError:
+            pass
+
         # Read tail mapping        
         try:
             self.tail_span = options.tail_span
