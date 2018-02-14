@@ -227,13 +227,9 @@ def run_alignments(working_dir, genome, reads_path, cores):
     right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
     full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
-    if not os.path.exists(genome + ".bwt") and (not os.path.exists(left_aln) or not os.path.exists(right_aln)):
-        if call(['/scratch/ngsvin/bin/bwa.kit/bwa', 'index', genome]) != 0:
-            logging.error("Calling bwa index on genome failed")
-
     if not os.path.exists(left_aln):
-        bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', str(cores), genome, left_fa], stdout=PIPE)
+        bwa = Popen(['ngmlr',
+                     '-t', str(cores), '-r', genome, '-q', left_fa], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
@@ -243,8 +239,8 @@ def run_alignments(working_dir, genome, reads_path, cores):
         logging.warning("Alignment for left sequences exists. Skip")
 
     if not os.path.exists(right_aln):
-        bwa = Popen(['/scratch/ngsvin/bin/bwa.kit/bwa',
-                     'mem', '-x', 'pacbio', '-t', str(cores), genome, right_fa], stdout=PIPE)
+        bwa = Popen(['ngmlr',
+                     '-t', str(cores), '-r', genome, '-q', right_fa], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
@@ -255,8 +251,8 @@ def run_alignments(working_dir, genome, reads_path, cores):
 
     # Align full reads with NGM-LR
     if not os.path.exists(full_aln):
-        ngmlr = Popen(['/home/heller_d/bin/miniconda2/bin/ngmlr',
-                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), ], stdout=PIPE)
+        ngmlr = Popen(['ngmlr',
+                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
