@@ -14,8 +14,9 @@ from Bio import SeqIO
 
 from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
 from SVEvidence import EvidenceTranslocation
-from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
-from SVIM_readtails import analyze_genome_region
+from SVCandidate import CandidateInversion
+from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
+from SVIM_readtails import confirm_del, confirm_ins, confirm_inv
 
 def complete_translocations(translocation_evidences):
     """Generate a complete list of translocation by adding all reversed translocations"""
@@ -68,6 +69,23 @@ def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, para
     final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters)
 
     return (final_insertion_candidates, final_int_duplication_candidates)
+
+
+def calculate_score_inversion(direction_counts, inversion_length, successful_confirmations, total_confirmations, parameters):
+    left_evidences = direction_counts[0] + direction_counts[1]
+    right_evidences = direction_counts[2] + direction_counts[3]
+    valid_suppl_evidences = min(left_evidences, right_evidences) + direction_counts[4]
+    if inversion_length > parameters.max_sv_size:
+        return 0
+    else:
+        if total_confirmations > 0:
+            confirmation_rate = successful_confirmations / float(total_confirmations)
+            if confirmation_rate >= 0.3:
+                return valid_suppl_evidences + confirmation_rate * 20
+            else:
+                return valid_suppl_evidences
+        else:
+            return valid_suppl_evidences
 
 
 def write_evidence_clusters_bed(working_dir, clusters):
@@ -218,8 +236,56 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
 
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
 
-    insertion_candidates = []
-    int_duplication_candidates = []
+    ####################
+    # Confirm clusters #
+    ####################
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
+
+    reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
+    reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
+    logging.info("Indexing reads and reference finished")
+
+    logging.info("Confirming some clusters of deleted regions..")
+    for cluster in deletion_evidence_clusters:
+        if cluster.score < 13:
+            successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, cluster, reads, reference, parameters)
+            if total_confirmations > 0:
+                confirmation_rate = successful_confirmations / float(total_confirmations)
+                if confirmation_rate >= 0.3:
+                    cluster.score += int(confirmation_rate * 20)
+
+    logging.info("Confirming some clusters of inserted regions..")
+    for cluster in insertion_evidence_clusters:
+        if cluster.score < 13:
+            successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, cluster, reads, reference, parameters)
+            if total_confirmations > 0:
+                confirmation_rate = successful_confirmations / float(total_confirmations)
+                if confirmation_rate >= 0.3:
+                    cluster.score += int(confirmation_rate * 20)
+
+    logging.info("Confirming some clusters of inverted regions..")
+    inversion_candidates = []
+    for inv_cluster in inversion_evidence_clusters:
+        directions = [ev.direction for ev in inv_cluster.members]
+        direction_counts = [0, 0, 0, 0, 0]
+        for direction in directions:
+            if direction == "left_fwd": direction_counts[0] += 1
+            if direction == "left_rev": direction_counts[1] += 1
+            if direction == "right_fwd": direction_counts[2] += 1
+            if direction == "right_rev": direction_counts[3] += 1
+            if direction == "all": direction_counts[4] += 1
+        contig, start, end = inv_cluster.get_source()
+
+        if cluster.score < 13:
+            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, cluster, reads, reference, parameters)
+            score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
+        else:
+            score = calculate_score_inversion(direction_counts, end - start, 0, 0, parameters)
+        inversion_candidates.append(CandidateInversion(contig, start, end, inv_cluster.members, score))
 
     ###################################
     # Merge translocation breakpoints #
@@ -241,6 +307,9 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
         translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[contig]]
         translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / float(len(partition))))) for index, partition in enumerate(translocation_partitions_dict[contig])]
 
+    insertion_candidates = []
+    int_duplication_candidates = []
+
     logging.info("Merge translocations at deletions..")
     new_insertion_candidates = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
@@ -255,24 +324,6 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
     new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    logging.info("Filter inversions..")
-    inversion_candidates = filter_inversions(inversion_evidence_clusters, parameters)
-
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
-
-    reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
-    reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
-    logging.info("Indexing reads and reference finished")
-
-    left_bam = pysam.AlignmentFile(left_aln)
-    right_bam = pysam.AlignmentFile(right_aln)
-
-    for candidate in inversion_candidates:
-        if candidate.score < 20:
-            analyze_genome_region(left_bam, right_bam, candidate.source_contig, candidate.source_start, candidate.source_end, reads, reference, parameters)
 
     # Cluster candidates
     logging.info("Cluster SV candidates..")
