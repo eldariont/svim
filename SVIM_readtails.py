@@ -1,6 +1,9 @@
 from __future__ import print_function
 
 import sys
+import logging
+
+from collections import defaultdict
 
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation
 from SVIM_kmercounting import find_svs
@@ -261,3 +264,62 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
             #TRANS + INV
             pass
     return []
+
+
+def analyze_genome_region(left_bam, right_bam, contig, start, end, reads, reference, parameters):
+    num_covering_tails = left_bam.count(contig, start-4000, end+4000) + right_bam.count(contig, start-4000, end+4000)
+
+    logging.info("Analyzed region {0}:{1}-{2} contains {3} tails".format(contig, start, end, num_covering_tails))
+
+    if num_covering_tails > 20:
+        return
+
+    tails = defaultdict(list)
+    for left_tail in left_bam.fetch(contig, start-4000, end+4000):
+        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters.min_mapq and not left_tail.is_secondary and not left_tail.is_supplementary:
+            tails[left_tail.query_name].append(left_tail)
+    for right_tail in right_bam.fetch(contig, start-4000, end+4000):
+        if right_tail.query_name in tails:
+            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters.min_mapq and not right_tail.is_secondary and not right_tail.is_supplementary:
+                tails[right_tail.query_name].append(right_tail)
+
+    evidences = []
+    for read_name, tails_pair in tails.iteritems():
+        if len(tails_pair) != 2:
+            continue
+        left_tail = tails_pair[0]
+        right_tail = tails_pair[1]
+
+
+        left_ref_chr = left_bam.getrname(left_tail.reference_id)
+        left_ref_start = left_tail.reference_start
+
+        right_ref_chr = right_bam.getrname(right_tail.reference_id)
+        right_ref_start = right_tail.reference_start
+
+        full_read = reads[read_name].seq
+
+        if left_ref_chr == right_ref_chr:
+            if left_tail.is_reverse and right_tail.is_reverse:
+                #Inversion between the tails?
+                pass
+            elif not left_tail.is_reverse and not right_tail.is_reverse:
+                #Inversion between the tails?
+                pass
+            elif not left_tail.is_reverse and right_tail.is_reverse:
+                if right_ref_start >= left_ref_start:
+                    #INV candidate, right tail in inverted region
+                    evidences.extend(check_inv_1(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                else:
+                    #INV candidate, left tail in inverted region
+                    evidences.extend(check_inv_3(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+            elif left_tail.is_reverse and not right_tail.is_reverse:
+                if right_ref_start >= left_ref_start:
+                    #INV candidate, left tail in inverted region
+                    evidences.extend(check_inv_2(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                else:
+                    #INV candidate, right tail in inverted region
+                    evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+
+    found_inversions = [ev for ev in evidences if ev.type == "inv"]
+    logging.info("Found {0} inversions".format(len(found_inversions)))

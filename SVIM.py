@@ -222,9 +222,9 @@ def run_alignments(working_dir, genome, reads_path, cores):
     """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
-    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
     right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
     full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(left_aln):
@@ -333,99 +333,24 @@ def analyze_alignment(bam_path, parameters):
 
 
 def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, parameters):
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
-
-    left_bam = pysam.AlignmentFile(left_aln)
-    right_bam = pysam.AlignmentFile(right_aln)
     full_bam = pysam.AlignmentFile(bam_path)
-    left_it = bam_iterator(left_bam)
-    right_it = bam_iterator(right_bam)
     full_it = bam_iterator(full_bam)
-
-    if reads_type == "fasta" or reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
-    elif reads_type == "fastq":
-        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
-    reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
-    logging.info("Indexing reads and reference finished")
 
     sv_evidences = []
     read_nr = 0
 
-    left_iterator_object = left_it.next()
-    right_iterator_object = right_it.next()
     while True:
         try:
             full_iterator_object = full_it.next()
 
-            while natural_representation(left_iterator_object[0]) < natural_representation(full_iterator_object[0]):
-                #left tail with no matching full read
-                while natural_representation(right_iterator_object[0]) < natural_representation(left_iterator_object[0]):
-                    #right tail with no matching full read or left tail
-                    read_nr += 1
-                    #print("R")
-                    right_iterator_object = right_it.next()
-                if left_iterator_object[0] == right_iterator_object[0]:
-                    #left and right tail with no matching full read
-                    read_nr += 1
-                    #print("LR")
-                    if not parameters.skip_kmer:
-                        sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
-                    left_iterator_object = left_it.next()
-                    right_iterator_object = right_it.next()
-                else:
-                    #left tail with no matching full read or right tail
-                    read_nr += 1
-                    #print("L")
-                    left_iterator_object = left_it.next()
-            if left_iterator_object[0] == full_iterator_object[0]:
-                #left tail with matching full read
-                while natural_representation(right_iterator_object[0]) < natural_representation(left_iterator_object[0]):
-                    #right tail with no matching full read or left tail
-                    read_nr += 1
-                    #print("R")
-                    right_iterator_object = right_it.next()
-                if left_iterator_object[0] == right_iterator_object[0]:
-                    #left and right tail with matching full read
-                    read_nr += 1
-                    #print("LFR")
-                    if not parameters.skip_indel:
-                        sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-                    if not parameters.skip_segment:
-                        sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
-                    if not parameters.skip_kmer:
-                        sv_evidences.extend(analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters))
-                    if read_nr % 100 == 0:
-                        logging.info("Processed read {0}".format(read_nr))
-                    left_iterator_object = left_it.next()
-                    right_iterator_object = right_it.next()
-                else:
-                    #left tail with matching full read but no right tail
-                    read_nr += 1
-                    #print("LF")
-                    left_iterator_object = left_it.next()
-            else:
-                #full read with no matching left tail
-                while natural_representation(right_iterator_object[0]) < natural_representation(full_iterator_object[0]):
-                    #right tail with no matching full read or left tail
-                    read_nr += 1
-                    #print("R")
-                    right_iterator_object = right_it.next()
-                if full_iterator_object[0] == right_iterator_object[0]:
-                    #right tail with matching full read but no left tail
-                    read_nr += 1
-                    #print("FR")
-                    right_iterator_object = right_it.next()
-                else:
-                    #full read with no matching left or right tail
-                    read_nr += 1
-                    #print("F", full_iterator_object[0])
-                    if not parameters.skip_indel:
-                        sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-                    if not parameters.skip_segment:
-                        sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+            if not parameters.skip_indel:
+                sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+            if not parameters.skip_segment:
+                sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+
+            read_nr += 1
+            if read_nr % 100 == 0:
+                logging.info("Processed read {0}".format(read_nr))
         except StopIteration:
             break
         except KeyboardInterrupt:
@@ -559,9 +484,9 @@ def main():
     # Post-process SV evidences
     logging.info("Starting post-processing..")
     try:
-        post_processing(sv_evidences, options.working_dir, options.genome, parameters)
+        post_processing(sv_evidences, options.working_dir, options.genome, full_reads_path, parameters)
     except AttributeError:
-        post_processing(sv_evidences, options.working_dir, "unknown", parameters)
+        post_processing(sv_evidences, options.working_dir, "unknown", full_reads_path, parameters)
 
 if __name__ == "__main__":
     sys.exit(main())

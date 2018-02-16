@@ -6,14 +6,16 @@ __author__ = 'David Heller'
 import sys
 import os
 import logging
+import pysam
 
 from collections import defaultdict
 from math import pow, sqrt
+from Bio import SeqIO
 
 from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
 from SVEvidence import EvidenceTranslocation
 from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions, filter_inversions
-
+from SVIM_readtails import analyze_genome_region
 
 def complete_translocations(translocation_evidences):
     """Generate a complete list of translocation by adding all reversed translocations"""
@@ -200,7 +202,7 @@ def write_final_vcf(working_dir, genome, insertion_candidates, int_duplication_c
 
     vcf_output.close()
 
-def post_processing(sv_evidences, working_dir, genome, parameters):
+def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
     #####################
     # Cluster evidences #
     #####################
@@ -256,6 +258,21 @@ def post_processing(sv_evidences, working_dir, genome, parameters):
 
     logging.info("Filter inversions..")
     inversion_candidates = filter_inversions(inversion_evidence_clusters, parameters)
+
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+
+    reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
+    reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
+    logging.info("Indexing reads and reference finished")
+
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
+
+    for candidate in inversion_candidates:
+        if candidate.score < 20:
+            analyze_genome_region(left_bam, right_bam, candidate.source_contig, candidate.source_start, candidate.source_end, reads, reference, parameters)
 
     # Cluster candidates
     logging.info("Cluster SV candidates..")
