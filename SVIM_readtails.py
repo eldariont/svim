@@ -270,10 +270,9 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
 def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, parameters):
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, end+10000) + right_bam.count(contig, start-10000, end+10000)
-    logging.info("Analyzed region {0}:{1}-{2} contains {3} tails".format(contig, start, end, num_nearby_tails))
 
     if num_nearby_tails > 1000:
-        return
+        return (0,0)
 
     tails = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, end+10000):
@@ -308,17 +307,16 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
             evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
 
     deletion_confirmations = [ev for ev in evidences if ev.type == "del" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0} confirmations from {1} spanning reads".format(len(deletion_confirmations), num_spanning_reads))
+    logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(deletion_confirmations), num_spanning_reads)
 
 
 def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, parameters):
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, start+10000) + right_bam.count(contig, start-10000, start+10000)
-    logging.info("Analyzed region {0}:{1}-{2} contains {3} tails".format(contig, start, end, num_nearby_tails))
 
     if num_nearby_tails > 1000:
-        return
+        return (0,0)
 
     tails = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, start+10000):
@@ -353,7 +351,7 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
             evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
 
     insertion_confirmations = [ev for ev in evidences if ev.type == "ins" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0} confirmations from {1} spanning reads".format(len(insertion_confirmations), num_spanning_reads))
+    logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(insertion_confirmations), num_spanning_reads)
 
 
@@ -361,10 +359,9 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, reference, paramet
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, end) + right_bam.count(contig, start-10000, start+10000)
     num_nearby_tails += left_bam.count(contig, start, end + 10000) + right_bam.count(contig, start, end+10000)
-    logging.info("Analyzed region {0}:{1}-{2} contains {3} tails".format(contig, start, end, num_nearby_tails))
 
     if num_nearby_tails > 1000:
-        return
+        return (0,0)
 
     tails1 = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, end):
@@ -418,5 +415,5 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                 evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
 
     inversion_confirmations = [ev for ev in evidences if ev.type == "inv" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0} confirmations from {1} spanning reads".format(len(inversion_confirmations), num_spanning_reads))
+    logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(inversion_confirmations), num_spanning_reads)

@@ -7,6 +7,7 @@ import sys
 import os
 import logging
 import pysam
+import numpy as np
 
 from collections import defaultdict
 from math import pow, sqrt
@@ -80,8 +81,10 @@ def calculate_score_inversion(direction_counts, inversion_length, successful_con
     else:
         if total_confirmations > 0:
             confirmation_rate = successful_confirmations / float(total_confirmations)
-            if confirmation_rate >= 0.3:
+            if confirmation_rate > 0.5:
                 return valid_suppl_evidences + confirmation_rate * 20
+            elif confirmation_rate < 0.3:
+                return 0
             else:
                 return valid_suppl_evidences
         else:
@@ -120,9 +123,16 @@ def write_evidence_clusters_bed(working_dir, clusters):
     for translocation in completed_translocations:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.evidence, translocation.read), file=translocation_evidence_output)
 
+    deletion_evidence_output.close()
+    insertion_evidence_output.close()
+    inversion_evidence_output.close()
+    tandem_duplication_evidence_source_output.close()
+    tandem_duplication_evidence_dest_output.close()
+    translocation_evidence_output.close()
+    insertion_from_evidence_output.close()
 
 def write_evidence_clusters_vcf(working_dir, clusters, genome):
-    """Write evidence clusters into working directory in BED format."""
+    """Write evidence clusters into working directory in VCF format."""
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
     if not os.path.exists(working_dir + '/evidences'):
@@ -183,6 +193,12 @@ def write_candidates(working_dir, candidates):
     for candidate in inversion_candidates:
         print(candidate.get_bed_entry(), file=inversion_candidate_output)
 
+    insertion_candidate_source_output.close()
+    insertion_candidate_dest_output.close()
+    inversion_candidate_output.close()
+    interspersed_duplication_candidate_source_output.close()
+    interspersed_duplication_candidate_dest_output.close()
+
 
 def write_final_vcf(working_dir, genome, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
@@ -239,6 +255,12 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
     ####################
     # Confirm clusters #
     ####################
+    del_confirmation_threshold = np.percentile([cluster.score for cluster in deletion_evidence_clusters], 25, interpolation='higher')
+    ins_confirmation_threshold = np.percentile([cluster.score for cluster in insertion_evidence_clusters], 50, interpolation='higher')
+    inv_confirmation_threshold = np.percentile([cluster.score for cluster in inversion_evidence_clusters], 25, interpolation='higher')
+
+    logging.info("Confirming deleted, inserted and inverted regions with a score smaller than {0}, {1} and {2}, respectively.".format(del_confirmation_threshold, ins_confirmation_threshold, inv_confirmation_threshold))
+
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
@@ -250,22 +272,26 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
     logging.info("Indexing reads and reference finished")
 
     logging.info("Confirming some clusters of deleted regions..")
-    for cluster in deletion_evidence_clusters:
-        if cluster.score < 13:
-            successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, cluster, reads, reference, parameters)
+    for del_cluster in deletion_evidence_clusters:
+        if del_cluster.score < del_confirmation_threshold:
+            successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, reference, parameters)
             if total_confirmations > 0:
                 confirmation_rate = successful_confirmations / float(total_confirmations)
-                if confirmation_rate >= 0.3:
-                    cluster.score += int(confirmation_rate * 20)
+                if confirmation_rate > 0.5:
+                    del_cluster.score += int(confirmation_rate * 20)
+                elif confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters.count_win_size * 3:
+                    del_cluster.score = 0
 
     logging.info("Confirming some clusters of inserted regions..")
-    for cluster in insertion_evidence_clusters:
-        if cluster.score < 13:
-            successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, cluster, reads, reference, parameters)
+    for ins_cluster in insertion_evidence_clusters:
+        if ins_cluster.score < ins_confirmation_threshold:
+            successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, reference, parameters)
             if total_confirmations > 0:
                 confirmation_rate = successful_confirmations / float(total_confirmations)
-                if confirmation_rate >= 0.3:
-                    cluster.score += int(confirmation_rate * 20)
+                if confirmation_rate > 0.5:
+                    ins_cluster.score += int(confirmation_rate * 20)
+                elif confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters.count_win_size * 3:
+                    ins_cluster.score = 0
 
     logging.info("Confirming some clusters of inverted regions..")
     inversion_candidates = []
@@ -280,12 +306,31 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
             if direction == "all": direction_counts[4] += 1
         contig, start, end = inv_cluster.get_source()
 
-        if cluster.score < 13:
-            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, cluster, reads, reference, parameters)
+        if inv_cluster.score < inv_confirmation_threshold:
+            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, reference, parameters)
             score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
         else:
             score = calculate_score_inversion(direction_counts, end - start, 0, 0, parameters)
         inversion_candidates.append(CandidateInversion(contig, start, end, inv_cluster.members, score))
+
+    ##################
+    # Write clusters #
+    ##################
+    logging.info("Write confirmed evidence clusters..")
+    deletion_evidence_output = open(working_dir + '/evidences/del_confirmed.bed', 'w')
+    insertion_evidence_output = open(working_dir + '/evidences/ins_confirmed.bed', 'w')
+    inversion_evidence_output = open(working_dir + '/evidences/inv_confirmed.bed', 'w')
+
+    for cluster in deletion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=deletion_evidence_output)
+    for cluster in insertion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=insertion_evidence_output)
+    for cluster in inversion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=inversion_evidence_output)
+
+    deletion_evidence_output.close()
+    insertion_evidence_output.close()
+    inversion_evidence_output.close()
 
     ###################################
     # Merge translocation breakpoints #
