@@ -16,7 +16,7 @@ def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, refere
     right_ref_start = right_tail.reference_start
     right_q_start = right_tail.query_alignment_start
 
-    read_snippet = str(full_read[parameters.tail_span - left_q_end : len(full_read) - right_q_start].upper())
+    read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - right_q_start].upper())
     ref_snippet = str(reference[contig].seq[right_ref_start:left_ref_end].upper().reverse_complement())
     sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
     
@@ -37,7 +37,7 @@ def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, referen
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[left_q_start:len(full_read) - parameters.tail_span + right_q_end].upper())
+    read_snippet = str(full_read[left_q_start:len(full_read) - parameters["tail_span"] + right_q_end].upper())
     ref_snippet = str(reference[contig].seq[left_ref_start:right_ref_end].upper())
     sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
 
@@ -80,7 +80,7 @@ def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters)
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[parameters.tail_span - left_q_end : len(full_read) - parameters.tail_span + right_q_end].upper())
+    read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - parameters["tail_span"] + right_q_end].upper())
     ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
     ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
@@ -124,7 +124,7 @@ def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters)
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[parameters.tail_span - left_q_end : len(full_read) - parameters.tail_span + right_q_end].upper())
+    read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - parameters["tail_span"] + right_q_end].upper())
     ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
     ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
@@ -145,7 +145,7 @@ def check_trans_candidate_1(left_tail, right_tail, left_contig, right_contig, fu
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
-    read_snippet = str(full_read[left_q_start:len(full_read) - parameters.tail_span + right_q_end].upper())
+    read_snippet = str(full_read[left_q_start:len(full_read) - parameters["tail_span"] + right_q_end].upper())
     ref_snippet_1 = str(reference[left_contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
     ref_snippet_2 = str(reference[right_contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
@@ -166,7 +166,7 @@ def check_trans_candidate_2(left_tail, right_tail, left_contig, right_contig, fu
     right_ref_start = right_tail.reference_start
     right_q_start = right_tail.query_alignment_start
     
-    read_snippet = str(full_read[parameters.tail_span - left_q_end:len(full_read) - right_q_start].upper())
+    read_snippet = str(full_read[parameters["tail_span"] - left_q_end:len(full_read) - right_q_start].upper())
     ref_snippet_1 = str(reference[left_contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
     ref_snippet_2 = str(reference[right_contig].seq[right_ref_start:right_ref_start + len(read_snippet)].upper().reverse_complement())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
@@ -185,9 +185,9 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
     left_read_name, left_prim, left_suppl, left_sec = left_iterator_object
     right_read_name, right_prim, right_suppl, right_sec = right_iterator_object
 
-    if len(left_prim) != 1 or left_prim[0].is_unmapped or left_prim[0].mapping_quality < parameters.min_mapq:
+    if len(left_prim) != 1 or left_prim[0].is_unmapped or left_prim[0].mapping_quality < parameters["min_mapq"]:
         return []
-    if len(right_prim) != 1 or right_prim[0].is_unmapped or right_prim[0].mapping_quality < parameters.min_mapq:
+    if len(right_prim) != 1 or right_prim[0].is_unmapped or right_prim[0].mapping_quality < parameters["min_mapq"]:
         return []
 
     left_ref_chr = left_bam.getrname(left_prim[0].reference_id)
@@ -209,11 +209,11 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
         if left_prim[0].is_reverse and right_prim[0].is_reverse:
             reference_dist = left_ref_start - right_ref_end
             if reference_dist > 0:
-                individual_dist = read_length - right_q_end - (parameters.tail_span - left_q_start)
+                individual_dist = read_length - right_q_end - (parameters["tail_span"] - left_q_start)
                 percent_shift = (individual_dist - reference_dist) / float(read_length)
-                if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
+                if percent_shift > parameters["tail_max_deviation"] or percent_shift < parameters["tail_min_deviation"]:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
-                    if size_estimate > -parameters.max_deletion_size:
+                    if size_estimate > -parameters["max_deletion_size"]:
                         #INDEL candidate, check with k-mer counting
                         return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:
@@ -225,11 +225,11 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
         elif not left_prim[0].is_reverse and not right_prim[0].is_reverse:
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
-                individual_dist = read_length - left_q_end - (parameters.tail_span - right_q_start)
+                individual_dist = read_length - left_q_end - (parameters["tail_span"] - right_q_start)
                 percent_shift = (individual_dist - reference_dist) / float(read_length)
-                if percent_shift > parameters.tail_max_deviation or percent_shift < parameters.tail_min_deviation:
+                if percent_shift > parameters["tail_max_deviation"] or percent_shift < parameters["tail_min_deviation"]:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
-                    if size_estimate > -parameters.max_deletion_size:
+                    if size_estimate > -parameters["max_deletion_size"]:
                         #INDEL candidate, check with k-mer counting
                         return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
                     else:
@@ -276,11 +276,11 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
 
     tails = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, end+10000):
-        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters.min_mapq and not left_tail.is_secondary and not left_tail.is_supplementary:
+        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails[left_tail.query_name].append(left_tail)
     for right_tail in right_bam.fetch(contig, start-10000, end+10000):
         if right_tail.query_name in tails:
-            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters.min_mapq and not right_tail.is_secondary and not right_tail.is_supplementary:
+            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails[right_tail.query_name].append(right_tail)
 
     evidences = []
@@ -320,11 +320,11 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
 
     tails = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, start+10000):
-        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters.min_mapq and not left_tail.is_secondary and not left_tail.is_supplementary:
+        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails[left_tail.query_name].append(left_tail)
     for right_tail in right_bam.fetch(contig, start-10000, start+10000):
         if right_tail.query_name in tails:
-            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters.min_mapq and not right_tail.is_secondary and not right_tail.is_supplementary:
+            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails[right_tail.query_name].append(right_tail)
 
     evidences = []
@@ -365,19 +365,19 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, reference, paramet
 
     tails1 = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start-10000, end):
-        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters.min_mapq and not left_tail.is_secondary and not left_tail.is_supplementary:
+        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails1[left_tail.query_name].append(left_tail)
     for right_tail in right_bam.fetch(contig, start-10000, end):
         if right_tail.query_name in tails1:
-            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters.min_mapq and not right_tail.is_secondary and not right_tail.is_supplementary:
+            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails1[right_tail.query_name].append(right_tail)
     tails2 = defaultdict(list)
     for left_tail in left_bam.fetch(contig, start, end + 10000):
-        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters.min_mapq and not left_tail.is_secondary and not left_tail.is_supplementary:
+        if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails2[left_tail.query_name].append(left_tail)
     for right_tail in right_bam.fetch(contig, start, end + 10000):
         if right_tail.query_name in tails2:
-            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters.min_mapq and not right_tail.is_secondary and not right_tail.is_supplementary:
+            if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails2[right_tail.query_name].append(right_tail)
 
     evidences = []

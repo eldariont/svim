@@ -83,17 +83,17 @@ def distance(point1, point2, parameters):
        Point 2 must have higher x and y than point 1 (with a tolerance)."""
     if point1[0] is None or point1[1] is None or point2[0] is None or point2[1] is None:
         return None
-    if point2[0] + parameters.path_tolerance >= point1[0] and point2[1] + parameters.path_tolerance >= point1[1]:
+    if point2[0] + parameters["path_tolerance"] >= point1[0] and point2[1] + parameters["path_tolerance"] >= point1[1]:
         # distance in x direction
         if point2[0] - point1[0] <= 0:
             dist = 0
         else:
-            dist = parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[0] - point1[0]) + parameters.path_convex_gap_cost * math.log(point2[0] - point1[0]) + parameters.path_root_gap_cost * math.sqrt(point2[0] - point1[0])
+            dist = parameters["path_constant_gap_cost"] + parameters["path_linear_gap_cost"] * (point2[0] - point1[0]) + parameters["path_convex_gap_cost"] * math.log(point2[0] - point1[0]) + parameters["path_root_gap_cost"] * math.sqrt(point2[0] - point1[0])
         # distance in y direction
         if point2[1] - point1[1] <= 0:
             dist += 0
         else:
-            dist += parameters.path_constant_gap_cost + parameters.path_linear_gap_cost * (point2[1] - point1[1]) + parameters.path_convex_gap_cost * math.log(point2[1] - point1[1]) + parameters.path_root_gap_cost * math.sqrt(point2[1] - point1[1])
+            dist += parameters["path_constant_gap_cost"] + parameters["path_linear_gap_cost"] * (point2[1] - point1[1]) + parameters["path_convex_gap_cost"] * math.log(point2[1] - point1[1]) + parameters["path_root_gap_cost"] * math.sqrt(point2[1] - point1[1])
         return dist
     else:
         return float("inf")
@@ -163,17 +163,17 @@ def find_best_path(segments, matrix_end, parameters, debug=False):
     for i1, s1 in enumerate(segments):
         for i2, s2 in enumerate(segments):
             if i1 != i2:
-                if s2['start'][0] + parameters.path_tolerance >= s1['end'][0] and s2['start'][1] + parameters.path_tolerance >= s1['end'][1]:
+                if s2['start'][0] + parameters["path_tolerance"] >= s1['end'][0] and s2['start'][1] + parameters["path_tolerance"] >= s1['end'][1]:
                     # normal
                     dist = distance(s1['end'], s2['start'], parameters)
                     graph.add_edge(i1, i2, weight=dist)
-                elif s2['start'][0] + parameters.path_tolerance >= s1['end'][0]:
+                elif s2['start'][0] + parameters["path_tolerance"] >= s1['end'][0]:
                     # overlap in column dimension
                     result = distance_with_column_overlap(s1, s2, parameters)
                     if not result is None:
                         dist = distance(result[0], result[1], parameters)
                         graph.add_edge(i1, i2, weight=dist)
-                elif s2['start'][1] + parameters.path_tolerance >= s1['end'][1]:
+                elif s2['start'][1] + parameters["path_tolerance"] >= s1['end'][1]:
                     # overlap in row dimension
                     result = distance_with_row_overlap(s1, s2, parameters)
                     if not result is None:
@@ -205,13 +205,13 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     start_time = time()
 
     # Determine size of counting matrix
-    rows = len(ref) / parameters.count_win_size
-    cols = len(read) / parameters.count_win_size
-    last_row_size = len(ref) % parameters.count_win_size
-    last_col_size = len(read) % parameters.count_win_size
-    if last_row_size > (parameters.count_win_size / 3):
+    rows = len(ref) / parameters["count_win_size"]
+    cols = len(read) / parameters["count_win_size"]
+    last_row_size = len(ref) % parameters["count_win_size"]
+    last_col_size = len(read) % parameters["count_win_size"]
+    if last_row_size > (parameters["count_win_size"] / 3):
         rows += 1
-    if last_col_size > (parameters.count_win_size / 3):
+    if last_col_size > (parameters["count_win_size"] / 3):
         cols += 1
 
     ########################
@@ -224,31 +224,31 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     ykmers = []
     for ybucket in xrange(cols):
         bucketkmers = set()
-        for i in xrange(parameters.count_win_size):
-            if (ybucket * parameters.count_win_size + i + parameters.count_k) <= len(read):
-                bucketkmers.add(read[(ybucket * parameters.count_win_size + i): (ybucket * parameters.count_win_size + i + parameters.count_k)])
+        for i in xrange(parameters["count_win_size"]):
+            if (ybucket * parameters["count_win_size"] + i + parameters["count_k"]) <= len(read):
+                bucketkmers.add(read[(ybucket * parameters["count_win_size"] + i): (ybucket * parameters["count_win_size"] + i + parameters["count_k"])])
         ykmers.append(bucketkmers)
 
     xkmers = []
     for xbucket in xrange(rows):
         bucketkmers = set()
-        for i in xrange(parameters.count_win_size):
-            if (xbucket * parameters.count_win_size + i + parameters.count_k) <= len(ref):
-                bucketkmers.add(ref[(xbucket * parameters.count_win_size + i): (xbucket * parameters.count_win_size + i + parameters.count_k)])
+        for i in xrange(parameters["count_win_size"]):
+            if (xbucket * parameters["count_win_size"] + i + parameters["count_k"]) <= len(ref):
+                bucketkmers.add(ref[(xbucket * parameters["count_win_size"] + i): (xbucket * parameters["count_win_size"] + i + parameters["count_k"])])
         xkmers.append(bucketkmers)
 
     for xbucket in xrange(rows):
         for ybucket in xrange(cols):
             counts[xbucket, ybucket] = len(xkmers[xbucket].intersection(ykmers[ybucket]))
 
-    if last_row_size > (parameters.count_win_size / 3):
-        for col in xrange(len(read) / parameters.count_win_size):
-            counts[rows - 1, col] = counts[rows - 1, col] * (parameters.count_win_size / last_row_size)
-    if last_col_size > (parameters.count_win_size / 3):
-        for row in xrange(len(ref) / parameters.count_win_size):
-            counts[row, cols - 1] = counts[row, cols - 1] * (parameters.count_win_size / last_col_size)
-    if last_row_size > (parameters.count_win_size / 3) and last_col_size > (parameters.count_win_size / 3):
-        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (parameters.count_win_size * parameters.count_win_size) / (last_row_size * last_col_size)
+    if last_row_size > (parameters["count_win_size"] / 3):
+        for col in xrange(len(read) / parameters["count_win_size"]):
+            counts[rows - 1, col] = counts[rows - 1, col] * (parameters["count_win_size"] / last_row_size)
+    if last_col_size > (parameters["count_win_size"] / 3):
+        for row in xrange(len(ref) / parameters["count_win_size"]):
+            counts[row, cols - 1] = counts[row, cols - 1] * (parameters["count_win_size"] / last_col_size)
+    if last_row_size > (parameters["count_win_size"] / 3) and last_col_size > (parameters["count_win_size"] / 3):
+        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (parameters["count_win_size"] * parameters["count_win_size"]) / (last_row_size * last_col_size)
 
     if times:
         print "The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size)
@@ -269,11 +269,11 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     ############################################
     # Compute boundaries of area where alignment path could possibly lay.
     if rows > cols:
-        pos_lim = int(parameters.count_band * cols)
-        neg_lim = - (rows - cols) - int(parameters.count_band * cols)
+        pos_lim = int(parameters["count_band"] * cols)
+        neg_lim = - (rows - cols) - int(parameters["count_band"] * cols)
     else:
-        pos_lim = int(parameters.count_band * rows) + (cols - rows)
-        neg_lim = -int(parameters.count_band * rows)
+        pos_lim = int(parameters["count_band"] * rows) + (cols - rows)
+        neg_lim = -int(parameters["count_band"] * rows)
 
     s4 = time()
     counts3 = np.zeros((rows, cols), dtype=int)
@@ -282,7 +282,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     for offset in xrange(neg_lim, pos_lim):
         # Find stretches
         values = np.diagonal(counts2, offset)
-        stretches = find_stretches(values, parameters.stretch_threshold, parameters.stretch_tolerance, parameters.stretch_min_length)
+        stretches = find_stretches(values, parameters["stretch_threshold"], parameters["stretch_tolerance"], parameters["stretch_min_length"])
 
         # Visualize stretches
         for start, end in stretches:
@@ -350,13 +350,13 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     ####################################
     sv_results = []
     for index in xrange(len(best_path) - 1):
-        if best_path[index + 1]['start'][0] + parameters.path_tolerance >= best_path[index]['end'][0] and best_path[index + 1]['start'][1] + parameters.path_tolerance >= best_path[index]['end'][1]:
+        if best_path[index + 1]['start'][0] + parameters["path_tolerance"] >= best_path[index]['end'][0] and best_path[index + 1]['start'][1] + parameters["path_tolerance"] >= best_path[index]['end'][1]:
             # normal
             point1, point2 = best_path[index]['end'], best_path[index + 1]['start']
-        elif best_path[index + 1]['start'][0] + parameters.path_tolerance >= best_path[index]['end'][0]:
+        elif best_path[index + 1]['start'][0] + parameters["path_tolerance"] >= best_path[index]['end'][0]:
             # overlap in column dimension
             point1, point2 = distance_with_column_overlap(best_path[index], best_path[index + 1], parameters)
-        elif best_path[index + 1]['start'][1] + parameters.path_tolerance >= best_path[index]['end'][1]:
+        elif best_path[index + 1]['start'][1] + parameters["path_tolerance"] >= best_path[index]['end'][1]:
             # overlap in row dimension
             point1, point2 = distance_with_row_overlap(best_path[index], best_path[index + 1], parameters)
 
@@ -367,36 +367,36 @@ def find_svs(ref, read, parameters, debug=False, times=False):
             # Find exact start of deletion
             ref_window_start = (point1[0], point1[0] + 2)
             read_window_start = (point1[1], point1[1] + 2)
-            matrix = nw_compute_matrix(ref[ref_window_start[0] * parameters.count_win_size: ref_window_start[1] * parameters.count_win_size],
-                                       read[read_window_start[0] * parameters.count_win_size: read_window_start[1] * parameters.count_win_size], parameters.align_costs)
-            start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * parameters.count_win_size,
-                                                    (read_window_start[1] - read_window_start[0]) * parameters.count_win_size, backwards=False)
-            # alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * parameters.count_win_size : ref_window_start[1] * parameters.count_win_size], read[read_window_start[0] * parameters.count_win_size : read_window_start[1] * parameters.count_win_size], matrix, parameters.align_costs)
+            matrix = nw_compute_matrix(ref[ref_window_start[0] * parameters["count_win_size"]: ref_window_start[1] * parameters["count_win_size"]],
+                                       read[read_window_start[0] * parameters["count_win_size"]: read_window_start[1] * parameters["count_win_size"]], parameters["align_costs"])
+            start_i, start_j = get_end_of_alignment(matrix, (ref_window_start[1] - ref_window_start[0]) * parameters["count_win_size"],
+                                                    (read_window_start[1] - read_window_start[0]) * parameters["count_win_size"], backwards=False)
+            # alin_a, alin_b = nw_get_alignment(ref[ref_window_start[0] * parameters["count_win_size"] : ref_window_start[1] * parameters["count_win_size"]], read[read_window_start[0] * parameters["count_win_size"] : read_window_start[1] * parameters["count_win_size"]], matrix, parameters["align_costs"])
             # print "End of segment:"
             # print_alignment(alin_a, alin_b)
 
             # Find exact end of deletion
             ref_window_end = (max(point2[0] - 1, 0), point2[0] + 1)
             read_window_end = (max(point2[1] - 1, 0), point2[1] + 1)
-            matrix = nw_compute_matrix(ref[ref_window_end[0] * parameters.count_win_size: ref_window_end[1] * parameters.count_win_size],
-                                       read[read_window_end[0] * parameters.count_win_size: read_window_end[1] * parameters.count_win_size], parameters.align_costs, backwards=True)
-            end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * parameters.count_win_size,
-                                                (read_window_end[1] - read_window_end[0]) * parameters.count_win_size, backwards=True)
-            # alin_a, alin_b = nw_get_alignment(ref[ref_window_end[0] * parameters.count_win_size : ref_window_end[1] * parameters.count_win_size], read[read_window_end[0] * parameters.count_win_size : read_window_end[1] * parameters.count_win_size], matrix, parameters.align_costs, backwards = True)
+            matrix = nw_compute_matrix(ref[ref_window_end[0] * parameters["count_win_size"]: ref_window_end[1] * parameters["count_win_size"]],
+                                       read[read_window_end[0] * parameters["count_win_size"]: read_window_end[1] * parameters["count_win_size"]], parameters["align_costs"], backwards=True)
+            end_i, end_j = get_end_of_alignment(matrix, (ref_window_end[1] - ref_window_end[0]) * parameters["count_win_size"],
+                                                (read_window_end[1] - read_window_end[0]) * parameters["count_win_size"], backwards=True)
+            # alin_a, alin_b = nw_get_alignment(ref[ref_window_end[0] * parameters["count_win_size"] : ref_window_end[1] * parameters["count_win_size"]], read[read_window_end[0] * parameters["count_win_size"] : read_window_end[1] * parameters["count_win_size"]], matrix, parameters["align_costs"], backwards = True)
             # print "Start of segment:"
             # print_alignment(alin_a, alin_b, backwards=True)
 
             if insertion_gap > 1:
                 # print "Insertion found:", best_path[index]['end'][1], best_path[index+1]['start'][1]
                 # insertion_length = best_path[index+1]['start'][1] - best_path[index]['end'][1]
-                insertion_length = read_window_end[0] * parameters.count_win_size + end_j - read_window_start[0] * parameters.count_win_size + start_j
+                insertion_length = read_window_end[0] * parameters["count_win_size"] + end_j - read_window_start[0] * parameters["count_win_size"] + start_j
                 # sv_results.append( ('ins', best_path[index]['end'][0], best_path[index]['end'][0] + insertion_length) )
                 sv_results.append(
-                    ('ins', ref_window_start[0] * parameters.count_win_size + start_i, ref_window_start[0] * parameters.count_win_size + start_i + insertion_length))
+                    ('ins', ref_window_start[0] * parameters["count_win_size"] + start_i, ref_window_start[0] * parameters["count_win_size"] + start_i + insertion_length))
             if deletion_gap > 1:
                 # print "Deletion found:", best_path[index]['end'][0], best_path[index+1]['start'][0]
                 # sv_results.append( ('del', best_path[index]['end'][0], best_path[index+1]['start'][0]) )
-                sv_results.append(('del', ref_window_start[0] * parameters.count_win_size + start_i, ref_window_end[0] * parameters.count_win_size + end_i))
+                sv_results.append(('del', ref_window_start[0] * parameters["count_win_size"] + start_i, ref_window_end[0] * parameters["count_win_size"] + end_i))
 
     total_time = time() - start_time
     if times:

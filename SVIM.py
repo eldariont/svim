@@ -13,11 +13,11 @@ from time import strftime, localtime
 import pickle
 import gzip
 import logging
+import ConfigParser
 
 import pysam
 from Bio import SeqIO
 
-from SVIM_parameters import SVIMParameters
 from SVIM_fullread import analyze_full_read_indel
 from SVIM_splitread import analyze_full_read_segments
 from SVIM_readtails import analyze_pair_of_read_tails
@@ -26,57 +26,48 @@ from SVIM_postprocessing import post_processing
 
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description="""SVIM is a tool for accurate detection of structural variants (SVs).""")
+                                     description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
+It combines read-tail mapping, full alignment analysis, and split-read mapping to 
+distinguish five classes of structural variants. SVIM discriminates between similar 
+SV classes such as interspersed duplications and cut&paste insertions and is unique 
+in its capability of extracting both the genomic origin and destination of insertions 
+and duplications.
+
+SVIM performs five steps to detect SVs: 
+1) Alignment, 
+2) SV detection,
+3) Clustering, 
+4) Read tail confirmation, 
+5) Merging""")
     subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
-    parser_load = subparsers.add_parser('load', help='Load existing .obj file from working directory')
-    parser_load.add_argument('working_dir', type=str, help='working directory')
-    parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
-    parser_load.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
-    parser_load.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
+    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads. Perform steps 1-5.')
+    parser_fasta.add_argument('working_dir', type=str, help='working directory')
+    parser_fasta.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
+    parser_fasta.add_argument('reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_fasta.add_argument('genome', type=str, help='Reference genome file (FASTA)')
+    parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
+    parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_fasta.add_argument('--skip_confirm', action='store_true', help='disable confirmation with read tails')
+    parser_fasta.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
 
-    parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
+    parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-5.')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
+    parser_bam.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (must be query-sorted)')
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_bam.add_argument('--skip_confirm', action='store_true', help='disable confirmation with read tails')
+    parser_bam.add_argument('--reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_bam.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
 
-    parser_bam.add_argument('--min_mapq', type=int, default=25, help='minimum mapping quality')
-    parser_bam.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
-    parser_bam.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
-
-    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads')
-    parser_fasta.add_argument('working_dir', type=str, help='working directory')
-    parser_fasta.add_argument('reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
-    parser_fasta.add_argument('genome', type=str, default="/scratch/cluster/heller_d/genomes/hg19/hg19.fa", help='Reference genome file (FASTA)')
-
-    parser_fasta.add_argument('--skip_kmer', action='store_true', help='disable kmer counting')
-    parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
-    parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
-    parser_fasta.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
-
-    parser_fasta.add_argument('--cores', type=int, default=4, help='number of CPU cores to utilize for alignment')
-    parser_fasta.add_argument('--tail_span', type=int, default=1000, help='length of read tails')
-    parser_fasta.add_argument('--min_mapq', type=int, default=25, help='minimum mapping quality')
-    parser_fasta.add_argument('--tail_min_deviation', type=float, default=-0.1, help='minimum deviation')
-    parser_fasta.add_argument('--tail_max_deviation', type=float, default=0.2, help='maximum deviation')
-    parser_fasta.add_argument('--count_win_size', type=int, default=50, help='window size for k-mer counting')
-    parser_fasta.add_argument('--count_k', type=int, default=7, help='k for k-mer counting')
-    parser_fasta.add_argument('--count_band', type=float, default=0.5, help='band width')
-    parser_fasta.add_argument('--stretch_threshold', type=int, default=7, help='z-score threshold')
-    parser_fasta.add_argument('--stretch_tolerance', type=int, default=2, help='tolerance for stretch finding')
-    parser_fasta.add_argument('--stretch_min_length', type=int, default=3, help='minimum stretch length')
-    parser_fasta.add_argument('--path_constant_gap_cost', type=float, default=0, help='constant gap cost for path finding')
-    parser_fasta.add_argument('--path_linear_gap_cost', type=float, default=0, help='linear gap cost for path finding')
-    parser_fasta.add_argument('--path_convex_gap_cost', type=float, default=3, help='convex gap cost for path finding')
-    parser_fasta.add_argument('--path_root_gap_cost', type=float, default=0, help='root gap cost for path finding')
-    parser_fasta.add_argument('--path_tolerance', type=int, default=2, help='tolerance for overlapping segments')
-    parser_fasta.add_argument('--align_costs_match', type=int, default=3, help='match cost for alignment')
-    parser_fasta.add_argument('--align_costs_mismatch', type=int, default=-12, help='mismatch cost for alignment')
-    parser_fasta.add_argument('--align_costs_gap', type=int, default=-12, help='gap cost for alignment')
-    parser_fasta.add_argument('--partition_max_distance', type=int, default=5000, help='maximum distance in bp between SVs (mean) in a partition')
-    parser_fasta.add_argument('--cluster_max_distance', type=float, default=1.0, help='maximum Gowda-Diday distance between SVs in a cluster')
+    parser_load = subparsers.add_parser('load', help='Load existing .obj file from working directory. Perform steps 3-5.')
+    parser_load.add_argument('working_dir', type=str, help='working directory')
+    parser_load.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
+    parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
+    parser_load.add_argument('--reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_load.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
     return parser.parse_args()
 
 
@@ -108,6 +99,71 @@ def guess_file_type(reads_path):
     else:
         logging.error("Unknown file ending of file {0}. Exiting.".format(reads_path))
         return "unknown"
+
+
+def create_full_file(working_dir, reads_path, reads_type):
+    """Create FASTA file with full reads if it does not exist."""
+    if not os.path.exists(working_dir):
+        logging.error("Given working directory does not exist")
+        sys.exit()
+
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+
+    if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+        full_reads_path = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
+        if not os.path.exists(full_reads_path):
+            full_file = open(full_reads_path, 'w')
+            write_full = True
+        else:
+            write_full = False
+            logging.warning("FASTA file for full reads exists. Skip")
+    else:
+        full_reads_path = reads_path
+        write_full = False
+
+    if write_full:
+        if reads_type == "fasta" or reads_type == "fastq":
+            reads_file = open(reads_path, "r")
+        elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+            reads_file = gzip.open(reads_path, "rb")
+
+        if reads_type == "fasta" or reads_type == "fasta_gzip":
+            sequence = ""
+            for line in reads_file:
+                if line.startswith('>'):
+                    if sequence != "":
+                        if write_full:
+                            print(">" + read_name, file=full_file)
+                            print(sequence, file=full_file)
+                    read_name = line.strip()[1:]
+                    sequence = ""
+                else:
+                    sequence += line.strip()
+            if sequence != "":
+                if write_full:
+                    print(">" + read_name, file=full_file)
+                    print(sequence, file=full_file)
+            reads_file.close()
+        elif reads_type == "fastq" or reads_type == "fastq_gzip":
+            sequence_line_is_next = False
+            for line in reads_file:
+                if line.startswith('@'):
+                    read_name = line.strip()[1:]
+                    sequence_line_is_next = True
+                elif sequence_line_is_next:
+                    sequence_line_is_next = False
+                    sequence = line.strip()
+                    if write_full:
+                        print(">" + read_name, file=full_file)
+                        print(sequence, file=full_file)
+            reads_file.close()
+
+    if write_full:
+        full_file.close()
+
+    logging.info("Full read files written")
+    return full_reads_path
+
 
 def create_tail_files(working_dir, reads_path, reads_type, span):
     """Create FASTA files with read tails and full reads if they do not exist."""
@@ -218,14 +274,32 @@ def create_tail_files(working_dir, reads_path, reads_type, span):
     return full_reads_path
 
 
-def run_alignments(working_dir, genome, reads_path, cores):
-    """Align full reads and read tails with NGM-LR and BWA MEM, respectively."""
+def run_full_alignment(working_dir, genome, reads_path, cores):
+    """Align full reads with NGM-LR."""
+    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
+    full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
+
+    if not os.path.exists(full_aln):
+        ngmlr = Popen(['ngmlr',
+                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
+        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
+        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'sort', '-n', '-@', str(cores), '-o', full_aln],
+                     stdin=view.stdout)
+        sort.wait()
+        logging.info("Alignment finished")
+    else:
+        logging.warning("Alignment for full sequences exists. Skip")
+
+
+def run_tail_alignments(working_dir, genome, reads_path, cores):
+    """Align read tails with NGM-LR."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
     left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
     right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
-    full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(left_aln):
         bwa = Popen(['ngmlr',
@@ -249,20 +323,7 @@ def run_alignments(working_dir, genome, reads_path, cores):
     else:
         logging.warning("Alignment for right sequences exists. Skip")
 
-    # Align full reads with NGM-LR
-    if not os.path.exists(full_aln):
-        ngmlr = Popen(['ngmlr',
-                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-n', '-@', str(cores), '-o', full_aln],
-                     stdin=view.stdout)
-        sort.wait()
-    else:
-        logging.warning("Alignment for full sequences exists. Skip")
-
-    logging.info("Alignment finished")
+    logging.info("Tail alignments finished")
 
 
 def natural_representation(qname): 
@@ -320,9 +381,9 @@ def analyze_alignment(bam_path, parameters):
             read_nr += 1
             if read_nr % 100 == 0:
                 logging.info("Processed read {0}".format(read_nr))
-            if not parameters.skip_indel:
+            if not parameters["skip_indel"]:
                 sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-            if not parameters.skip_segment:
+            if not parameters["skip_segment"]:
                 sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
@@ -343,9 +404,9 @@ def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, paramet
         try:
             full_iterator_object = full_it.next()
 
-            if not parameters.skip_indel:
+            if not parameters["skip_indel"]:
                 sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-            if not parameters.skip_segment:
+            if not parameters["skip_segment"]:
                 sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
 
             read_nr += 1
@@ -399,11 +460,64 @@ def read_file_list(path):
     file_list.close()
 
 
+def read_parameters(options):
+    config = ConfigParser.RawConfigParser()
+    config.read(options.config)
+
+    parameters = dict()
+    parameters["cores"] = config.getint("alignment", "cores")
+
+    parameters["min_mapq"] = config.getint("detection", "min_mapq")
+    parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
+
+    parameters["min_length"] = config.getint("split read", "min_length")
+    parameters["max_segment_gap_tolerance"] = config.getint("split read", "max_segment_gap_tolerance")
+    parameters["max_deletion_size"] = config.getint("split read", "max_deletion_size")
+    parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")
+
+    parameters["partition_max_distance"] = config.getint("clustering", "partition_max_distance")
+    parameters["cluster_max_distance"] = config.getfloat("clustering", "cluster_max_distance")
+
+    parameters["del_ins_dup_max_distance"] = config.getfloat("merging", "del_ins_dup_max_distance")
+    parameters["trans_destination_partition_max_distance"] = config.getint("merging", "trans_destination_partition_max_distance")
+    parameters["trans_partition_max_distance"] = config.getint("merging", "trans_partition_max_distance")
+    parameters["trans_sv_max_distance"] = config.getint("merging", "trans_sv_max_distance")
+
+    parameters["tail_span"] = config.getint("confirmation", "tail_span")
+    parameters["tail_min_deviation"] = config.getfloat("confirmation", "tail_min_deviation")
+    parameters["tail_max_deviation"] = config.getfloat("confirmation", "tail_max_deviation")
+    parameters["count_win_size"] = config.getint("confirmation", "count_win_size")
+    parameters["count_k"] = config.getint("confirmation", "count_k")
+    parameters["count_band"] = config.getfloat("confirmation", "count_band")
+    parameters["stretch_threshold"] = config.getint("confirmation", "stretch_threshold")
+    parameters["stretch_tolerance"] = config.getint("confirmation", "stretch_tolerance")
+    parameters["stretch_min_length"] = config.getint("confirmation", "stretch_min_length")
+    parameters["path_constant_gap_cost"] = config.getint("confirmation", "path_constant_gap_cost")
+    parameters["path_linear_gap_cost"] = config.getint("confirmation", "path_linear_gap_cost")
+    parameters["path_convex_gap_cost"] = config.getint("confirmation", "path_convex_gap_cost")
+    parameters["path_root_gap_cost"] = config.getint("confirmation", "path_root_gap_cost")
+    parameters["path_tolerance"] = config.getint("confirmation", "path_tolerance")
+    parameters["align_costs"] = (config.getint("confirmation", "align_costs_match"), config.getint("confirmation", "align_costs_mismatch"), config.getint("confirmation", "align_costs_gap"))
+
+    try:
+        parameters["skip_indel"] =  options.skip_indel
+    except AttributeError:
+        parameters["skip_indel"] =  False
+    try:
+        parameters["skip_segment"] =  options.skip_segment
+    except AttributeError:
+        parameters["skip_segment"] =  False
+    try:
+        parameters["skip_confirm"] =  options.skip_confirm
+    except AttributeError:
+        parameters["skip_confirm"] =  False
+
+    return parameters
+
 def main():
-    # Fetch command-line options and set parameters accordingly
+    # Fetch command-line options and configuration file values and set parameters accordingly
     options = parse_arguments()
-    parameters = SVIMParameters()
-    parameters.set_with_options(options)
+    parameters = read_parameters(options)
 
     # Set up logging
     logFormatter = logging.Formatter("%(asctime)s [%(levelname)-7.7s]  %(message)s")
@@ -423,17 +537,7 @@ def main():
     logging.info("WORKING DIR: {0}".format(os.path.abspath(options.working_dir)))
 
     # Search for SV evidences
-    if options.sub == 'load':
-        logging.info("MODE: load")
-        if options.obj_file:
-            logging.info("INPUT: {0}".format(os.path.abspath(options.obj_file.name)))
-            evidences_file = options.obj_file
-        else:
-            logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
-            evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
-        sv_evidences = pickle.load(evidences_file)
-        evidences_file.close()
-    elif options.sub == 'reads':
+    if options.sub == 'reads':
         logging.info("MODE: reads")
         logging.info("INPUT: {0}".format(os.path.abspath(options.reads_file)))
         logging.info("GENOME: {0}".format(os.path.abspath(options.genome)))
@@ -445,8 +549,8 @@ def main():
             sv_evidences = []
             for file_path in read_file_list(options.reads_file):
                 reads_type = guess_file_type(file_path)
-                full_reads_path = create_tail_files(options.working_dir, file_path, reads_type, parameters.tail_span)
-                run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
+                full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
+                run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
                 if options.read_name != "all":
                     analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
                     continue
@@ -460,8 +564,8 @@ def main():
             evidences_file.close()
         else:
             # Single read file
-            full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters.tail_span)
-            run_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
+            full_reads_path = create_full_file(options.working_dir, options.reads_file, reads_type)
+            run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
             if options.read_name != "all":
                 analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
                 return
@@ -480,13 +584,46 @@ def main():
         logging.info("Storing collected evidences into sv_evidences.obj..")
         pickle.dump(sv_evidences, evidences_file)
         evidences_file.close()
+    elif options.sub == 'load':
+        logging.info("MODE: load")
+        if options.obj_file:
+            logging.info("INPUT: {0}".format(os.path.abspath(options.obj_file.name)))
+            evidences_file = options.obj_file
+        else:
+            logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
+            evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        sv_evidences = pickle.load(evidences_file)
+        evidences_file.close()
 
     # Post-process SV evidences
     logging.info("Starting post-processing..")
-    try:
-        post_processing(sv_evidences, options.working_dir, options.genome, full_reads_path, parameters)
-    except AttributeError:
-        post_processing(sv_evidences, options.working_dir, "unknown", full_reads_path, parameters)
+    if options.reads_file:
+        if options.genome:
+            try:
+                if options.skip_confirm:
+                    parameters["skip_confirm"] = True
+                    logging.info("Skipping confirmation with read tails")
+                    post_processing(sv_evidences, options.working_dir, options.genome, full_reads_path, parameters)
+                else:
+                    reads_type = guess_file_type(options.reads_file)
+                    full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters["tail_span"])
+                    run_tail_alignments(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+                    parameters["skip_confirm"] = False
+                    post_processing(sv_evidences, options.working_dir, options.genome, full_reads_path, parameters)
+            except AttributeError:
+                reads_type = guess_file_type(options.reads_file)
+                full_reads_path = create_tail_files(options.working_dir, options.reads_file, reads_type, parameters["tail_span"])
+                run_tail_alignments(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+                parameters["skip_confirm"] = False
+                post_processing(sv_evidences, options.working_dir, options.genome, full_reads_path, parameters)
+        else:
+            parameters["skip_confirm"] = True
+            logging.info("Skipping confirmation with read tails because genome is missing.")
+            post_processing(sv_evidences, options.working_dir, options.reads_file, None, parameters)
+    else:
+        parameters["skip_confirm"] = True
+        logging.info("Skipping confirmation with read tails because reads are missing.")
+        post_processing(sv_evidences, options.working_dir, None, options.genome, parameters)
 
 if __name__ == "__main__":
     sys.exit(main())

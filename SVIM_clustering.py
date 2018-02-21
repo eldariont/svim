@@ -112,8 +112,8 @@ def consolidate_clusters_bilocal(clusters):
 
 
 def partition_and_cluster_candidates(candidates, parameters):
-    partitions = form_partitions(candidates, parameters.partition_max_distance)
-    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
+    partitions = form_partitions(candidates, parameters["partition_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
 
     final_candidates = []
@@ -139,14 +139,14 @@ def partition_and_cluster_candidates(candidates, parameters):
 
 
 def partition_and_cluster_unilocal(evidences, parameters):
-    partitions = form_partitions(evidences, parameters.partition_max_distance)
-    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
+    partitions = form_partitions(evidences, parameters["partition_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(evidences, parameters):
-    partitions = form_partitions(evidences, parameters.partition_max_distance)
-    clusters = clusters_from_partitions(partitions, parameters.cluster_max_distance)
+    partitions = form_partitions(evidences, parameters["partition_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return consolidate_clusters_bilocal(clusters)

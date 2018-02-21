@@ -47,14 +47,14 @@ def analyze_full_read_indel(full_iterator_object, full_bam, parameters):
 
     sv_evidences = []
 
-    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters.min_mapq:
+    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters["min_mapq"]:
         return sv_evidences
 
     # Search indels in primary alignment
     sv_evidences.extend(analyze_alignment_indel(full_prim[0], full_bam, full_read_name))
 
     # Search indels in good supplementary alignments
-    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters.min_mapq]
+    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters["min_mapq"]]
     for alignment in good_suppl_alns:
         sv_evidences.extend(analyze_alignment_indel(alignment, full_bam, full_read_name))    
 
