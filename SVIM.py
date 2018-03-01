@@ -20,7 +20,6 @@ from Bio import SeqIO
 
 from SVIM_fullread import analyze_full_read_indel
 from SVIM_splitread import analyze_full_read_segments
-from SVIM_readtails import analyze_pair_of_read_tails
 from SVIM_postprocessing import post_processing
 
 
@@ -50,7 +49,6 @@ SVIM performs five steps to detect SVs:
     parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
     parser_fasta.add_argument('--skip_confirm', action='store_true', help='disable confirmation with read tails')
-    parser_fasta.add_argument('--read_name', type=str, default="all", help='read name filter (default: all)')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-5.')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -421,39 +419,6 @@ def analyze_reads(working_dir, genome, reads_path, bam_path, reads_type, paramet
     return sv_evidences
 
 
-def analyze_specific_read(working_dir, genome, reads_path, reads_type, parameters, read_name):
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_aln = "{0}/{1}_left_aln.querysorted.bam".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.querysorted.bam".format(working_dir, reads_file_prefix)
-    left_bam = pysam.AlignmentFile(left_aln)
-    right_bam = pysam.AlignmentFile(right_aln)
-    left_it = bam_iterator(left_bam)
-    right_it = bam_iterator(right_bam)
-
-    if reads_type == "fasta" or reads_type == "fasta_gzip":
-        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fasta")
-    elif reads_type == "fastq" or reads_type == "fastq_gzip":
-        reads = SeqIO.index_db(reads_path + ".idx", reads_path, "fastq")
-    reference = SeqIO.index_db(genome + ".idx", genome, "fasta")
-    logging.info("Indexing reads and reference finished")
-
-    left_iterator_object = left_it.next()
-    while left_iterator_object[0] != read_name:
-        try:
-            left_iterator_object = left_it.next()
-        except StopIteration:
-            return
-    right_iterator_object = right_it.next()
-    while right_iterator_object[0] != read_name:
-        try:
-            right_iterator_object = right_it.next()
-        except StopIteration:
-            return
-
-    analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left_bam, right_bam, reads, reference, parameters)
-
-
-
 def read_file_list(path):
     file_list = open(path, "r")
     for line in file_list:
@@ -556,10 +521,6 @@ def main():
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
                 run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
-                if options.read_name != "all":
-                    analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
-                    continue
-
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 sv_evidences.extend(analyze_reads(options.working_dir, options.genome, full_reads_path, full_aln, reads_type, parameters))
@@ -571,9 +532,6 @@ def main():
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads_file, reads_type)
             run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
-            if options.read_name != "all":
-                analyze_specific_read(options.working_dir, options.genome, full_reads_path, reads_type, parameters, options.read_name)
-                return
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             sv_evidences = analyze_reads(options.working_dir, options.genome, full_reads_path, full_aln, reads_type, parameters)
