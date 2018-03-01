@@ -403,6 +403,8 @@ def find_svs(ref, read, parameters, debug=False, times=False):
         print "Total time: {0}s".format(total_time)
     if debug:
         return sv_results, counts, counts2, counts3
+    if parameters["debug_confirm"]:
+        plt.imshow(counts)
 
     return sv_results
 

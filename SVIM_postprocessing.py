@@ -12,6 +12,10 @@ import numpy as np
 from collections import defaultdict
 from math import pow, sqrt
 from Bio import SeqIO
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, partition_and_cluster_candidates, form_partitions
 from SVEvidence import EvidenceTranslocation
@@ -273,8 +277,15 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
         reference =SeqIO.index_db(genome + ".idx", genome, "fasta")
         logging.info("Indexing reads and reference finished")
 
+        if parameters["debug_confirm"]:
+            del_pdf = PdfPages('dotplots_deletions.pdf')
+            ins_pdf = PdfPages('dotplots_insertions.pdf')
+
         for del_cluster in deletion_evidence_clusters:
-            if del_cluster.score < del_confirmation_threshold:
+            if del_cluster.score <= del_confirmation_threshold:
+                if parameters["debug_confirm"]:
+                    fig = plt.figure()
+                    fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
                 successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, reference, parameters)
                 if total_confirmations > 0:
                     confirmation_rate = successful_confirmations / float(total_confirmations)
@@ -282,9 +293,17 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
                         del_cluster.score += int(confirmation_rate * 20)
                     elif confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
                         del_cluster.score = 0
+                if parameters["debug_confirm"]:
+                    del_pdf.savefig(fig)
+                    plt.close(fig)
+        if parameters["debug_confirm"]:
+            del_pdf.close()
 
         for ins_cluster in insertion_evidence_clusters:
-            if ins_cluster.score < ins_confirmation_threshold:
+            if ins_cluster.score <= ins_confirmation_threshold:
+                if parameters["debug_confirm"]:
+                    fig = plt.figure()
+                    fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
                 successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, reference, parameters)
                 if total_confirmations > 0:
                     confirmation_rate = successful_confirmations / float(total_confirmations)
@@ -292,6 +311,11 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
                         ins_cluster.score += int(confirmation_rate * 20)
                     elif confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
                         ins_cluster.score = 0
+                if parameters["debug_confirm"]:
+                    ins_pdf.savefig(fig)
+                    plt.close(fig)
+        if parameters["debug_confirm"]:
+            ins_pdf.close()
 
     inversion_candidates = []
     for inv_cluster in inversion_evidence_clusters:
@@ -305,7 +329,7 @@ def post_processing(sv_evidences, working_dir, genome, reads_path, parameters):
             if direction == "all": direction_counts[4] += 1
         contig, start, end = inv_cluster.get_source()
 
-        if not parameters["skip_confirm"] and inv_cluster.score < inv_confirmation_threshold:
+        if not parameters["skip_confirm"] and inv_cluster.score <= inv_confirmation_threshold:
             successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, reference, parameters)
             score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
         else:

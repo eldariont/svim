@@ -68,6 +68,7 @@ SVIM performs five steps to detect SVs:
     parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
     parser_load.add_argument('--reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_load.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
+    parser_load.add_argument('--debug_confirm', action='store_true', help='print dot plots when confirming SV evidence clusters')
     return parser.parse_args()
 
 
@@ -511,6 +512,10 @@ def read_parameters(options):
         parameters["skip_confirm"] =  options.skip_confirm
     except AttributeError:
         parameters["skip_confirm"] =  False
+    try:
+        parameters["debug_confirm"] =  options.debug_confirm
+    except AttributeError:
+        parameters["debug_confirm"] =  False
 
     return parameters
 
