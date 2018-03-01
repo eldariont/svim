@@ -314,9 +314,11 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                     ref_pos = [(left_ref_end - end) / parameters["count_win_size"], (left_ref_end - start) / parameters["count_win_size"]]
                     plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                     current_parameters = parameters
-                elif num_spanning_reads == 5:
+                else:
                     current_parameters = parameters.copy()
                     current_parameters["debug_confirm"] = False
+            else:
+                current_parameters = parameters
             evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
         elif not left_tail.is_reverse and not right_tail.is_reverse and left_ref_end < start and right_ref_start > end:
             num_spanning_reads += 1
@@ -330,9 +332,11 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                     ref_pos = [(start - left_ref_start) / parameters["count_win_size"], (end - left_ref_start) / parameters["count_win_size"]]
                     plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                     current_parameters = parameters
-                elif num_spanning_reads == 5:
+                else:
                     current_parameters = parameters.copy()
                     current_parameters["debug_confirm"] = False
+            else:
+                current_parameters = parameters
             evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
 
     deletion_confirmations = [ev for ev in evidences if ev.type == "del" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
@@ -384,9 +388,11 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                     ref_pos = [(left_ref_end - start) / parameters["count_win_size"], (left_ref_end - start) / parameters["count_win_size"]]
                     plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                     current_parameters = parameters
-                elif num_spanning_reads == 5:
+                else:
                     current_parameters = parameters.copy()
                     current_parameters["debug_confirm"] = False
+            else:
+                current_parameters = parameters
             evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
         elif not left_tail.is_reverse and not right_tail.is_reverse and left_ref_end < start and right_ref_start > start:
             num_spanning_reads += 1
@@ -400,9 +406,11 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                     ref_pos = [(start - left_ref_start) / parameters["count_win_size"], (start - left_ref_start) / parameters["count_win_size"]]
                     plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                     current_parameters = parameters
-                elif num_spanning_reads == 5:
+                else:
                     current_parameters = parameters.copy()
                     current_parameters["debug_confirm"] = False
+            else:
+                current_parameters = parameters
             evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
 
     insertion_confirmations = [ev for ev in evidences if ev.type == "ins" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
