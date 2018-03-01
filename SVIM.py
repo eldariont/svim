@@ -44,9 +44,9 @@ SVIM performs five steps to detect SVs:
 
     parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads. Perform steps 1-5.')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
-    parser_fasta.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_fasta.add_argument('reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_fasta.add_argument('genome', type=str, help='Reference genome file (FASTA)')
+    parser_fasta.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
     parser_fasta.add_argument('--skip_confirm', action='store_true', help='disable confirmation with read tails')
@@ -54,8 +54,8 @@ SVIM performs five steps to detect SVs:
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-5.')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
-    parser_bam.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (must be query-sorted)')
+    parser_bam.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
     parser_bam.add_argument('--skip_confirm', action='store_true', help='disable confirmation with read tails')
@@ -64,7 +64,7 @@ SVIM performs five steps to detect SVs:
 
     parser_load = subparsers.add_parser('load', help='Load existing .obj file from working directory. Perform steps 3-5.')
     parser_load.add_argument('working_dir', type=str, help='working directory')
-    parser_load.add_argument('config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
+    parser_load.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_load.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
     parser_load.add_argument('--reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_load.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
@@ -307,7 +307,7 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-n', '-o', left_aln], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-o', left_aln], stdin=view.stdout)
         sort.wait()
     else:
         logging.warning("Alignment for left sequences exists. Skip")
@@ -318,7 +318,7 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
         view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
         sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-n', '-o', right_aln], stdin=view.stdout)
+                      'sort', '-@', str(cores), '-o', right_aln], stdin=view.stdout)
         sort.wait()
     else:
         logging.warning("Alignment for right sequences exists. Skip")
