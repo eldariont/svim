@@ -409,28 +409,43 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     return sv_results
 
 
-def main():
+def main_one_sample():
     options = parse_arguments()
     parameters = SVIMParameters()
 
-    # Read fasta file
-    sequences = read_fasta(options.fasta)
+    options.fasta.readline()
+    read = options.fasta.readline().strip()
+    options.fasta.readline()
+    ref = options.fasta.readline().strip()
 
-    for i, d in enumerate(xrange(16, 24, 1)):
-        print "Read", d
-        for key in sequences.keys():
-            if key.startswith("ref" + str(d)):
-                ref = sequences[key]
-            if key.startswith("read" + str(d)):
-                read = sequences[key]
-        sv_results, counts, zscores, stretches = find_svs(ref, read, parameters, debug=True)
-        plot_array(counts, 4, 2, i + 1, 1)
-        plot_array(zscores, 4, 2, i + 1, 2)
-        plot_array(stretches, 4, 2, i + 1, 3)
-        print sv_results
-        print("")
+    sv_results, counts, zscores, stretches = find_svs(ref, read, parameters, debug=True, times =True)
+    plot_array(counts, 1, 1, 1, 1)
+    plot_array(zscores, 1, 1, 1, 2)
+    plot_array(stretches, 1, 1, 1, 3)
+    print sv_results
+    print("")
+    plt.show()
+
+
+def main_multiple_samples():
+    options = parse_arguments()
+    parameters = SVIMParameters()
+
+    for i in xrange(0, 4):
+        for j in xrange(0, 5):
+            options.fasta.readline()
+            read = options.fasta.readline().strip()
+            options.fasta.readline()
+            ref = options.fasta.readline().strip()
+
+            sv_results, counts, zscores, stretches = find_svs(ref, read, parameters, debug=True, times =True)
+            #plot_array(counts, 2, 2, i + 1, 1)
+            plot_array(zscores, 2, 2, i + 1, j)
+            #plot_array(stretches, 2, 2, i + 1, 3)
+            print sv_results
+            print("")
     plt.show()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_one_sample())
