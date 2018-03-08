@@ -50,6 +50,12 @@ arguments.""")
     parser.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
     parser.add_argument('--reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
+    parser.add_argument('--confirm_del_min', type=int, default=0, help='Confirm deletion evidence clusters with this score or larger)')
+    parser.add_argument('--confirm_del_max', type=int, default=12, help='Confirm deletion evidence clusters with this score or smaller')
+    parser.add_argument('--confirm_ins_min', type=int, default=0, help='Confirm insertion evidence clusters with this score or larger)')
+    parser.add_argument('--confirm_ins_max', type=int, default=12, help='Confirm insertion evidence clusters with this score or smaller')
+    parser.add_argument('--confirm_inv_min', type=int, default=0, help='Confirm inversion evidence clusters with this score or larger)')
+    parser.add_argument('--confirm_inv_max', type=int, default=25, help='Confirm inversion evidence clusters with this score or smaller')
     parser.add_argument('--debug_confirm', action='store_true', help='print dot plots when confirming SV evidence clusters')
     return parser.parse_args()
 
@@ -437,12 +443,6 @@ def main():
     # Confirm clusters #
     ####################
     if not parameters["skip_confirm"]:
-        del_confirmation_threshold = np.percentile([cluster.score for cluster in deletion_evidence_clusters], 25, interpolation='higher')
-        ins_confirmation_threshold = np.percentile([cluster.score for cluster in insertion_evidence_clusters], 50, interpolation='higher')
-        inv_confirmation_threshold = np.percentile([cluster.score for cluster in inversion_evidence_clusters], 25, interpolation='higher')
-
-        logging.info("Confirming deleted, inserted and inverted regions with a score smaller than {0}, {1} and {2}, respectively.".format(del_confirmation_threshold, ins_confirmation_threshold, inv_confirmation_threshold))
-
         reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
         left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
         right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
@@ -457,8 +457,11 @@ def main():
             del_pdf = PdfPages('dotplots_deletions.pdf')
             ins_pdf = PdfPages('dotplots_insertions.pdf')
 
+        num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
+        logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
+
         for del_cluster in deletion_evidence_clusters:
-            if del_cluster.score <= del_confirmation_threshold:
+            if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
                 if parameters["debug_confirm"]:
                     fig = plt.figure()
                     fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
@@ -475,8 +478,11 @@ def main():
         if parameters["debug_confirm"]:
             del_pdf.close()
 
+        num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
+        logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
+
         for ins_cluster in insertion_evidence_clusters:
-            if ins_cluster.score <= ins_confirmation_threshold:
+            if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
                 if parameters["debug_confirm"]:
                     fig = plt.figure()
                     fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
@@ -493,6 +499,9 @@ def main():
         if parameters["debug_confirm"]:
             ins_pdf.close()
 
+    num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
+    logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
+
     inversion_candidates = []
     for inv_cluster in inversion_evidence_clusters:
         directions = [ev.direction for ev in inv_cluster.members]
@@ -505,7 +514,7 @@ def main():
             if direction == "all": direction_counts[4] += 1
         contig, start, end = inv_cluster.get_source()
 
-        if not parameters["skip_confirm"] and inv_cluster.score <= inv_confirmation_threshold:
+        if not parameters["skip_confirm"] and inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max:
             successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, reference, parameters)
             score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
         else:
