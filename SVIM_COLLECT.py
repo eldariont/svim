@@ -421,7 +421,7 @@ def analyze_alignment(bam_path, parameters):
         try:
             full_iterator_object = full_it.next()
             read_nr += 1
-            if read_nr % 100 == 0:
+            if read_nr % 1000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
             if not parameters["skip_indel"]:
                 sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))

@@ -427,6 +427,8 @@ def main():
     else:
         logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+
+    logging.info("Loading object file created by SVIM-COLLECT.")
     evidence_clusters = pickle.load(evidences_file)
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
     evidences_file.close()
