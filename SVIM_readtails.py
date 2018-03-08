@@ -278,16 +278,15 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
 
 def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
-    num_nearby_tails = left_bam.count(contig, start-10000, end+10000) + right_bam.count(contig, start-10000, end+10000)
-
+    num_nearby_tails = left_bam.count(contig, max(0, start-10000), end+10000) + right_bam.count(contig, max(0, start-10000), end+10000)
     if num_nearby_tails > 1000:
         return (0,0)
 
     tails = defaultdict(list)
-    for left_tail in left_bam.fetch(contig, start-10000, end+10000):
+    for left_tail in left_bam.fetch(contig, max(0, start-10000), end+10000):
         if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails[left_tail.query_name].append(left_tail)
-    for right_tail in right_bam.fetch(contig, start-10000, end+10000):
+    for right_tail in right_bam.fetch(contig, max(0, start-10000), end+10000):
         if right_tail.query_name in tails:
             if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails[right_tail.query_name].append(right_tail)
@@ -352,22 +351,23 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
 
 def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
-    num_nearby_tails = left_bam.count(contig, start-10000, start+10000) + right_bam.count(contig, start-10000, start+10000)
+    num_nearby_tails = left_bam.count(contig, max(0, start-10000), start+10000) + right_bam.count(contig, max(0, start-10000), start+10000)
 
     if num_nearby_tails > 1000:
         return (0,0)
 
     tails = defaultdict(list)
-    for left_tail in left_bam.fetch(contig, start-10000, start+10000):
+    for left_tail in left_bam.fetch(contig, max(0, start-10000), start+10000):
         if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails[left_tail.query_name].append(left_tail)
-    for right_tail in right_bam.fetch(contig, start-10000, start+10000):
+    for right_tail in right_bam.fetch(contig, max(0, start-10000), start+10000):
         if right_tail.query_name in tails:
             if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails[right_tail.query_name].append(right_tail)
 
     evidences = []
     num_spanning_reads = 0
+
     for read_name, tails_pair in tails.iteritems():
         if len(tails_pair) != 2:
             continue
@@ -428,17 +428,17 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
 
 def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
-    num_nearby_tails = left_bam.count(contig, start-10000, end) + right_bam.count(contig, start-10000, start+10000)
+    num_nearby_tails = left_bam.count(contig, max(0, start-10000), end) + right_bam.count(contig, max(0, start-10000), start+10000)
     num_nearby_tails += left_bam.count(contig, start, end + 10000) + right_bam.count(contig, start, end+10000)
 
     if num_nearby_tails > 1000:
         return (0,0)
 
     tails1 = defaultdict(list)
-    for left_tail in left_bam.fetch(contig, start-10000, end):
+    for left_tail in left_bam.fetch(contig, max(0, start-10000), end):
         if not left_tail.is_unmapped and left_tail.mapping_quality >= parameters["min_mapq"] and not left_tail.is_secondary and not left_tail.is_supplementary:
             tails1[left_tail.query_name].append(left_tail)
-    for right_tail in right_bam.fetch(contig, start-10000, end):
+    for right_tail in right_bam.fetch(contig, max(0, start-10000), end):
         if right_tail.query_name in tails1:
             if not right_tail.is_unmapped and right_tail.mapping_quality >= parameters["min_mapq"] and not right_tail.is_secondary and not right_tail.is_supplementary:
                 tails1[right_tail.query_name].append(right_tail)
