@@ -13,14 +13,14 @@ from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, E
 from SVIM_kmercounting import find_svs
 
 
-def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_end = left_tail.reference_end
     left_q_end = left_tail.query_alignment_end
     right_ref_start = right_tail.reference_start
     right_q_start = right_tail.query_alignment_start
 
     read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - right_q_start].upper())
-    ref_snippet = str(reference[contig].seq[right_ref_start:left_ref_end].upper().reverse_complement())
+    ref_snippet = str(contig_record.seq[right_ref_start:left_ref_end].upper().reverse_complement())
     sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
     
     sv_evidences = []
@@ -34,14 +34,14 @@ def check_indel_candidate_minus(left_tail, right_tail, contig, full_read, refere
     return sv_evidences
 
 
-def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_start = left_tail.reference_start
     left_q_start = left_tail.query_alignment_start
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
     read_snippet = str(full_read[left_q_start:len(full_read) - parameters["tail_span"] + right_q_end].upper())
-    ref_snippet = str(reference[contig].seq[left_ref_start:right_ref_end].upper())
+    ref_snippet = str(contig_record.seq[left_ref_start:right_ref_end].upper())
     sv_results = find_svs(ref_snippet, read_snippet, parameters, debug = False)
 
     sv_evidences = []
@@ -55,15 +55,15 @@ def check_indel_candidate_plus(left_tail, right_tail, contig, full_read, referen
     return sv_evidences
 
 
-def check_inv_1(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_inv_1(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_start = left_tail.reference_start
     left_q_start = left_tail.query_alignment_start
     right_ref_start = right_tail.reference_start
     right_q_start = right_tail.query_alignment_start
     
     read_snippet = str(full_read[left_q_start:len(full_read) - right_q_start].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
+    ref_snippet_1 = str(contig_record.seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
+    ref_snippet_2 = str(contig_record.seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
@@ -77,15 +77,15 @@ def check_inv_1(left_tail, right_tail, contig, full_read, reference, parameters)
     return sv_evidences
 
 
-def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_inv_2(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_end = left_tail.reference_end
     left_q_end = left_tail.query_alignment_end
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
     read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - parameters["tail_span"] + right_q_end].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
+    ref_snippet_1 = str(contig_record.seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
+    ref_snippet_2 = str(contig_record.seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
@@ -99,15 +99,15 @@ def check_inv_2(left_tail, right_tail, contig, full_read, reference, parameters)
     return sv_evidences
 
 
-def check_inv_3(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_inv_3(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_start = left_tail.reference_start
     left_q_start = left_tail.query_alignment_start
     right_ref_start = right_tail.reference_start
     right_q_start = right_tail.query_alignment_start
     
     read_snippet = str(full_read[left_q_start:len(full_read) - right_q_start].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
+    ref_snippet_1 = str(contig_record.seq[left_ref_start:left_ref_start+len(read_snippet)].upper())
+    ref_snippet_2 = str(contig_record.seq[right_ref_start:right_ref_start+len(read_snippet)].upper().reverse_complement())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
 
     sv_evidences = []
@@ -121,15 +121,15 @@ def check_inv_3(left_tail, right_tail, contig, full_read, reference, parameters)
     return sv_evidences
 
 
-def check_inv_4(left_tail, right_tail, contig, full_read, reference, parameters):
+def check_inv_4(left_tail, right_tail, contig, full_read, contig_record, parameters):
     left_ref_end = left_tail.reference_end
     left_q_end = left_tail.query_alignment_end
     right_ref_end = right_tail.reference_end
     right_q_end = right_tail.query_alignment_end
     
     read_snippet = str(full_read[parameters["tail_span"] - left_q_end : len(full_read) - parameters["tail_span"] + right_q_end].upper())
-    ref_snippet_1 = str(reference[contig].seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
-    ref_snippet_2 = str(reference[contig].seq[right_ref_end - len(read_snippet):right_ref_end].upper())
+    ref_snippet_1 = str(contig_record.seq[left_ref_end - len(read_snippet):left_ref_end].upper().reverse_complement())
+    ref_snippet_2 = str(contig_record.seq[right_ref_end - len(read_snippet):right_ref_end].upper())
     sv_results = find_svs(ref_snippet_1 + ref_snippet_2, read_snippet, parameters, debug = False)
     sv_evidences = []
     for typ, start, end in sv_results:
@@ -218,7 +218,8 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -parameters["max_deletion_size"]:
                         #INDEL candidate, check with k-mer counting
-                        return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                        contig_record = reference[left_ref_chr]
+                        return check_indel_candidate_minus(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
                     else:
                         #Either very large DEL or TRANS
                         pass 
@@ -234,7 +235,8 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -parameters["max_deletion_size"]:
                         #INDEL candidate, check with k-mer counting
-                        return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                        contig_record = reference[left_ref_chr]
+                        return check_indel_candidate_plus(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
                     else:
                         #Either very large DEL or TRANS
                         pass
@@ -244,17 +246,21 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
         elif not left_prim[0].is_reverse and right_prim[0].is_reverse:
             if right_ref_start >= left_ref_start:
                 #INV candidate, right tail in inverted region
-                return check_inv_1(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                contig_record = reference[left_ref_chr]
+                return check_inv_1(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
             else:
                 #INV candidate, left tail in inverted region
-                return check_inv_3(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                contig_record = reference[left_ref_chr]
+                return check_inv_3(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
         elif left_prim[0].is_reverse and not right_prim[0].is_reverse:
             if right_ref_start >= left_ref_start:
                 #INV candidate, left tail in inverted region
-                return check_inv_2(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                contig_record = reference[left_ref_chr]
+                return check_inv_2(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
             else:
                 #INV candidate, right tail in inverted region
-                return check_inv_4(left_prim[0], right_prim[0], left_ref_chr, full_read, reference, parameters)
+                contig_record = reference[left_ref_chr]
+                return check_inv_4(left_prim[0], right_prim[0], left_ref_chr, full_read, contig_record, parameters)
     else:
         #TRANS candidate
         if left_prim[0].is_reverse and right_prim[0].is_reverse:
@@ -270,7 +276,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
     return []
 
 
-def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, parameters):
+def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, end+10000) + right_bam.count(contig, start-10000, end+10000)
 
@@ -318,7 +324,7 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                         current_parameters["debug_confirm"] = False
                 else:
                     current_parameters = parameters
-                evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, reference, current_parameters))
+                evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, contig_record, current_parameters))
         elif not left_tail.is_reverse and not right_tail.is_reverse and left_ref_end < start and right_ref_start > end:
             if num_spanning_reads < parameters["max_confirmation_number"]:
                 num_spanning_reads += 1
@@ -337,14 +343,14 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                         current_parameters["debug_confirm"] = False
                 else:
                     current_parameters = parameters
-                evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, reference, current_parameters))
+                evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, contig_record, current_parameters))
 
     deletion_confirmations = [ev for ev in evidences if ev.type == "del" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
     logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(deletion_confirmations), num_spanning_reads)
 
 
-def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, parameters):
+def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, start+10000) + right_bam.count(contig, start-10000, start+10000)
 
@@ -394,7 +400,7 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                         current_parameters["debug_confirm"] = False
                 else:
                     current_parameters = parameters
-                evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
+                evidences.extend(check_indel_candidate_minus(left_tail, right_tail, left_ref_chr, full_read, contig_record, current_parameters))
         elif not left_tail.is_reverse and not right_tail.is_reverse and left_ref_end < start and right_ref_start > start:
             if num_spanning_reads < parameters["max_confirmation_number"]:
                 num_spanning_reads += 1
@@ -413,14 +419,14 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                         current_parameters["debug_confirm"] = False
                 else:
                     current_parameters = parameters
-                evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, reference, current_parameters))
+                evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, contig_record, current_parameters))
 
     insertion_confirmations = [ev for ev in evidences if ev.type == "ins" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
     logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(insertion_confirmations), num_spanning_reads)
 
 
-def confirm_inv(left_bam, right_bam, evidence_cluster, reads, reference, parameters):
+def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
     num_nearby_tails = left_bam.count(contig, start-10000, end) + right_bam.count(contig, start-10000, start+10000)
     num_nearby_tails += left_bam.count(contig, start, end + 10000) + right_bam.count(contig, start, end+10000)
@@ -466,23 +472,23 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, reference, paramet
                 #INV candidate, right tail in inverted region
                 if num_spanning_reads < parameters["max_confirmation_number"]:
                     num_spanning_reads += 1
-                    evidences.extend(check_inv_1(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                    evidences.extend(check_inv_1(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
             else:
                 #INV candidate, left tail in inverted region
                 if num_spanning_reads < parameters["max_confirmation_number"]:
                     num_spanning_reads += 1
-                    evidences.extend(check_inv_3(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                    evidences.extend(check_inv_3(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
         elif left_tail.is_reverse and not right_tail.is_reverse:
             if right_ref_start >= left_ref_start:
                 #INV candidate, left tail in inverted region
                 if num_spanning_reads < parameters["max_confirmation_number"]:
                     num_spanning_reads += 1
-                    evidences.extend(check_inv_2(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                    evidences.extend(check_inv_2(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
             else:
                 #INV candidate, right tail in inverted region
                 if num_spanning_reads < parameters["max_confirmation_number"]:
                     num_spanning_reads += 1
-                    evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, reference, parameters))
+                    evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
 
     inversion_confirmations = [ev for ev in evidences if ev.type == "inv" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
     logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))

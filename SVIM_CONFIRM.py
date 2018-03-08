@@ -461,12 +461,17 @@ def main():
         num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
         logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
 
+        last_contig = None
         for del_cluster in deletion_evidence_clusters:
             if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
+                current_contig = del_cluster.get_source()[0]
+                if current_contig != last_contig:
+                    contig_record = reference[current_contig]
+                    last_contig = current_contig
                 if parameters["debug_confirm"]:
                     fig = plt.figure()
                     fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
-                successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, reference, parameters)
+                successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
                 if total_confirmations > 0:
                     confirmation_rate = successful_confirmations / float(total_confirmations)
                     if confirmation_rate > 0.5:
@@ -482,12 +487,17 @@ def main():
         num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
         logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
 
+        last_contig = None
         for ins_cluster in insertion_evidence_clusters:
             if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
+                current_contig = ins_cluster.get_source()[0]
+                if current_contig != last_contig:
+                    contig_record = reference[current_contig]
+                    last_contig = current_contig
                 if parameters["debug_confirm"]:
                     fig = plt.figure()
                     fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
-                successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, reference, parameters)
+                successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
                 if total_confirmations > 0:
                     confirmation_rate = successful_confirmations / float(total_confirmations)
                     if confirmation_rate > 0.5:
@@ -503,6 +513,7 @@ def main():
     num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
     logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
 
+    last_contig = None
     inversion_candidates = []
     for inv_cluster in inversion_evidence_clusters:
         directions = [ev.direction for ev in inv_cluster.members]
@@ -516,7 +527,11 @@ def main():
         contig, start, end = inv_cluster.get_source()
 
         if not parameters["skip_confirm"] and inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max:
-            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, reference, parameters)
+            current_contig = inv_cluster.get_source()[0]
+            if current_contig != last_contig:
+                contig_record = reference[current_contig]
+                last_contig = current_contig
+            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
             score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
         else:
             score = calculate_score_inversion(direction_counts, end - start, 0, 0, parameters)
