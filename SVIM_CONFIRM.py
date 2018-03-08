@@ -11,7 +11,7 @@ import gzip
 import logging
 import ConfigParser
 
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, call
 from collections import defaultdict
 from time import strftime, localtime
 from math import pow, sqrt
@@ -248,8 +248,10 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
     left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    left_aln_index = "{0}/{1}_left_aln.coordsorted.bam.bai".format(working_dir, reads_file_prefix)
     right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    right_aln_index = "{0}/{1}_right_aln.coordsorted.bam.bai".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(left_aln):
         bwa = Popen(['ngmlr',
@@ -262,6 +264,12 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     else:
         logging.warning("Alignment for left sequences exists. Skip")
 
+    if not os.path.exists(left_aln_index):
+        call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'index', left_aln])
+    else:
+        logging.warning("Alignment index for left sequences exists. Skip")
+
     if not os.path.exists(right_aln):
         bwa = Popen(['ngmlr',
                      '-t', str(cores), '-r', genome, '-q', right_fa], stdout=PIPE)
@@ -272,6 +280,12 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
         sort.wait()
     else:
         logging.warning("Alignment for right sequences exists. Skip")
+
+    if not os.path.exists(right_aln_index):
+        call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+                      'index', right_aln])
+    else:
+        logging.warning("Alignment index for right sequences exists. Skip")
 
     logging.info("Tail alignments finished")
 
