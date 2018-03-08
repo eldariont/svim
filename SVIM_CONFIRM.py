@@ -83,6 +83,7 @@ def read_parameters(options):
     parameters["trans_partition_max_distance"] = config.getint("merging", "trans_partition_max_distance")
     parameters["trans_sv_max_distance"] = config.getint("merging", "trans_sv_max_distance")
 
+    parameters["max_confirmation_number"] = config.getint("confirmation", "max_confirmation_number")
     parameters["tail_span"] = config.getint("confirmation", "tail_span")
     parameters["tail_min_deviation"] = config.getfloat("confirmation", "tail_min_deviation")
     parameters["tail_max_deviation"] = config.getfloat("confirmation", "tail_max_deviation")
