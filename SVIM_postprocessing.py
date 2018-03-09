@@ -8,6 +8,8 @@ import logging
 
 import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, form_partitions
 from SVEvidence import EvidenceTranslocation
@@ -130,3 +132,75 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
         print(entry, file=vcf_output)
 
     vcf_output.close()
+
+
+def plot_histograms(working_dir, clusters):
+    deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
+
+    if not os.path.exists(working_dir + '/evidences'):
+        os.mkdir(working_dir + '/evidences')
+    pdf = PdfPages(working_dir + '/evidences/evidence_cluster_histograms.pdf')
+    fig = plt.figure()
+    fig.suptitle('Deleted region evidence clusters', fontsize=10)
+
+    plt.subplot(2, 1, 1)
+    deletion_scores = [del_cluster.score for del_cluster in deletion_evidence_clusters]
+    plt.hist(deletion_scores, bins=100)
+    plt.xlabel('Score')
+    plt.ylabel('Count')
+    plt.title('Histogram of Score')
+    plt.grid(True)
+
+    plt.subplot(2, 1, 2)
+    deletion_sizes = [del_cluster.end - del_cluster.start for del_cluster in deletion_evidence_clusters]
+    plt.hist(deletion_sizes, bins=20)
+    plt.xlabel('Size in bp')
+    plt.ylabel('Count')
+    plt.title('Histogram of Size')
+    plt.grid(True)
+
+    pdf.savefig(fig)
+
+    fig = plt.figure()
+    fig.suptitle('Inserted regions', fontsize=10)
+
+    plt.subplot(2, 1, 1)
+    insertion_scores = [ins_cluster.score for ins_cluster in insertion_evidence_clusters]
+    plt.hist(insertion_scores, bins=100)
+    plt.xlabel('Score')
+    plt.ylabel('Count')
+    plt.title('Histogram of Score')
+    plt.grid(True)
+
+    plt.subplot(2, 1, 2)
+    insertion_sizes = [ins_cluster.end - ins_cluster.start for ins_cluster in insertion_evidence_clusters]
+    plt.hist(insertion_sizes, bins=20)
+    plt.xlabel('Size in bp')
+    plt.ylabel('Count')
+    plt.title('Histogram of Size')
+    plt.grid(True)
+
+    pdf.savefig(fig)
+
+    fig = plt.figure()
+    fig.suptitle('Inverted regions', fontsize=10)
+
+    plt.subplot(2, 1, 1)
+    inversion_scores = [inv_cluster.score for inv_cluster in inversion_evidence_clusters]
+    plt.hist(inversion_scores, bins=100)
+    plt.xlabel('Score')
+    plt.ylabel('Count')
+    plt.title('Histogram of Score')
+    plt.grid(True)
+
+    plt.subplot(2, 1, 2)
+    inversion_sizes = [inv_cluster.end - inv_cluster.start for inv_cluster in inversion_evidence_clusters]
+    plt.hist(inversion_sizes, bins=20)
+    plt.xlabel('Size in bp')
+    plt.ylabel('Count')
+    plt.title('Histogram of Size')
+    plt.grid(True)
+
+    pdf.savefig(fig)
+
+    pdf.close()

@@ -20,7 +20,7 @@ import pysam
 
 from SVIM_fullread import analyze_full_read_indel
 from SVIM_splitread import analyze_full_read_segments
-from SVIM_postprocessing import cluster_sv_evidences, write_evidence_clusters_bed, write_evidence_clusters_vcf
+from SVIM_postprocessing import cluster_sv_evidences, write_evidence_clusters_bed, write_evidence_clusters_vcf, plot_histograms
 
 
 def parse_arguments():
@@ -503,6 +503,10 @@ def main():
     write_evidence_clusters_bed(options.working_dir, evidence_clusters)
     write_evidence_clusters_vcf(options.working_dir, evidence_clusters, options.genome)
 
+    # Create result plots
+    plot_histograms(options.working_dir, evidence_clusters)
+
+    # Dump obj file
     evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
     logging.info("Storing collected evidence clusters into sv_evidences.obj..")
     pickle.dump(evidence_clusters, evidences_file)
