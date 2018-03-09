@@ -428,6 +428,10 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
 
 def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
     contig, start, end = evidence_cluster.get_source()
+    # super large SVs would take too long to confirm
+    if end - start > parameters["max_sv_size"]:
+        return (0,0)
+
     num_nearby_tails = left_bam.count(contig, max(0, start-10000), end) + right_bam.count(contig, max(0, start-10000), start+10000)
     num_nearby_tails += left_bam.count(contig, start, end + 10000) + right_bam.count(contig, start, end+10000)
 
