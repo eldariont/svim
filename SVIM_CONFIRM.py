@@ -40,7 +40,7 @@ SV classes such as interspersed duplications and cut&paste insertions and is uni
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of two programs SWIM-COLLECT and SWIM-CONFIRM. You are running SWIM-CONFIRM 
+SVIM consists of two programs SVIM-COLLECT and SVIM-CONFIRM. You are running SVIM-CONFIRM 
 which confirms SV evidences using read-tail mapping and classifies them into distinct 
 SV types. To confirm SV evidences, you need to supply both the --reads and --genome 
 arguments.""")
@@ -409,7 +409,7 @@ def main():
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
-    fileHandler = logging.FileHandler("{0}/SWIM-CONFIRM_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
+    fileHandler = logging.FileHandler("{0}/SVIM-CONFIRM_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
@@ -529,7 +529,7 @@ def main():
         contig, start, end = inv_cluster.get_source()
 
         if not parameters["skip_confirm"] and inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max:
-            current_contig = inv_cluster.get_source()[0]
+            current_contig = contig
             if current_contig != last_contig:
                 contig_record = reference[current_contig]
                 last_contig = current_contig
@@ -539,25 +539,21 @@ def main():
             score = calculate_score_inversion(direction_counts, end - start, 0, 0, parameters)
         inversion_candidates.append(CandidateInversion(contig, start, end, inv_cluster.members, score))
 
-    ##################
-    # Write clusters #
-    ##################
+    ############################
+    # Write confirmed clusters #
+    ############################
     if not parameters["skip_confirm"]:
         logging.info("Write confirmed evidence clusters..")
         deletion_evidence_output = open(options.working_dir + '/evidences/del_confirmed.bed', 'w')
         insertion_evidence_output = open(options.working_dir + '/evidences/ins_confirmed.bed', 'w')
-        inversion_evidence_output = open(options.working_dir + '/evidences/inv_confirmed.bed', 'w')
 
         for cluster in deletion_evidence_clusters:
             print(cluster.get_bed_entry(), file=deletion_evidence_output)
         for cluster in insertion_evidence_clusters:
             print(cluster.get_bed_entry(), file=insertion_evidence_output)
-        for cluster in inversion_evidence_clusters:
-            print(cluster.get_bed_entry(), file=inversion_evidence_output)
 
         deletion_evidence_output.close()
         insertion_evidence_output.close()
-        inversion_evidence_output.close()
 
     ###################################
     # Merge translocation breakpoints #

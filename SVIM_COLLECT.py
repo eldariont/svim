@@ -32,7 +32,7 @@ SV classes such as interspersed duplications and cut&paste insertions and is uni
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of two programs SWIM-COLLECT and SWIM-CONFIRM. You are running SWIM-COLLECT 
+SVIM consists of two programs SVIM-COLLECT and SVIM-CONFIRM. You are running SVIM-COLLECT 
 which analyzes read alignments to collect evidences for SVs.
 
 SVIM-COLLECT performs three steps to detect SVs: 
@@ -452,7 +452,7 @@ def main():
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
-    fileHandler = logging.FileHandler("{0}/SWIM-COLLECT_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
+    fileHandler = logging.FileHandler("{0}/SVIM-COLLECT_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
 
