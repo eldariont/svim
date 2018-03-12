@@ -51,28 +51,51 @@ def clusters_from_partitions(partitions, max_delta):
     return clusters_full
 
 
-def calculate_score(cigar_evidences, kmer_evidences, suppl_evidences):
-    num_evidences = min(20, cigar_evidences) + min(20, kmer_evidences) + min(20, suppl_evidences)
+def calculate_score(cigar_evidences, suppl_evidences):
+    num_evidences = min(20, cigar_evidences) + min(20, suppl_evidences)
     evidence_boost = 0
     if cigar_evidences > 0:
-        evidence_boost += 10
-    if kmer_evidences > 0:
         evidence_boost += 10
     if suppl_evidences > 0:
         evidence_boost += 20
     return num_evidences + evidence_boost
 
 
-def consolidate_clusters_unilocal(clusters):
+def calculate_score_inversion(inv_cluster, inversion_length, parameters):
+    directions = [ev.direction for ev in inv_cluster]
+    direction_counts = [0, 0, 0, 0, 0]
+    for direction in directions:
+        if direction == "left_fwd":
+            direction_counts[0] += 1
+        if direction == "left_rev":
+            direction_counts[1] += 1
+        if direction == "right_fwd":
+            direction_counts[2] += 1
+        if direction == "right_rev":
+            direction_counts[3] += 1
+        if direction == "all":
+            direction_counts[4] += 1
+    left_evidences = direction_counts[0] + direction_counts[1]
+    right_evidences = direction_counts[2] + direction_counts[3]
+    valid_suppl_evidences = min(left_evidences, right_evidences) + direction_counts[4]
+    if inversion_length > parameters["max_sv_size"]:
+        return 0
+    else:
+        return valid_suppl_evidences
+
+
+def consolidate_clusters_unilocal(clusters, parameters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
-        cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
-        kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
-        suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
-        score = calculate_score(len(cigar_evidences), len(kmer_evidences), len(suppl_evidences))
-        average_start = (2 * sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        average_end = (2 * sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(2*len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        average_start = sum([member.get_source()[1] for member in cluster]) / float(len(cluster))
+        average_end = sum([member.get_source()[2] for member in cluster]) / float(len(cluster))
+        if cluster[0].type == "inv":
+            score = calculate_score_inversion(cluster, average_end - average_start, parameters)
+        else:
+            cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
+            suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
+            score = calculate_score(len(cigar_evidences), len(suppl_evidences))
         consolidated_clusters.append(EvidenceClusterUniLocal(cluster[0].get_source()[0], int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
 
@@ -82,13 +105,12 @@ def consolidate_clusters_bilocal(clusters):
     consolidated_clusters = []
     for cluster in clusters:
         cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
-        kmer_evidences = [member for member in cluster if member.evidence == "kmer"]
         suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
-        score = calculate_score(len(cigar_evidences), len(kmer_evidences), len(suppl_evidences))
+        score = calculate_score(len(cigar_evidences), len(suppl_evidences))
         
         #Source
-        source_average_start = (sum([member.get_source()[1] for member in cigar_evidences]) + sum([member.get_source()[1] for member in kmer_evidences]) + sum([member.get_source()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-        source_average_end = (sum([member.get_source()[2] for member in cigar_evidences]) + sum([member.get_source()[2] for member in kmer_evidences]) + sum([member.get_source()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
+        source_average_start = sum([member.get_source()[1] for member in cluster]) / float(len(cluster))
+        source_average_end = sum([member.get_source()[2] for member in cluster]) / float(len(cluster))
 
         if cluster[0].type == "dup":
             max_copies = max([member.copies for member in cluster])
@@ -103,9 +125,8 @@ def consolidate_clusters_bilocal(clusters):
                                                                 score, len(cluster), cluster, cluster[0].type))
         else:
             #Destination
-            destination_average_start = (sum([member.get_destination()[1] for member in cigar_evidences]) + sum([member.get_destination()[1] for member in kmer_evidences]) + sum([member.get_destination()[1] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-            destination_average_end = (sum([member.get_destination()[2] for member in cigar_evidences]) + sum([member.get_destination()[2] for member in kmer_evidences]) + sum([member.get_destination()[2] for member in suppl_evidences])) / float(len(cigar_evidences) + len(kmer_evidences) + len(suppl_evidences))
-
+            destination_average_start = sum([member.get_destination()[1] for member in cluster]) / float(len(cluster))
+            destination_average_end = sum([member.get_destination()[2] for member in cluster]) / float(len(cluster))
             consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
@@ -142,7 +163,7 @@ def partition_and_cluster_unilocal(evidences, parameters):
     partitions = form_partitions(evidences, parameters["partition_max_distance"])
     clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
-    return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
+    return sorted(consolidate_clusters_unilocal(clusters, parameters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(evidences, parameters):

@@ -297,25 +297,6 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     logging.info("Tail alignments finished")
 
 
-def calculate_score_inversion(direction_counts, inversion_length, successful_confirmations, total_confirmations, parameters):
-    left_evidences = direction_counts[0] + direction_counts[1]
-    right_evidences = direction_counts[2] + direction_counts[3]
-    valid_suppl_evidences = min(left_evidences, right_evidences) + direction_counts[4]
-    if inversion_length > parameters["max_sv_size"]:
-        return 0
-    else:
-        if total_confirmations > 0:
-            confirmation_rate = successful_confirmations / float(total_confirmations)
-            if confirmation_rate > 0.5:
-                return valid_suppl_evidences + confirmation_rate * 20
-            elif confirmation_rate < 0.3:
-                return 0
-            else:
-                return valid_suppl_evidences
-        else:
-            return valid_suppl_evidences
-
-
 def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
     (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
@@ -512,32 +493,24 @@ def main():
         if parameters["debug_confirm"]:
             ins_pdf.close()
 
-    num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
-    logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
+        num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
+        logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
 
-    last_contig = None
-    inversion_candidates = []
-    for inv_cluster in inversion_evidence_clusters:
-        directions = [ev.direction for ev in inv_cluster.members]
-        direction_counts = [0, 0, 0, 0, 0]
-        for direction in directions:
-            if direction == "left_fwd": direction_counts[0] += 1
-            if direction == "left_rev": direction_counts[1] += 1
-            if direction == "right_fwd": direction_counts[2] += 1
-            if direction == "right_rev": direction_counts[3] += 1
-            if direction == "all": direction_counts[4] += 1
-        contig, start, end = inv_cluster.get_source()
-
-        if not parameters["skip_confirm"] and inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max:
-            current_contig = contig
-            if current_contig != last_contig:
-                contig_record = reference[current_contig]
-                last_contig = current_contig
-            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
-            score = calculate_score_inversion(direction_counts, end - start, successful_confirmations, total_confirmations, parameters)
-        else:
-            score = calculate_score_inversion(direction_counts, end - start, 0, 0, parameters)
-        inversion_candidates.append(CandidateInversion(contig, start, end, inv_cluster.members, score))
+        last_contig = None
+        for inv_cluster in inversion_evidence_clusters:            
+            contig, start, end = inv_cluster.get_source()
+            if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max and end - start <= parameters["max_sv_size"]:
+                current_contig = contig
+                if current_contig != last_contig:
+                    contig_record = reference[current_contig]
+                    last_contig = current_contig
+                successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
+                if total_confirmations > 0:
+                    confirmation_rate = successful_confirmations / float(total_confirmations)
+                    if confirmation_rate > 0.5:
+                        inv_cluster.score += int(confirmation_rate * 20)
+                    elif confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
+                        inv_cluster.score = 0
 
     ############################
     # Write confirmed clusters #
@@ -546,14 +519,26 @@ def main():
         logging.info("Write confirmed evidence clusters..")
         deletion_evidence_output = open(options.working_dir + '/evidences/del_confirmed.bed', 'w')
         insertion_evidence_output = open(options.working_dir + '/evidences/ins_confirmed.bed', 'w')
+        inversion_evidence_output = open(options.working_dir + '/evidences/inv_confirmed.bed', 'w')
 
         for cluster in deletion_evidence_clusters:
             print(cluster.get_bed_entry(), file=deletion_evidence_output)
         for cluster in insertion_evidence_clusters:
             print(cluster.get_bed_entry(), file=insertion_evidence_output)
+        for cluster in inversion_evidence_clusters:
+            print(cluster.get_bed_entry(), file=inversion_evidence_output)
 
         deletion_evidence_output.close()
         insertion_evidence_output.close()
+        inversion_evidence_output.close()
+
+    ###############################
+    # Create inversion candidates #
+    ###############################
+    inversion_candidates = []
+    for inv_cluster in inversion_evidence_clusters:
+        if inv_cluster.score > 0:
+            inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
 
     ###################################
     # Merge translocation breakpoints #
