@@ -32,7 +32,7 @@ SV classes such as interspersed duplications and cut&paste insertions and is uni
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of two programs SVIM-COLLECT and SVIM-CONFIRM. You are running SVIM-COLLECT 
+SVIM consists of three programs SVIM-COLLECT, SVIM-CONFIRM, and SVIM-COMBINE. You are running SVIM-COLLECT 
 which analyzes read alignments to collect evidences for SVs.
 
 SVIM-COLLECT performs three steps to detect SVs: 

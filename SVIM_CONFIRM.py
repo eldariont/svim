@@ -25,9 +25,6 @@ import matplotlib.pyplot as plt
 from Bio import SeqIO
 from matplotlib.backends.backend_pdf import PdfPages
 
-from SVIM_clustering import form_partitions, partition_and_cluster_candidates
-from SVCandidate import CandidateInversion
-from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 from SVIM_readtails import confirm_del, confirm_ins, confirm_inv
 
 
@@ -40,16 +37,14 @@ SV classes such as interspersed duplications and cut&paste insertions and is uni
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of two programs SVIM-COLLECT and SVIM-CONFIRM. You are running SVIM-CONFIRM 
-which confirms SV evidences using read-tail mapping and classifies them into distinct 
-SV types. To confirm SV evidences, you need to supply both the --reads and --genome 
-arguments.""")
+SVIM consists of three programs SVIM-COLLECT, SVIM-CONFIRM, and SVIM-COMBINE. You are running SVIM-CONFIRM 
+which confirms SV evidences using read-tail mapping.""")
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('working_dir', type=str, help='working directory')
+    parser.add_argument('reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser.add_argument('genome', type=str, help='Reference genome file (FASTA)')
     parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
-    parser.add_argument('--reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
-    parser.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
     parser.add_argument('--confirm_del_min', type=int, default=0, help='Confirm deletion evidence clusters with this score or larger)')
     parser.add_argument('--confirm_del_max', type=int, default=12, help='Confirm deletion evidence clusters with this score or smaller')
     parser.add_argument('--confirm_ins_min', type=int, default=0, help='Confirm insertion evidence clusters with this score or larger)')
@@ -297,89 +292,6 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     logging.info("Tail alignments finished")
 
 
-def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
-    """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
-    (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
-
-    logging.info("Found {0}/{1} candidates for insertions and interspersed duplications.".format(
-        len(insertion_candidates), len(int_duplication_candidates)))
-
-    logging.info("Cluster insertion candidates:")
-    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters)
-    logging.info("Cluster interspersed duplication candidates:")
-    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters)
-
-    return (final_insertion_candidates, final_int_duplication_candidates)
-
-
-def write_candidates(working_dir, candidates):
-    insertion_candidates, int_duplication_candidates, inversion_candidates = candidates
-
-    if not os.path.exists(working_dir + '/candidates'):
-        os.mkdir(working_dir + '/candidates')
-    #deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
-    insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
-    insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
-    inversion_candidate_output = open(working_dir + '/candidates/candidates_inversions.bed', 'w')
-    # tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
-    interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
-    interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
-
-    for candidate in insertion_candidates:
-        bed_entries = candidate.get_bed_entries()
-        print(bed_entries[0], file=insertion_candidate_source_output)
-        print(bed_entries[1], file=insertion_candidate_dest_output)
-    for candidate in int_duplication_candidates:
-        bed_entries = candidate.get_bed_entries()
-        print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
-        print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
-    for candidate in inversion_candidates:
-        print(candidate.get_bed_entry(), file=inversion_candidate_output)
-
-    insertion_candidate_source_output.close()
-    insertion_candidate_dest_output.close()
-    inversion_candidate_output.close()
-    interspersed_duplication_candidate_source_output.close()
-    interspersed_duplication_candidate_dest_output.close()
-
-
-def write_final_vcf(working_dir, genome, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
-    vcf_output = open(working_dir + '/final_results.vcf', 'w')
-
-    # Write header lines
-    print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=SVIMV{0}".format(__version__), file=vcf_output)
-    print("##reference={0}".format(genome), file=vcf_output)
-    print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
-    print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
-    print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
-    print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
-    print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
-    print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
-    print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
-    print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
-    print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
-    print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
-
-    vcf_entries = []
-    for cluster in deletion_evidence_clusters:
-        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
-    for cluster in tandem_duplication_evidence_clusters:
-        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
-    for candidate in insertion_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in int_duplication_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in inversion_candidates:
-        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
-
-    # Sort and write entries to VCF
-    for source, entry in sorted(vcf_entries, key=lambda pair: pair[0]):
-        print(entry, file=vcf_output)
-
-    vcf_output.close()
-
-
 def main():
     # Fetch command-line options and configuration file values and set parameters accordingly
     options = parse_arguments()
@@ -414,178 +326,125 @@ def main():
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
     evidences_file.close()
 
-    if options.reads and options.genome:
-        reads_type = guess_file_type(options.reads)
-        full_reads_path = create_tail_files(options.working_dir, options.reads, reads_type, parameters["tail_span"])
-        run_tail_alignments(options.working_dir, options.genome, full_reads_path, parameters["cores"])
-        parameters["skip_confirm"] = False
-    else:
-        parameters["skip_confirm"] = True
-        logging.info("Skipping confirmation with read tails because reads or genome are missing.")
+    reads_type = guess_file_type(options.reads)
+    full_reads_path = create_tail_files(options.working_dir, options.reads, reads_type, parameters["tail_span"])
+    run_tail_alignments(options.working_dir, options.genome, full_reads_path, parameters["cores"])
 
     ####################
     # Confirm clusters #
     ####################
-    if not parameters["skip_confirm"]:
-        reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-        left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
-        right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
-        left_bam = pysam.AlignmentFile(left_aln)
-        right_bam = pysam.AlignmentFile(right_aln)
+    reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
+    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
+    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
 
-        reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
-        reference =SeqIO.index_db(options.genome + ".idx", options.genome, "fasta")
-        logging.info("Indexing reads and reference finished")
+    reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
+    reference =SeqIO.index_db(options.genome + ".idx", options.genome, "fasta")
+    logging.info("Indexing reads and reference finished")
 
-        if parameters["debug_confirm"]:
-            del_pdf = PdfPages('dotplots_deletions.pdf')
-            ins_pdf = PdfPages('dotplots_insertions.pdf')
+    if parameters["debug_confirm"]:
+        del_pdf = PdfPages('dotplots_deletions.pdf')
+        ins_pdf = PdfPages('dotplots_insertions.pdf')
 
-        num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
-        logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
+    num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
+    logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
 
-        last_contig = None
-        for del_cluster in deletion_evidence_clusters:
-            if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
-                current_contig = del_cluster.get_source()[0]
-                if current_contig != last_contig:
-                    contig_record = reference[current_contig]
-                    last_contig = current_contig
-                if parameters["debug_confirm"]:
-                    fig = plt.figure()
-                    fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
-                successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
-                if total_confirmations > 0:
-                    confirmation_rate = successful_confirmations / float(total_confirmations)
-                    if confirmation_rate > 0.5:
-                        del_cluster.score += int(confirmation_rate * 20)
-                    elif confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
-                        del_cluster.score = 0
-                if parameters["debug_confirm"]:
-                    del_pdf.savefig(fig)
-                    plt.close(fig)
-        if parameters["debug_confirm"]:
-            del_pdf.close()
+    last_contig = None
+    for del_cluster in deletion_evidence_clusters:
+        if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
+            current_contig = del_cluster.get_source()[0]
+            if current_contig != last_contig:
+                contig_record = reference[current_contig]
+                last_contig = current_contig
+            if parameters["debug_confirm"]:
+                fig = plt.figure()
+                fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
+            successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
+            if total_confirmations > 0:
+                confirmation_rate = successful_confirmations / float(total_confirmations)
+                if confirmation_rate > 0.5:
+                    del_cluster.score += int(confirmation_rate * 20)
+                elif confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
+                    del_cluster.score = 0
+            if parameters["debug_confirm"]:
+                del_pdf.savefig(fig)
+                plt.close(fig)
+    if parameters["debug_confirm"]:
+        del_pdf.close()
 
-        num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
-        logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
+    num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
+    logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
 
-        last_contig = None
-        for ins_cluster in insertion_evidence_clusters:
-            if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
-                current_contig = ins_cluster.get_source()[0]
-                if current_contig != last_contig:
-                    contig_record = reference[current_contig]
-                    last_contig = current_contig
-                if parameters["debug_confirm"]:
-                    fig = plt.figure()
-                    fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
-                successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
-                if total_confirmations > 0:
-                    confirmation_rate = successful_confirmations / float(total_confirmations)
-                    if confirmation_rate > 0.5:
-                        ins_cluster.score += int(confirmation_rate * 20)
-                    elif confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
-                        ins_cluster.score = 0
-                if parameters["debug_confirm"]:
-                    ins_pdf.savefig(fig)
-                    plt.close(fig)
-        if parameters["debug_confirm"]:
-            ins_pdf.close()
+    last_contig = None
+    for ins_cluster in insertion_evidence_clusters:
+        if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
+            current_contig = ins_cluster.get_source()[0]
+            if current_contig != last_contig:
+                contig_record = reference[current_contig]
+                last_contig = current_contig
+            if parameters["debug_confirm"]:
+                fig = plt.figure()
+                fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
+            successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
+            if total_confirmations > 0:
+                confirmation_rate = successful_confirmations / float(total_confirmations)
+                if confirmation_rate > 0.5:
+                    ins_cluster.score += int(confirmation_rate * 20)
+                elif confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
+                    ins_cluster.score = 0
+            if parameters["debug_confirm"]:
+                ins_pdf.savefig(fig)
+                plt.close(fig)
+    if parameters["debug_confirm"]:
+        ins_pdf.close()
 
-        num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
-        logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
+    num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
+    logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
 
-        last_contig = None
-        for inv_cluster in inversion_evidence_clusters:            
-            contig, start, end = inv_cluster.get_source()
-            if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max and end - start <= parameters["max_sv_size"]:
-                current_contig = contig
-                if current_contig != last_contig:
-                    contig_record = reference[current_contig]
-                    last_contig = current_contig
-                successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
-                if total_confirmations > 0:
-                    confirmation_rate = successful_confirmations / float(total_confirmations)
-                    if confirmation_rate > 0.5:
-                        inv_cluster.score += int(confirmation_rate * 20)
-                    elif confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
-                        inv_cluster.score = 0
+    last_contig = None
+    for inv_cluster in inversion_evidence_clusters:
+        contig, start, end = inv_cluster.get_source()
+        if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max and end - start <= parameters["max_sv_size"]:
+            current_contig = contig
+            if current_contig != last_contig:
+                contig_record = reference[current_contig]
+                last_contig = current_contig
+            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
+            if total_confirmations > 0:
+                confirmation_rate = successful_confirmations / float(total_confirmations)
+                if confirmation_rate > 0.5:
+                    inv_cluster.score += int(confirmation_rate * 20)
+                elif confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
+                    inv_cluster.score = 0
 
     ############################
     # Write confirmed clusters #
     ############################
-    if not parameters["skip_confirm"]:
-        logging.info("Write confirmed evidence clusters..")
-        deletion_evidence_output = open(options.working_dir + '/evidences/del_confirmed.bed', 'w')
-        insertion_evidence_output = open(options.working_dir + '/evidences/ins_confirmed.bed', 'w')
-        inversion_evidence_output = open(options.working_dir + '/evidences/inv_confirmed.bed', 'w')
+    logging.info("Write confirmed evidence clusters..")
+    deletion_evidence_output = open(options.working_dir + '/evidences/del_confirmed.bed', 'w')
+    insertion_evidence_output = open(options.working_dir + '/evidences/ins_confirmed.bed', 'w')
+    inversion_evidence_output = open(options.working_dir + '/evidences/inv_confirmed.bed', 'w')
 
-        for cluster in deletion_evidence_clusters:
-            print(cluster.get_bed_entry(), file=deletion_evidence_output)
-        for cluster in insertion_evidence_clusters:
-            print(cluster.get_bed_entry(), file=insertion_evidence_output)
-        for cluster in inversion_evidence_clusters:
-            print(cluster.get_bed_entry(), file=inversion_evidence_output)
+    for cluster in deletion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=deletion_evidence_output)
+    for cluster in insertion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=insertion_evidence_output)
+    for cluster in inversion_evidence_clusters:
+        print(cluster.get_bed_entry(), file=inversion_evidence_output)
 
-        deletion_evidence_output.close()
-        insertion_evidence_output.close()
-        inversion_evidence_output.close()
+    deletion_evidence_output.close()
+    insertion_evidence_output.close()
+    inversion_evidence_output.close()
 
-    ###############################
-    # Create inversion candidates #
-    ###############################
-    inversion_candidates = []
-    for inv_cluster in inversion_evidence_clusters:
-        if inv_cluster.score > 0:
-            inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
-
-    ###################################
-    # Merge translocation breakpoints #
-    ###################################
-
-    # Cluster translocations by contig and pos1
-    logging.info("Cluster translocations..")
-    translocation_partitions = form_partitions(completed_translocations, parameters["trans_partition_max_distance"])
-
-    logging.info("Compile translocation dict..")
-    translocation_partitions_dict = defaultdict(list)
-    for partition in translocation_partitions:
-        translocation_partitions_dict[partition[0].contig1].append(partition)
-
-    logging.info("Compute translocation means and std deviations..")
-    translocation_partition_means_dict = {}
-    translocation_partition_stds_dict = {}
-    for contig in translocation_partitions_dict.keys():
-        translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[contig]]
-        translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / float(len(partition))))) for index, partition in enumerate(translocation_partitions_dict[contig])]
-
-    insertion_candidates = []
-    int_duplication_candidates = []
-
-    logging.info("Merge translocations at deletions..")
-    new_insertion_candidates = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
-    insertion_candidates.extend(new_insertion_candidates)
-
-    logging.info("Merge translocations at insertions..")
-    insertion_from_evidence_clusters.extend(merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, deletion_evidence_clusters, parameters))
-    # insertion_candidates.extend(new_insertion_candidates)
-    # int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    # Merge insertions with source
-    logging.info("Classify insertion/duplication evidence clusters..")
-    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
-    insertion_candidates.extend(new_insertion_candidates)
-    int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    # Cluster candidates
-    logging.info("Cluster SV candidates..")
-    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters)
-
-    #Write candidates
-    logging.info("Write SV candidates..")
-    write_candidates(options.working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates))
-    write_final_vcf(options.working_dir, options.genome, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters)
+    #################
+    # Dump obj file #
+    #################
+    evidence_clusters = deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations
+    evidences_file = open(options.working_dir + '/sv_confirmed_evidences.obj', 'w')
+    logging.info("Storing confirmed evidence clusters into sv_confirmed_evidences.obj..")
+    pickle.dump(evidence_clusters, evidences_file)
+    evidences_file.close()
 
 if __name__ == "__main__":
     sys.exit(main())
