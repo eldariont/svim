@@ -56,6 +56,16 @@ class Candidate:
 
 
 class CandidateDeletion(Candidate):
+    def __init__(self, source_contig, source_start, source_end, members, score):
+        self.source_contig = source_contig
+        self.source_start = source_start
+        self.source_end = source_end
+
+        self.members = members
+        self.score = score
+        self.type = "del"
+
+
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "DEL"

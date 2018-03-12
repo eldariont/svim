@@ -16,7 +16,7 @@ from time import strftime, localtime
 from math import pow, sqrt
 
 from SVIM_clustering import form_partitions, partition_and_cluster_candidates
-from SVCandidate import CandidateInversion
+from SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion
 from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 
 
@@ -115,18 +115,21 @@ def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, para
 
 
 def write_candidates(working_dir, candidates):
-    insertion_candidates, int_duplication_candidates, inversion_candidates = candidates
+    insertion_candidates, int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates = candidates
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')
-    #deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
+    deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
     insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
     insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
     inversion_candidate_output = open(working_dir + '/candidates/candidates_inversions.bed', 'w')
-    # tandem_duplication_candidate_output = open(working_dir + '/candidates/dup_tan.bed', 'w')
+    tandem_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_tan_duplications_source.bed', 'w')
+    tandem_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_tan_duplications_dest.bed', 'w')
     interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
     interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
 
+    for candidate in deletion_candidates:
+        print(candidate.get_bed_entry(), file=deletion_candidate_output)
     for candidate in insertion_candidates:
         bed_entries = candidate.get_bed_entries()
         print(bed_entries[0], file=insertion_candidate_source_output)
@@ -137,15 +140,22 @@ def write_candidates(working_dir, candidates):
         print(bed_entries[1], file=interspersed_duplication_candidate_dest_output)
     for candidate in inversion_candidates:
         print(candidate.get_bed_entry(), file=inversion_candidate_output)
+    for candidate in tan_duplication_candidates:
+        bed_entries = candidate.get_bed_entries()
+        print(bed_entries[0], file=tandem_duplication_candidate_source_output)
+        print(bed_entries[1], file=tandem_duplication_candidate_dest_output)
 
+    deletion_candidate_output.close()
     insertion_candidate_source_output.close()
     insertion_candidate_dest_output.close()
     inversion_candidate_output.close()
     interspersed_duplication_candidate_source_output.close()
     interspersed_duplication_candidate_dest_output.close()
+    tandem_duplication_candidate_source_output.close()
+    tandem_duplication_candidate_dest_output.close()
 
 
-def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters):
+def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, deletion_candidates, tandem_duplication_candidates):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
@@ -164,16 +174,16 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
 
     vcf_entries = []
-    for cluster in deletion_evidence_clusters:
-        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
-    for cluster in tandem_duplication_evidence_clusters:
-        vcf_entries.append((cluster.get_source(), cluster.get_vcf_entry()))
+    for candidate in deletion_candidates:
+        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
+    for candidate in inversion_candidates:
+        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
+    for candidate in tandem_duplication_candidates:
+        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
     for candidate in insertion_candidates:
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
     for candidate in int_duplication_candidates:
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in inversion_candidates:
-        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
 
     # Sort and write entries to VCF
     for source, entry in sorted(vcf_entries, key=lambda pair: pair[0]):
@@ -224,6 +234,16 @@ def main():
         if inv_cluster.score > 0:
             inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
 
+    ########################################
+    # Create tandem duplication candidates #
+    ########################################
+    tan_dup_candidates = []
+    for tan_dup_cluster in tandem_duplication_evidence_clusters:
+        source_contig, source_start, source_end = tan_dup_cluster.get_source()
+        dest_contig, dest_start, dest_end = tan_dup_cluster.get_destination()
+        num_copies = int(round((dest_end - dest_start) / float(source_end - source_start)))
+        tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score))
+
     ###################################
     # Merge translocation breakpoints #
     ###################################
@@ -248,26 +268,48 @@ def main():
     int_duplication_candidates = []
 
     logging.info("Merge translocations at deletions..")
-    new_insertion_candidates = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
+    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Merge translocations at insertions..")
     insertion_from_evidence_clusters.extend(merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, parameters))
 
-    # Merge insertions with source
+    ###################################
+    # Classify insertions with source #
+    ###################################
+
     logging.info("Classify insertion/duplication evidence clusters..")
-    new_insertion_candidates, new_int_duplication_candidates = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
+    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
-    # Cluster candidates
+    ##################################
+    # Remove deleted region clusters #
+    ##################################
+    all_deleted_regions_to_remove = sorted(list(set(deleted_regions_to_remove_1 + deleted_regions_to_remove_2)), reverse=True)
+    for del_index in all_deleted_regions_to_remove:
+        del(deletion_evidence_clusters[del_index])
+
+    ##############################
+    # Create deletion candidates #
+    ##############################
+    deletion_candidates = []
+    for del_cluster in deletion_evidence_clusters:
+        if del_cluster.score > 0:
+            deletion_candidates.append(CandidateDeletion(del_cluster.contig, del_cluster.start, del_cluster.end, del_cluster.members, del_cluster.score))
+
+    ######################
+    # Cluster candidates #
+    ######################
     logging.info("Cluster SV candidates..")
     final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters)
 
-    #Write candidates
+    ####################
+    # Write candidates #
+    ####################
     logging.info("Write SV candidates..")
-    write_candidates(options.working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates))
-    write_final_vcf(options.working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_evidence_clusters, tandem_duplication_evidence_clusters)
+    write_candidates(options.working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates))
+    write_final_vcf(options.working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, deletion_candidates, tan_dup_candidates)
 
 if __name__ == "__main__":
     sys.exit(main())
