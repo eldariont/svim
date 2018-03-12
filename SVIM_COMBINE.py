@@ -252,7 +252,7 @@ def main():
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Merge translocations at insertions..")
-    insertion_from_evidence_clusters.extend(merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, deletion_evidence_clusters, parameters))
+    insertion_from_evidence_clusters.extend(merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, parameters))
 
     # Merge insertions with source
     logging.info("Classify insertion/duplication evidence clusters..")

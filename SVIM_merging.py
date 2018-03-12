@@ -157,8 +157,7 @@ def merge_translocations_at_deletions(translocation_partitions_dict, translocati
 
     return insertion_candidates
 
-
-def merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, deletion_evidence_clusters, parameters):
+def merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, parameters):
     # to_delete = []
     insertion_from_evidence_clusters = []
     for ins_cluster in insertion_evidence_clusters:
@@ -186,23 +185,3 @@ def merge_translocations_at_insertions(translocation_partitions_dict, translocat
                     # to_delete.append(insertion_index)
 
     return insertion_from_evidence_clusters
-    # insertion_candidates = []
-    # int_duplication_candidates = []
-    # # print("INFO: Number of insertions/duplications detected from inserted regions and translocations:", len(insertion_from_evidence_clusters))
-    # for ins_dup_cluster in insertion_from_evidence_clusters:    
-    #     distances = [(ind, del_cluster.gowda_diday_distance(ins_dup_cluster, max(ins_dup_cluster.get_source_length(), del_cluster.get_length()))) for ind, del_cluster in enumerate(deletion_evidence_clusters)]
-    #     closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
-    #     source_contig, source_start, source_end = ins_dup_cluster.get_source()
-    #     dest_contig, dest_start, dest_end = ins_dup_cluster.get_destination()
-    #     if closest_deletion[1] <= 1.0:
-    #         #Insertion
-    #         all_members = ins_dup_cluster.members + deletion_evidence_clusters[closest_deletion[0]].members
-    #         # print("Insertion {0}:{1}-{2} -> {3}:{4}-{5}".format(source_contig, source_start, source_end, dest_contig, dest_start, dest_end))
-    #         insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_dup_cluster.score))
-    #     else:
-    #         #Duplication
-    #         # print("Duplication {0}:{1}-{2} -> {3}:{4}-{5}".format(source_contig, source_start, source_end, dest_contig, dest_start, dest_end))
-    #         int_duplication_candidates.append(CandidateDuplicationInterspersed(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, ins_dup_cluster.members, ins_dup_cluster.score))
-    # # for insertion_index in to_delete[::-1]:
-    # #     del(insertion_evidence_clusters[insertion_index])
-    # return (insertion_candidates, int_duplication_candidates)
