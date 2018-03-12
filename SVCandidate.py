@@ -52,32 +52,14 @@ class Candidate:
 
 
     def get_vcf_entry(self):
-        if self.type == "inv":
-            contig = self.source_contig
-            start = self.source_start
-            end = self.source_end
-            svtype = "INV"
-        elif self.type == "ins":
-            contig = self.dest_contig
-            start = self.dest_start
-            end = self.dest_end
-            svtype = "INS"
-        elif self.type == "dup_tan":
-            contig = self.source_contig
-            start = self.source_end
-            end = self.source_end + self.copies * (self.source_end - self.source_start)
-            svtype = "DUP:TANDEM"
-        elif self.type == "dup_int":
-            contig = self.dest_contig
-            start = self.dest_start
-            end = self.dest_end
-            svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
-
+        raise NotImplementedError
 
 
 class CandidateDeletion(Candidate):
-    pass
+    def get_vcf_entry(self):
+        contig, start, end = self.get_source()
+        svtype = "DEL"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
 
 
 class CandidateInversion(Candidate):
@@ -89,6 +71,12 @@ class CandidateInversion(Candidate):
         self.members = members
         self.score = score
         self.type = "inv"
+
+
+    def get_vcf_entry(self):
+        contig, start, end = self.get_source()
+        svtype = "INV"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
 
 
 class CandidateInsertion(Candidate):
@@ -131,6 +119,12 @@ class CandidateInsertion(Candidate):
                    abs(((this_dest_start + this_dest_end) / 2) - ((other_dest_start + other_dest_end) / 2))
         else:
             return float("inf")
+
+
+    def get_vcf_entry(self):
+        contig, start, end = self.get_destination()
+        svtype = "INS"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
 
 
 class CandidateDuplicationTandem(Candidate):
@@ -185,6 +179,14 @@ class CandidateDuplicationTandem(Candidate):
             return float("inf")
 
 
+    def get_vcf_entry(self):
+        contig = self.source_contig
+        start = self.source_end
+        end = self.source_end + self.copies * (self.source_end - self.source_start)
+        svtype = "DUP:TANDEM"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+
+
 class CandidateDuplicationInterspersed(Candidate):
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score):
         self.source_contig = source_contig
@@ -236,3 +238,9 @@ class CandidateDuplicationInterspersed(Candidate):
                    abs(((this_dest_start + this_dest_end) / 2) - ((other_dest_start + other_dest_end) / 2))
         else:
             return float("inf")
+
+
+    def get_vcf_entry(self):
+        contig, start, end = self.get_destination()
+        svtype = "DUP:INT"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
