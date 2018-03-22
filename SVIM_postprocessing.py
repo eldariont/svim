@@ -94,7 +94,7 @@ def write_evidence_clusters_bed(working_dir, clusters):
     insertion_from_evidence_output.close()
 
 
-def write_evidence_clusters_vcf(working_dir, clusters, genome):
+def write_evidence_clusters_vcf(working_dir, clusters):
     """Write evidence clusters into working directory in VCF format."""
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
@@ -105,8 +105,6 @@ def write_evidence_clusters_vcf(working_dir, clusters, genome):
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
     print("##source=SVIMV{0}".format(__version__), file=vcf_output)
-    if genome:
-        print("##reference={0}".format(genome), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
     print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)

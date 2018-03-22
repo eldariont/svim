@@ -44,7 +44,7 @@ SVIM-COLLECT performs three steps to detect SVs:
 
     parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads. Perform steps 1-3.')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
-    parser_fasta.add_argument('reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
+    parser_fasta.add_argument('reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_fasta.add_argument('genome', type=str, help='Reference genome file (FASTA)')
     parser_fasta.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
@@ -56,8 +56,6 @@ SVIM-COLLECT performs three steps to detect SVs:
     parser_bam.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
-    parser_bam.add_argument('--reads_file', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
-    parser_bam.add_argument('--genome', type=str, help='Reference genome file (FASTA)')
 
     return parser.parse_args()
 
@@ -207,115 +205,6 @@ def create_full_file(working_dir, reads_path, reads_type):
     return full_reads_path
 
 
-def create_tail_files(working_dir, reads_path, reads_type, span):
-    """Create FASTA files with read tails and full reads if they do not exist."""
-    if not os.path.exists(working_dir):
-        logging.error("Given working directory does not exist")
-        sys.exit()
-
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-
-    if not os.path.exists("{0}/{1}_left.fa".format(working_dir, reads_file_prefix)):
-        left_file = open("{0}/{1}_left.fa".format(working_dir, reads_file_prefix), 'w')
-        write_left = True
-    else:
-        write_left = False
-        logging.warning("FASTA file for left tails exists. Skip")
-
-    if not os.path.exists("{0}/{1}_right.fa".format(working_dir, reads_file_prefix)):
-        right_file = open("{0}/{1}_right.fa".format(working_dir, reads_file_prefix), 'w')
-        write_right = True
-    else:
-        write_right = False
-        logging.warning("FASTA file for right tails exists. Skip")
-
-    if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-        full_reads_path = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
-        if not os.path.exists(full_reads_path):
-            full_file = open(full_reads_path, 'w')
-            write_full = True
-        else:
-            write_full = False
-            logging.warning("FASTA file for full reads exists. Skip")
-    else:
-        full_reads_path = reads_path
-        write_full = False
-
-    if write_left or write_right or write_full:
-        if reads_type == "fasta" or reads_type == "fastq":
-            reads_file = open(reads_path, "r")
-        elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-            reads_file = gzip.open(reads_path, "rb")
-        
-        if reads_type == "fasta" or reads_type == "fasta_gzip":
-            sequence = ""
-            for line in reads_file:
-                if line.startswith('>'):
-                    if sequence != "":
-                        if len(sequence) > 2000:
-                            if write_left:
-                                prefix = sequence[:span]
-                                print(">" + read_name, file=left_file)
-                                print(prefix, file=left_file)
-                            if write_right:
-                                suffix = sequence[-span:]
-                                print(">" + read_name, file=right_file)
-                                print(suffix, file=right_file)
-                        if write_full:
-                            print(">" + read_name, file=full_file)
-                            print(sequence, file=full_file)
-                    read_name = line.strip()[1:]
-                    sequence = ""
-                else:
-                    sequence += line.strip()
-            if sequence != "":
-                if len(sequence) > 2000:
-                    if write_left:
-                        prefix = sequence[:span]
-                        print(">" + read_name, file=left_file)
-                        print(prefix, file=left_file)
-                    if write_right:
-                        suffix = sequence[-span:]
-                        print(">" + read_name, file=right_file)
-                        print(suffix, file=right_file)
-                if write_full:
-                    print(">" + read_name, file=full_file)
-                    print(sequence, file=full_file)
-            reads_file.close()
-        elif reads_type == "fastq" or reads_type == "fastq_gzip": 
-            sequence_line_is_next = False
-            for line in reads_file:
-                if line.startswith('@'):
-                    read_name = line.strip()[1:]
-                    sequence_line_is_next = True
-                elif sequence_line_is_next:
-                    sequence_line_is_next = False
-                    sequence = line.strip()
-                    if len(sequence) > 2000:
-                        if write_left:
-                            prefix = sequence[:span]
-                            print(">" + read_name, file=left_file)
-                            print(prefix, file=left_file)
-                        if write_right:
-                            suffix = sequence[-span:]
-                            print(">" + read_name, file=right_file)
-                            print(suffix, file=right_file)
-                    if write_full:
-                        print(">" + read_name, file=full_file)
-                        print(sequence, file=full_file)
-            reads_file.close()
-    
-    if write_left:
-        left_file.close()
-    if write_right:
-        right_file.close()
-    if write_full:
-        full_file.close()
-
-    logging.info("Read tail and full read files written")
-    return full_reads_path
-
-
 def run_full_alignment(working_dir, genome, reads_path, cores):
     """Align full reads with NGM-LR."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
@@ -333,39 +222,6 @@ def run_full_alignment(working_dir, genome, reads_path, cores):
         logging.info("Alignment finished")
     else:
         logging.warning("Alignment for full sequences exists. Skip")
-
-
-def run_tail_alignments(working_dir, genome, reads_path, cores):
-    """Align read tails with NGM-LR."""
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    left_fa = "{0}/{1}_left.fa".format(working_dir, reads_file_prefix)
-    left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
-    right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
-    right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
-
-    if not os.path.exists(left_aln):
-        bwa = Popen(['ngmlr',
-                     '-t', str(cores), '-r', genome, '-q', left_fa], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-o', left_aln], stdin=view.stdout)
-        sort.wait()
-    else:
-        logging.warning("Alignment for left sequences exists. Skip")
-
-    if not os.path.exists(right_aln):
-        bwa = Popen(['ngmlr',
-                     '-t', str(cores), '-r', genome, '-q', right_fa], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
-                      'sort', '-@', str(cores), '-o', right_aln], stdin=view.stdout)
-        sort.wait()
-    else:
-        logging.warning("Alignment for right sequences exists. Skip")
-
-    logging.info("Tail alignments finished")
 
 
 def natural_representation(qname): 
@@ -467,15 +323,15 @@ def main():
     # Search for SV evidences
     if options.sub == 'reads':
         logging.info("MODE: reads")
-        logging.info("INPUT: {0}".format(os.path.abspath(options.reads_file)))
+        logging.info("INPUT: {0}".format(os.path.abspath(options.reads)))
         logging.info("GENOME: {0}".format(os.path.abspath(options.genome)))
-        reads_type = guess_file_type(options.reads_file)
+        reads_type = guess_file_type(options.reads)
         if reads_type == "unknown":
             return
         elif reads_type == "list":
             # List of read files
             sv_evidences = []
-            for file_path in read_file_list(options.reads_file):
+            for file_path in read_file_list(options.reads):
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
                 run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
@@ -484,7 +340,7 @@ def main():
                 sv_evidences.extend(analyze_alignment(full_aln, parameters))
         else:
             # Single read file
-            full_reads_path = create_full_file(options.working_dir, options.reads_file, reads_type)
+            full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
             run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
@@ -501,7 +357,7 @@ def main():
     # Write SV evidence clusters
     logging.info("Write evidence clusters..")
     write_evidence_clusters_bed(options.working_dir, evidence_clusters)
-    write_evidence_clusters_vcf(options.working_dir, evidence_clusters, options.genome)
+    write_evidence_clusters_vcf(options.working_dir, evidence_clusters)
 
     # Create result plots
     plot_histograms(options.working_dir, evidence_clusters)
