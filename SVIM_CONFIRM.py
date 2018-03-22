@@ -64,8 +64,8 @@ def read_parameters(options):
 
     parameters["min_mapq"] = config.getint("detection", "min_mapq")
     parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
+    parameters["min_sv_size"] = config.getint("detection", "min_sv_size")
 
-    parameters["min_length"] = config.getint("split read", "min_length")
     parameters["max_segment_gap_tolerance"] = config.getint("split read", "max_segment_gap_tolerance")
     parameters["max_deletion_size"] = config.getint("split read", "max_deletion_size")
     parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")

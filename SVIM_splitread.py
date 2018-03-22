@@ -27,7 +27,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                 reference_dist = supplementary_ref_start - primary_ref_end
                 if reference_dist >= 0:                    
                     deviation = individual_dist - reference_dist
-                    if deviation >= parameters["min_length"]:
+                    if deviation >= parameters["min_sv_size"]:
                         #INS candidate
                         if reference_dist <= parameters["max_segment_gap_tolerance"]:
                             #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
@@ -35,7 +35,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                         else:
                             pass
                             #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_length"]:
+                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
                         #DEL candidate
                         if individual_dist <= parameters["max_segment_gap_tolerance"]:
                             #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
@@ -47,7 +47,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                         #Either very large DEL or TRANS
                         #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
                         return EvidenceTranslocation(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start, "suppl", read_name)
-                elif reference_dist < -parameters["min_length"] and supplementary_ref_end > primary_ref_start:
+                elif reference_dist < -parameters["min_sv_size"] and supplementary_ref_end > primary_ref_start:
                     #Tandem Duplication
                     #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_end, primary_ref_end - supplementary_ref_start), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, supplementary_ref_start, primary_ref_end, 1, "suppl", read_name)
@@ -56,7 +56,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                 individual_dist = primary_q_start - supplementary_q_end
                 if reference_dist >= 0:
                     deviation = individual_dist - reference_dist
-                    if deviation >= parameters["min_length"]:
+                    if deviation >= parameters["min_sv_size"]:
                         #INS candidate
                         if reference_dist <= parameters["max_segment_gap_tolerance"]:
                             #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
@@ -64,7 +64,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                         else:
                             pass
                             #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_length"]:
+                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
                         #DEL candidate
                         if individual_dist <= parameters["max_segment_gap_tolerance"]:
                             #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
@@ -76,7 +76,7 @@ def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, par
                         #Either very large DEL or TRANS
                         #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
                         return EvidenceTranslocation(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start, "suppl", read_name)
-                elif reference_dist < -parameters["min_length"] and primary_ref_end > supplementary_ref_start:
+                elif reference_dist < -parameters["min_sv_size"] and primary_ref_end > supplementary_ref_start:
                     #Tandem Duplication
                     #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_end, supplementary_ref_start - primary_ref_end), file=sys.stdout)
                     return EvidenceDuplicationTandem(primary_ref_chr, primary_ref_start, supplementary_ref_end, 1, "suppl", read_name)

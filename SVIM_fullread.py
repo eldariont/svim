@@ -5,7 +5,7 @@ import sys
 from SVEvidence import EvidenceDeletion, EvidenceInsertion
 
 
-def analyze_cigar_indel(tuples, min_length=50):
+def analyze_cigar_indel(tuples, min_length):
     """Parses CIGAR tuples (op, len) and returns Indels with a length > minLength"""
     pos = 0
     indels = []
@@ -24,11 +24,11 @@ def analyze_cigar_indel(tuples, min_length=50):
     return indels
 
 
-def analyze_alignment_indel(alignment, full_bam, full_read_name):
+def analyze_alignment_indel(alignment, full_bam, full_read_name, parameters):
     sv_evidences = []
     full_ref_chr = full_bam.getrname(alignment.reference_id)
     full_ref_start = alignment.reference_start
-    indels = analyze_cigar_indel(alignment.cigartuples)
+    indels = analyze_cigar_indel(alignment.cigartuples, parameters["min_sv_size"])
     for pos, length, typ in indels:
         if typ == "del":
             #print("Deletion detected: {0}:{1}-{2} (length {3})".format(full_ref_start, pos, full_ref_start + pos + length, length), file=sys.stdout)
@@ -51,12 +51,12 @@ def analyze_full_read_indel(full_iterator_object, full_bam, parameters):
         return sv_evidences
 
     # Search indels in primary alignment
-    sv_evidences.extend(analyze_alignment_indel(full_prim[0], full_bam, full_read_name))
+    sv_evidences.extend(analyze_alignment_indel(full_prim[0], full_bam, full_read_name, parameters))
 
     # Search indels in good supplementary alignments
     good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters["min_mapq"]]
     for alignment in good_suppl_alns:
-        sv_evidences.extend(analyze_alignment_indel(alignment, full_bam, full_read_name))    
+        sv_evidences.extend(analyze_alignment_indel(alignment, full_bam, full_read_name, parameters))
 
     return sv_evidences
 
