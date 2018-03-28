@@ -26,6 +26,7 @@ from Bio import SeqIO
 from matplotlib.backends.backend_pdf import PdfPages
 
 from SVIM_readtails import confirm_del, confirm_ins, confirm_inv
+from SVIM_COLLECT import read_parameters
 
 
 def parse_arguments():
@@ -53,66 +54,6 @@ which confirms SV evidences using read-tail mapping.""")
     parser.add_argument('--confirm_inv_max', type=int, default=25, help='Confirm inversion evidence clusters with this score or smaller')
     parser.add_argument('--debug_confirm', action='store_true', help='print dot plots when confirming SV evidence clusters')
     return parser.parse_args()
-
-
-def read_parameters(options):
-    config = ConfigParser.RawConfigParser()
-    config.read(options.config)
-
-    parameters = dict()
-    parameters["cores"] = config.getint("alignment", "cores")
-
-    parameters["min_mapq"] = config.getint("detection", "min_mapq")
-    parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
-    parameters["min_sv_size"] = config.getint("detection", "min_sv_size")
-
-    parameters["max_segment_gap_tolerance"] = config.getint("split read", "max_segment_gap_tolerance")
-    parameters["max_deletion_size"] = config.getint("split read", "max_deletion_size")
-    parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")
-
-    parameters["partition_max_distance"] = config.getint("clustering", "partition_max_distance")
-    parameters["cluster_max_distance"] = config.getfloat("clustering", "cluster_max_distance")
-
-    parameters["del_ins_dup_max_distance"] = config.getfloat("merging", "del_ins_dup_max_distance")
-    parameters["trans_destination_partition_max_distance"] = config.getint("merging", "trans_destination_partition_max_distance")
-    parameters["trans_partition_max_distance"] = config.getint("merging", "trans_partition_max_distance")
-    parameters["trans_sv_max_distance"] = config.getint("merging", "trans_sv_max_distance")
-
-    parameters["max_confirmation_number"] = config.getint("confirmation", "max_confirmation_number")
-    parameters["tail_span"] = config.getint("confirmation", "tail_span")
-    parameters["tail_min_deviation"] = config.getfloat("confirmation", "tail_min_deviation")
-    parameters["tail_max_deviation"] = config.getfloat("confirmation", "tail_max_deviation")
-    parameters["count_win_size"] = config.getint("confirmation", "count_win_size")
-    parameters["count_k"] = config.getint("confirmation", "count_k")
-    parameters["count_band"] = config.getfloat("confirmation", "count_band")
-    parameters["stretch_threshold"] = config.getint("confirmation", "stretch_threshold")
-    parameters["stretch_tolerance"] = config.getint("confirmation", "stretch_tolerance")
-    parameters["stretch_min_length"] = config.getint("confirmation", "stretch_min_length")
-    parameters["path_constant_gap_cost"] = config.getint("confirmation", "path_constant_gap_cost")
-    parameters["path_linear_gap_cost"] = config.getint("confirmation", "path_linear_gap_cost")
-    parameters["path_convex_gap_cost"] = config.getint("confirmation", "path_convex_gap_cost")
-    parameters["path_root_gap_cost"] = config.getint("confirmation", "path_root_gap_cost")
-    parameters["path_tolerance"] = config.getint("confirmation", "path_tolerance")
-    parameters["align_costs"] = (config.getint("confirmation", "align_costs_match"), config.getint("confirmation", "align_costs_mismatch"), config.getint("confirmation", "align_costs_gap"))
-
-    try:
-        parameters["skip_indel"] =  options.skip_indel
-    except AttributeError:
-        parameters["skip_indel"] =  False
-    try:
-        parameters["skip_segment"] =  options.skip_segment
-    except AttributeError:
-        parameters["skip_segment"] =  False
-    try:
-        parameters["skip_confirm"] =  options.skip_confirm
-    except AttributeError:
-        parameters["skip_confirm"] =  False
-    try:
-        parameters["debug_confirm"] =  options.debug_confirm
-    except AttributeError:
-        parameters["debug_confirm"] =  False
-
-    return parameters
 
 
 def guess_file_type(reads_path):

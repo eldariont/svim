@@ -75,6 +75,8 @@ def read_parameters(options):
     parameters["max_deletion_size"] = config.getint("split read", "max_deletion_size")
     parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")
 
+    parameters["distance_metric"] = config.get("clustering", "distance_metric")
+    parameters["distance_normalizer"] = config.getint("clustering", "distance_normalizer")
     parameters["partition_max_distance"] = config.getint("clustering", "partition_max_distance")
     parameters["cluster_max_distance"] = config.getfloat("clustering", "cluster_max_distance")
 
@@ -83,6 +85,7 @@ def read_parameters(options):
     parameters["trans_partition_max_distance"] = config.getint("merging", "trans_partition_max_distance")
     parameters["trans_sv_max_distance"] = config.getint("merging", "trans_sv_max_distance")
 
+    parameters["max_confirmation_number"] = config.getint("confirmation", "max_confirmation_number")
     parameters["tail_span"] = config.getint("confirmation", "tail_span")
     parameters["tail_min_deviation"] = config.getfloat("confirmation", "tail_min_deviation")
     parameters["tail_max_deviation"] = config.getfloat("confirmation", "tail_max_deviation")
@@ -107,6 +110,14 @@ def read_parameters(options):
         parameters["skip_segment"] =  options.skip_segment
     except AttributeError:
         parameters["skip_segment"] =  False
+    try:
+        parameters["skip_confirm"] =  options.skip_confirm
+    except AttributeError:
+        parameters["skip_confirm"] =  False
+    try:
+        parameters["debug_confirm"] =  options.debug_confirm
+    except AttributeError:
+        parameters["debug_confirm"] =  False
 
     return parameters
 
