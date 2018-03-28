@@ -50,6 +50,19 @@ class Evidence:
         return dist_pos + dist_span + dist_content
 
 
+    def span_loc_distance(self, evidence2, distance_normalizer):
+        this_contig, this_start, this_end = self.get_source()
+        other_contig, other_start, other_end = evidence2.get_source()
+        #Component 1: difference in spans
+        this_span = this_end - this_start
+        other_span = other_end - other_start
+        dist_span = abs(this_span - other_span) / float(max(this_span, other_span))
+        #Component 2: difference in locations
+        this_center = (this_start + this_end) / 2
+        other_center = (other_start + other_end) / 2
+        dist_loc = min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center)) / float(distance_normalizer)
+        return dist_span + dist_loc
+
     def as_string(self, sep="\t"):
         contig, start, end = self.get_source()
         return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1}".format(self.type, self.evidence), self.read)
@@ -163,16 +176,6 @@ class EvidenceDuplicationTandem(Evidence):
     def get_destination(self):
         source_contig, source_start, source_end = self.get_source()
         return (source_contig, source_end, source_end + self.copies * (source_end - source_start))
-
-
-    def mean_distance_to(self, evidence2):
-        """Return distance between means of two evidences."""
-        this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = evidence2.get_source()
-        if self.type == evidence2.type and this_contig == other_contig:
-            return abs(((this_start + this_end) / 2) - ((other_start + other_end) / 2))
-        else:
-            return float("inf")
 
 
     def as_string(self, sep="\t"):

@@ -25,7 +25,7 @@ def form_partitions(sv_evidences, max_delta):
     return partitions
 
 
-def clusters_from_partitions(partitions, max_delta):
+def clusters_from_partitions(partitions, parameters):
     """Form clusters in partitions using Gowda-Diday distance and clique finding in a distance graph."""
     clusters_full = []
     # Find clusters in each partition individually.
@@ -40,11 +40,15 @@ def clusters_from_partitions(partitions, max_delta):
         connection_graph.add_nodes_from(range(len(partition_sample)))
         for i1 in range(len(partition_sample)):
             for i2 in range(len(partition_sample)):
-                if i1 == i2 or partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) > max_delta:
-                    pass
-                else:
-                    # Add edge in graph only if two indels are close to each other (distance <= max_delta)
-                    connection_graph.add_edge(i1, i2)
+                if i1 != i2:
+                    if parameters["distance_metric"] == "gd":
+                        if partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) <= parameters["cluster_max_distance"]:
+                            # Add edge in graph only if two indels are close to each other (distance <= max_delta)
+                            connection_graph.add_edge(i1, i2)
+                    else:
+                        if partition_sample[i1].span_loc_distance(partition_sample[i2], parameters["distance_normalizer"]) <= parameters["cluster_max_distance"]:
+                            # Add edge in graph only if two indels are close to each other (distance <= max_delta)
+                            connection_graph.add_edge(i1, i2)
         clusters_indices = nx.find_cliques(connection_graph)
         for cluster in clusters_indices:
             clusters_full.append([partition_sample[index] for index in cluster])
@@ -134,7 +138,7 @@ def consolidate_clusters_bilocal(clusters):
 
 def partition_and_cluster_candidates(candidates, parameters):
     partitions = form_partitions(candidates, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
 
     final_candidates = []
@@ -161,13 +165,13 @@ def partition_and_cluster_candidates(candidates, parameters):
 
 def partition_and_cluster_unilocal(evidences, parameters):
     partitions = form_partitions(evidences, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return sorted(consolidate_clusters_unilocal(clusters, parameters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(evidences, parameters):
     partitions = form_partitions(evidences, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters["cluster_max_distance"])
+    clusters = clusters_from_partitions(partitions, parameters)
     logging.info("Cluster results: {0} partitions and {1} clusters".format(len(partitions), len(clusters)))
     return consolidate_clusters_bilocal(clusters)

@@ -15,7 +15,10 @@ def merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_cl
     deleted_regions_to_remove = []
     for ins_cluster in insertion_from_evidence_clusters:
         # Compute distances of every deletion cluster to the current insertion/duplication
-        distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_evidence_clusters)]
+        if parameters["distance_metric"] == "gd":
+            distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_evidence_clusters)]
+        elif parameters["distance_metric"] == "sl":
+            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, parameters["distance_normalizer"])) for del_index, del_cluster in enumerate(deletion_evidence_clusters)]
         closest_deletion_index, closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
