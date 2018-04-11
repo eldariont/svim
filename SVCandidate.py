@@ -103,6 +103,28 @@ class CandidateInversion(Candidate):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
 
 
+class CandidateNovelInsertion(Candidate):
+    def __init__(self, dest_contig, dest_start, dest_end, members, score):
+        self.dest_contig = dest_contig
+        self.dest_start = dest_start
+        self.dest_end = dest_end
+
+        self.members = members
+        self.score = score
+        self.type = "nov_ins"
+
+    def get_destination(self):
+        return (self.dest_contig, self.dest_start, self.dest_end)
+
+    def get_bed_entry(self):
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0}".format(self.type), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+
+    def get_vcf_entry(self):
+        contig, start, end = self.get_destination()
+        svtype = "INS:NOVEL"
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+
+
 class CandidateInsertion(Candidate):
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score):
         self.source_contig = source_contig

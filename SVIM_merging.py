@@ -160,9 +160,9 @@ def merge_translocations_at_deletions(translocation_partitions_dict, translocati
 
 
 def merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, parameters):
-    # to_delete = []
+    inserted_regions_to_remove = []
     insertion_from_evidence_clusters = []
-    for ins_cluster in insertion_evidence_clusters:
+    for insertion_index, ins_cluster in enumerate(insertion_evidence_clusters):
         ins_contig, ins_start, ins_end = ins_cluster.get_source()
         try:
             closest_to_start_index = get_closest_index(translocation_partition_means_dict[ins_contig], ins_start)
@@ -184,6 +184,6 @@ def merge_translocations_at_insertions(translocation_partitions_dict, translocat
                     members = ins_cluster.members + translocation_partitions_dict[ins_contig][closest_to_start_index]
                     score = calculate_score_insertion(ins_cluster.score, abs(closest_to_start_mean - ins_start), translocation_partition_stds_dict[ins_contig][closest_to_start_index], [destination1_std, destination2_std])
                     insertion_from_evidence_clusters.append(EvidenceClusterBiLocal(destination1[0], min(destination1[1], destination2[1]), max(destination1[1], destination2[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "ins_dup"))
-                    # to_delete.append(insertion_index)
+                    inserted_regions_to_remove.append(insertion_index)
 
-    return insertion_from_evidence_clusters
+    return insertion_from_evidence_clusters, inserted_regions_to_remove
