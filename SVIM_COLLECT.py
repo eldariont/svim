@@ -224,9 +224,9 @@ def run_full_alignment(working_dir, genome, reads_path, cores):
     if not os.path.exists(full_aln):
         ngmlr = Popen(['ngmlr',
                        '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        view = Popen(['samtools',
                       'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        sort = Popen(['samtools',
                       'sort', '-n', '-@', str(cores), '-o', full_aln],
                      stdin=view.stdout)
         sort.wait()

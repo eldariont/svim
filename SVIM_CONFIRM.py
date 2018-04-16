@@ -199,16 +199,16 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     if not os.path.exists(left_aln):
         bwa = Popen(['ngmlr',
                      '-t', str(cores), '-r', genome, '-q', left_fa], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        view = Popen(['samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        sort = Popen(['samtools',
                       'sort', '-@', str(cores), '-o', left_aln], stdin=view.stdout)
         sort.wait()
     else:
         logging.warning("Alignment for left sequences exists. Skip")
 
     if not os.path.exists(left_aln_index):
-        call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        call(['samtools',
                       'index', left_aln])
     else:
         logging.warning("Alignment index for left sequences exists. Skip")
@@ -216,16 +216,16 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     if not os.path.exists(right_aln):
         bwa = Popen(['ngmlr',
                      '-t', str(cores), '-r', genome, '-q', right_fa], stdout=PIPE)
-        view = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        view = Popen(['samtools',
                       'view', '-b', '-@', str(cores)], stdin=bwa.stdout, stdout=PIPE)
-        sort = Popen(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        sort = Popen(['samtools',
                       'sort', '-@', str(cores), '-o', right_aln], stdin=view.stdout)
         sort.wait()
     else:
         logging.warning("Alignment for right sequences exists. Skip")
 
     if not os.path.exists(right_aln_index):
-        call(['/scratch/ngsvin/bin/samtools/samtools-1.3.1/samtools',
+        call(['samtools',
                       'index', right_aln])
     else:
         logging.warning("Alignment index for right sequences exists. Skip")
