@@ -1,10 +1,12 @@
 ## SVIM - Structural variant identification using long reads
 
-SVIM (pronounced *SWIM*) is a structural variant caller for long reads. It combines read-tail mapping, full alignment analysis, and split-read mapping to distinguish five classes of structural variants. SVIM discriminates between similar SV classes such as interspersed duplications and cut&paste insertions and is unique in its capability of extracting both the genomic origin and destination of insertions and duplications.
+SVIM (pronounced *SWIM*) is a structural variant caller for long reads. It is able to detect and classify six different classes of structural variants.  Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as duplications and cut&paste insertions. In our experiments on simulated and real PacBio data, SVIM reached consistently better results than competing methods, particularly on low-coverage datasets. Furthermore, it is unique in its capability of extracting both the genomic origin and destination of insertions and duplications.
 
-### Background
+### Background on Structural Variants and Long Reads
 
-Structural variants (SVs) are defined as genomic variants larger than 50 bps. They have been shown to affect more bases in any given genome than SNPs and small indels. Additionally, they have great impact on human phenotype and diversity and have been linked to numerous diseases. Due to their size and association with repeats, they are difficult to detect in shotgun sequencing, especially when based on short reads. Long read, single molecule sequencing technologies like those offered by Pacific Biosciences and Oxford Nanopore produce reads with lengths of several thousand base pairs. Despite their higher error rate, long read sequencing offers many advantages for the detection of structural variants, but available software tools still do not fully exploit the possibilities.
+Structural variants (SVs) are typically defined as genomic variants larger than 50bps (e.g. deletions, duplications, inversions). Studies have shown that they affect more bases in any given genome than SNPs and small Indels taken together. Consequently, they have a large impact on genes and regulatory regions. This is reflected in the large number of genetic diseases that are caused by SVs.
+
+Common sequencing technologies by providers such as Illumina generate short reads with high accuracy. However, they exhibit weaknesses in repeat and low-complexity regions. This negatively affects SV detection because SVs are associated to such regions. Single molecule long-read sequencing technologies from Pacific Biotechnologies and Oxford Nanopore produce reads with error rates of up to 15% but with lengths of several kb. The high read lengths enable them to cover entire repeats and SVs which facilitates SV detection.
 
 ### Input
 
@@ -14,11 +16,11 @@ SVIM analyzes long reads contained in a FASTA file. It was tested on PacBio data
 
 <img src="https://raw.githubusercontent.com/eldariont/svim/master/docs/SVclasses.png" align="right" width="400px">
 
-SVIM distinguishes five different SV classes: deletions, inversions, cut&paste insertions, interspersed and tandem duplications. For each of these SV classes, it produces a BED file with the SV coordinates. Additonally, a VCF file is produced containing all found SVs.
+SVIM distinguishes six different SV classes: deletions, inversions, cut&paste insertions, novel insertions, interspersed and tandem duplications. For each of these SV classes, it produces a BED file with the SV coordinates. Additonally, a VCF file is produced containing all found SVs.
 
 
 ### Contact
-If you experience problems or have suggestions please create issues or pull requests or contact heller_d@molgen.mpg.de.
+If you experience problems or have suggestions please create an issue or a pull request or contact heller_d@molgen.mpg.de.
 
 ### License
 
