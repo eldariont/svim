@@ -10,7 +10,7 @@ import re
 import pickle
 import gzip
 import logging
-import ConfigParser
+import configparser
 
 from subprocess import Popen, PIPE
 from collections import defaultdict

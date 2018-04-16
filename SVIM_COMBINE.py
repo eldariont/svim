@@ -9,7 +9,7 @@ import os
 import pickle
 import gzip
 import logging
-import ConfigParser
+import configparser
 
 from collections import defaultdict
 from time import strftime, localtime

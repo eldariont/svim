@@ -9,7 +9,7 @@ import os
 import pickle
 import gzip
 import logging
-import ConfigParser
+import configparser
 
 from subprocess import Popen, PIPE, call
 from collections import defaultdict
