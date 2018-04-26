@@ -10,11 +10,13 @@ import pickle
 import gzip
 import logging
 import configparser
+import itertools
 
 from subprocess import Popen, PIPE, call
 from collections import defaultdict
 from time import strftime, localtime
 from math import pow, sqrt
+from multiprocessing import Pool
 
 import pysam
 import numpy as np
@@ -256,7 +258,44 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     
     logging.info("Full alignment finished")
 
-    
+
+def confirm_clusters_in_contig(evidence_clusters, type, left_aln, right_aln, full_aln, full_reads_path, genome_path, parameters):
+    reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
+    reference =SeqIO.index_db(genome_path + ".idx", genome_path, "fasta")
+
+    left_bam = pysam.AlignmentFile(left_aln)
+    right_bam = pysam.AlignmentFile(right_aln)
+    full_bam = pysam.AlignmentFile(full_aln)
+
+    current_contig = evidence_clusters[0].get_source()[0]
+    contig_record = reference[current_contig]
+    logging.info("Confirm {0} evidence clusters in contig {1}..".format(type, current_contig))
+
+    for cluster in evidence_clusters:
+        if type == "deletion":
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_del(left_bam, right_bam, cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_del2(full_bam, cluster, parameters)
+        if type == "insertion":
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_ins(left_bam, right_bam, cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_ins2(full_bam, cluster, parameters)
+        if type == "inversion":
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_inv(left_bam, right_bam, cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_inv2(full_bam, cluster, parameters)
+
+        confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+        if confirmation_confidence > 0:
+            mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
+        else:
+            mean_confirmation_rate = 0
+
+        if confirmation_confidence >= 3:
+            if mean_confirmation_rate > 0.5:
+                cluster.score += int(mean_confirmation_rate * 20)
+            elif mean_confirmation_rate < 0.3 and cluster.end - cluster.start > parameters["count_win_size"] * 3:
+                cluster.score = 0
+
+    return evidence_clusters
+
 def main():
     # Fetch command-line options and configuration file values and set parameters accordingly
     options = parse_arguments()
@@ -308,106 +347,57 @@ def main():
 
     reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
     reference =SeqIO.index_db(options.genome + ".idx", options.genome, "fasta")
+    pool = Pool(processes=12)
     logging.info("Indexing reads and reference finished")
 
-    if parameters["debug_confirm"]:
-        del_pdf = PdfPages('dotplots_deletions.pdf')
-        ins_pdf = PdfPages('dotplots_insertions.pdf')
-
+    #DELETIONS
     num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
     logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
 
-    last_contig = None
+    dels_dict = defaultdict(list)
     for del_cluster in deletion_evidence_clusters:
         if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
             current_contig = del_cluster.get_source()[0]
-            if current_contig != last_contig:
-                contig_record = reference[current_contig]
-                last_contig = current_contig
-            if parameters["debug_confirm"]:
-                fig = plt.figure()
-                fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
-            successful_kmer_confirmations, total_kmer_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
-            read_evidences, read_contradictions = confirm_del2(full_bam, del_cluster, parameters)
+            dels_dict[current_contig].append(del_cluster)
 
-            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
-            if confirmation_confidence > 0:
-                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
-            else:
-                mean_confirmation_rate = 0            
+    inputs = []
+    for contig in sorted(dels_dict.keys()):
+        inputs.append((dels_dict[contig], "deletion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    results = pool.starmap(confirm_clusters_in_contig, inputs)
+    deletion_evidence_clusters = list(itertools.chain.from_iterable(results))
 
-            if confirmation_confidence >= 3:
-                if mean_confirmation_rate > 0.5:
-                    del_cluster.score += int(mean_confirmation_rate * 20)
-                elif mean_confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
-                    del_cluster.score = 0
-
-            if parameters["debug_confirm"]:
-                del_pdf.savefig(fig)
-                plt.close(fig)
-    if parameters["debug_confirm"]:
-        del_pdf.close()
-
+    #INSERTIONS
     num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
     logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
 
-    last_contig = None
+    ins_dict = defaultdict(list)
     for ins_cluster in insertion_evidence_clusters:
         if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
             current_contig = ins_cluster.get_source()[0]
-            if current_contig != last_contig:
-                contig_record = reference[current_contig]
-                last_contig = current_contig
-            if parameters["debug_confirm"]:
-                fig = plt.figure()
-                fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
-            successful_kmer_confirmations, total_kmer_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
-            read_evidences, read_contradictions = confirm_ins2(full_bam, ins_cluster, parameters)
+            ins_dict[current_contig].append(ins_cluster)
 
-            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
-            if confirmation_confidence > 0:
-                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
-            else:
-                mean_confirmation_rate = 0
-            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+    inputs = []
+    for contig in sorted(ins_dict.keys()):
+        inputs.append((ins_dict[contig], "insertion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    results = pool.starmap(confirm_clusters_in_contig, inputs)
+    insertion_evidence_clusters = list(itertools.chain.from_iterable(results))
 
-            if confirmation_confidence >= 3:
-                if mean_confirmation_rate > 0.5:
-                    ins_cluster.score += int(mean_confirmation_rate * 20)
-                elif mean_confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
-                    ins_cluster.score = 0
-
-            if parameters["debug_confirm"]:
-                ins_pdf.savefig(fig)
-                plt.close(fig)
-    if parameters["debug_confirm"]:
-        ins_pdf.close()
-
+    #INVERSIONS
     num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
     logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
 
-    last_contig = None
+    inv_dict = defaultdict(list)
     for inv_cluster in inversion_evidence_clusters:
         contig, start, end = inv_cluster.get_source()
         if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max and end - start <= parameters["max_sv_size"]:
             current_contig = contig
-            if current_contig != last_contig:
-                contig_record = reference[current_contig]
-                last_contig = current_contig
-            successful_kmer_confirmations, total_kmer_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
-            read_evidences, read_contradictions = confirm_inv2(full_bam, inv_cluster, parameters)
+            inv_dict[current_contig].append(inv_cluster)
 
-            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
-            if confirmation_confidence > 0:
-                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
-            else:
-                mean_confirmation_rate = 0
-
-            if confirmation_confidence >= 3:
-                if mean_confirmation_rate > 0.5:
-                    inv_cluster.score += int(mean_confirmation_rate * 20)
-                elif mean_confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
-                    inv_cluster.score = 0
+    inputs = []
+    for contig in sorted(inv_dict.keys()):
+        inputs.append((inv_dict[contig], "inversion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    results = pool.starmap(confirm_clusters_in_contig, inputs)
+    inversion_evidence_clusters = list(itertools.chain.from_iterable(results))
 
     ############################
     # Write confirmed clusters #

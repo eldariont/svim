@@ -345,7 +345,7 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                 evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, contig_record, current_parameters))
 
     deletion_confirmations = [ev for ev in evidences if ev.type == "del" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(deletion_confirmations), num_spanning_reads)
 
 
@@ -442,7 +442,7 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                 evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, contig_record, current_parameters))
 
     insertion_confirmations = [ev for ev in evidences if ev.type == "ins" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(insertion_confirmations), num_spanning_reads)
 
 
@@ -464,7 +464,7 @@ def confirm_ins2(full_bam, evidence_cluster, parameters):
                 insertions_in_read = basepairs_of_read - aligned_basepairs_of_read
                 num_spanning_reads += max(0, (end - start - insertions_in_read)) / (end - start)
 
-    logging.info("Found {0} vs. {1} reads in favor of or contradicting the insertion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0} vs. {1} reads in favor of or contradicting the insertion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(evidence_cluster.members), num_spanning_reads)
 
 
@@ -537,7 +537,7 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                     evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
 
     inversion_confirmations = [ev for ev in evidences if ev.type == "inv" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(inversion_confirmations), num_spanning_reads)
 
 
@@ -557,5 +557,5 @@ def confirm_inv2(full_bam, evidence_cluster, parameters):
                 aligned_basepairs_of_inversion = full_aln.get_overlap(start, end)
                 num_spanning_reads += aligned_basepairs_of_inversion / (end - start)
 
-    logging.info("Found {0} vs. {1} reads in favor of or contradicting the inversion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0} vs. {1} reads in favor of or contradicting the inversion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(evidence_cluster.members), num_spanning_reads)
