@@ -2,7 +2,6 @@
 
 import sys
 import numpy as np
-from string import upper, lower
 
 
 def nw_compute_matrix(a, b, costs=(2, -3, -2), backwards=False):
@@ -31,8 +30,8 @@ def nw_get_alignment(a, b, matrix, costs=(2, -3, -2), backwards=False):
         b = b[::-1]
     i, j = np.unravel_index(np.argmax(matrix), (len(a)+1, len(b)+1))
 
-    alin_a = lower(a[i:])
-    alin_b = lower(b[j:])
+    alin_a = a[i:].lower()
+    alin_b = b[j:].lower()
 
     while i > 0 and j > 0:
         if a[i-1] == b[j-1]:
@@ -40,17 +39,17 @@ def nw_get_alignment(a, b, matrix, costs=(2, -3, -2), backwards=False):
         else:
             match_cost = costs[1]
         if matrix[i, j] == matrix[i-1, j-1] + match_cost:
-            alin_a = upper(a[i-1]) + alin_a
-            alin_b = upper(b[j-1]) + alin_b
+            alin_a = a[i-1].upper() + alin_a
+            alin_b = b[j-1].upper() + alin_b
             i -= 1
             j -= 1
         elif matrix[i, j] == matrix[i-1, j] + costs[2]:
-            alin_a = upper(a[i-1]) + alin_a
+            alin_a = a[i-1].upper() + alin_a
             alin_b = "-" + alin_b
             i -= 1
         elif matrix[i, j] == matrix[i, j-1] + costs[2]:
             alin_a = "-" + alin_a
-            alin_b = upper(b[j-1]) + alin_b
+            alin_b = b[j-1].upper() + alin_b
             j -= 1
 
     if backwards:
@@ -62,25 +61,25 @@ def nw_get_alignment(a, b, matrix, costs=(2, -3, -2), backwards=False):
 def print_alignment(alin_a, alin_b, line_length=50, backwards=False):
     """Print alignment strings nicely. Break lines at given line length."""
     if backwards:
-        for i in range(((max(len(alin_a), len(alin_b)) + (line_length - 1)) / line_length) * -line_length,
+        for i in range(((max(len(alin_a), len(alin_b)) + (line_length - 1)) // line_length) * -line_length,
                        -line_length, line_length):
-            print i
-            print "|"
-            print alin_a[i:i+line_length].rjust(line_length)
-            print alin_b[i:i+line_length].rjust(line_length)
-            print ""
-        print -50
-        print "|"
-        print alin_a[-line_length:].rjust(line_length)
-        print alin_b[-line_length:].rjust(line_length)
-        print ""
+            print(i)
+            print("|")
+            print(alin_a[i:i+line_length].rjust(line_length))
+            print(alin_b[i:i+line_length].rjust(line_length))
+            print("")
+        print(-50)
+        print("|")
+        print(alin_a[-line_length:].rjust(line_length))
+        print(alin_b[-line_length:].rjust(line_length))
+        print("")
     else:
         for i in range(0, max(len(alin_a), len(alin_b)), line_length):
-            print i
-            print "|"
-            print alin_a[i:i+line_length]
-            print alin_b[i:i+line_length]
-            print ""
+            print(i)
+            print("|")
+            print(alin_a[i:i+line_length])
+            print(alin_b[i:i+line_length])
+            print("")
 
 
 def get_end_of_alignment(matrix, a_len, b_len, backwards=False):
@@ -96,15 +95,15 @@ def main():
     a = raw_input("Sequence A: ")
     b = raw_input("Sequence B: ")
 
-    print "Computing semi-global alignment of two sequences (lengths {0} and {1})..".format(len(a), len(b))
+    print("Computing semi-global alignment of two sequences (lengths {0} and {1})..".format(len(a), len(b)))
 
     costs = (3, -12, -12)
     matrix = nw_compute_matrix(a, b, costs)
 
-    print "Retrieve alignment string.."
+    print("Retrieve alignment string..")
     alin_a, alin_b = nw_get_alignment(a, b, matrix, costs)
 
-    print matrix
+    print(matrix)
 
     print_alignment(alin_a, alin_b)
 

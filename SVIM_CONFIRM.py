@@ -260,7 +260,7 @@ def main():
         evidences_file = options.obj_file
     else:
         logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'rb')
 
     logging.info("Loading object file created by SVIM-COLLECT.")
     evidence_clusters = pickle.load(evidences_file)

@@ -187,7 +187,7 @@ def main():
     for tan_dup_cluster in tandem_duplication_evidence_clusters:
         source_contig, source_start, source_end = tan_dup_cluster.get_source()
         dest_contig, dest_start, dest_end = tan_dup_cluster.get_destination()
-        num_copies = int(round((dest_end - dest_start) / float(source_end - source_start)))
+        num_copies = int(round((dest_end - dest_start) / (source_end - source_start)))
         tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score))
 
     ###################################
@@ -207,8 +207,8 @@ def main():
     translocation_partition_means_dict = {}
     translocation_partition_stds_dict = {}
     for contig in translocation_partitions_dict.keys():
-        translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / float(len(partition)))) for partition in translocation_partitions_dict[contig]]
-        translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / float(len(partition))))) for index, partition in enumerate(translocation_partitions_dict[contig])]
+        translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_dict[contig]]
+        translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_dict[contig])]
 
     insertion_candidates = []
     int_duplication_candidates = []

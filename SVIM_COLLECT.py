@@ -61,7 +61,7 @@ SVIM-COLLECT performs three steps to detect SVs:
 
 
 def read_parameters(options):
-    config = configparser.RawConfigParser()
+    config = configparser.RawConfigParser(inline_comment_prefixes=';')
     config.read(options.config)
 
     parameters = dict()

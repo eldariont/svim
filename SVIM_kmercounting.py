@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from scipy import stats
 
-from SVIM_parameters import SVIMParameters
 from SVIM_semiglobal import nw_compute_matrix, get_end_of_alignment
 
 
@@ -119,7 +118,7 @@ def distance_with_column_overlap(segment1, segment2, parameters):
             if lowest_intersect_row is None or intersect_row < lowest_intersect_row:
                 lowest_intersect_row = intersect_row
     dist2 = distance(segment1['end'], (lowest_intersect_row, col_end), parameters)
-    if dist1 < dist2 and not dist1 is None:
+    if not dist1 is None and not dist2 is None and dist1 < dist2:
         return (highest_intersect_row, col_start), segment2['start']
     elif not dist2 is None:
         return segment1['end'], (lowest_intersect_row, col_end)
@@ -147,7 +146,7 @@ def distance_with_row_overlap(segment1, segment2, parameters):
             if leftmost_intersect_col is None or intersect_col < leftmost_intersect_col:
                 leftmost_intersect_col = intersect_col
     dist2 = distance(segment1['end'], (row_end, leftmost_intersect_col), parameters)
-    if dist1 < dist2 and not dist1 is None:
+    if not dist1 is None and not dist2 is None and dist1 < dist2:
         return (row_start, rightmost_intersect_col), segment2['start']
     elif not dist2 is None:
         return segment1['end'], (row_end, leftmost_intersect_col)
@@ -186,7 +185,7 @@ def find_best_path(segments, matrix_end, parameters, debug=False):
         if dist < float('inf'):
             graph.add_edge(i1, "end", weight=dist)
     if debug:
-        print "Edge-list:", nx.to_edgelist(graph)
+        print("Edge-list:", nx.to_edgelist(graph))
     shortest_path = nx.shortest_path(graph, "start", "end", weight="weight")
     start_segment = {'start': (0, 0), 'end': (0, 0), 'stretches': []}
     end_segment = {'start': matrix_end, 'end': matrix_end, 'stretches': []}
@@ -205,13 +204,13 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     start_time = time()
 
     # Determine size of counting matrix
-    rows = len(ref) / parameters["count_win_size"]
-    cols = len(read) / parameters["count_win_size"]
+    rows = len(ref) // parameters["count_win_size"]
+    cols = len(read) // parameters["count_win_size"]
     last_row_size = len(ref) % parameters["count_win_size"]
     last_col_size = len(read) % parameters["count_win_size"]
-    if last_row_size > (parameters["count_win_size"] / 3):
+    if last_row_size > (parameters["count_win_size"] // 3):
         rows += 1
-    if last_col_size > (parameters["count_win_size"] / 3):
+    if last_col_size > (parameters["count_win_size"] // 3):
         cols += 1
 
     ########################
@@ -222,37 +221,37 @@ def find_svs(ref, read, parameters, debug=False, times=False):
 
     # Prepare kmer set for each read bucket
     ykmers = []
-    for ybucket in xrange(cols):
+    for ybucket in range(cols):
         bucketkmers = set()
-        for i in xrange(parameters["count_win_size"]):
+        for i in range(parameters["count_win_size"]):
             if (ybucket * parameters["count_win_size"] + i + parameters["count_k"]) <= len(read):
                 bucketkmers.add(read[(ybucket * parameters["count_win_size"] + i): (ybucket * parameters["count_win_size"] + i + parameters["count_k"])])
         ykmers.append(bucketkmers)
 
     xkmers = []
-    for xbucket in xrange(rows):
+    for xbucket in range(rows):
         bucketkmers = set()
-        for i in xrange(parameters["count_win_size"]):
+        for i in range(parameters["count_win_size"]):
             if (xbucket * parameters["count_win_size"] + i + parameters["count_k"]) <= len(ref):
                 bucketkmers.add(ref[(xbucket * parameters["count_win_size"] + i): (xbucket * parameters["count_win_size"] + i + parameters["count_k"])])
         xkmers.append(bucketkmers)
 
-    for xbucket in xrange(rows):
-        for ybucket in xrange(cols):
+    for xbucket in range(rows):
+        for ybucket in range(cols):
             counts[xbucket, ybucket] = len(xkmers[xbucket].intersection(ykmers[ybucket]))
 
-    if last_row_size > (parameters["count_win_size"] / 3):
-        for col in xrange(len(read) / parameters["count_win_size"]):
-            counts[rows - 1, col] = counts[rows - 1, col] * (parameters["count_win_size"] / last_row_size)
-    if last_col_size > (parameters["count_win_size"] / 3):
-        for row in xrange(len(ref) / parameters["count_win_size"]):
-            counts[row, cols - 1] = counts[row, cols - 1] * (parameters["count_win_size"] / last_col_size)
-    if last_row_size > (parameters["count_win_size"] / 3) and last_col_size > (parameters["count_win_size"] / 3):
-        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (parameters["count_win_size"] * parameters["count_win_size"]) / (last_row_size * last_col_size)
+    if last_row_size > (parameters["count_win_size"] // 3):
+        for col in range(len(read) // parameters["count_win_size"]):
+            counts[rows - 1, col] = counts[rows - 1, col] * (parameters["count_win_size"] // last_row_size)
+    if last_col_size > (parameters["count_win_size"] // 3):
+        for row in range(len(ref) // parameters["count_win_size"]):
+            counts[row, cols - 1] = counts[row, cols - 1] * (parameters["count_win_size"] // last_col_size)
+    if last_row_size > (parameters["count_win_size"] // 3) and last_col_size > (parameters["count_win_size"] // 3):
+        counts[rows - 1, cols - 1] = counts[rows - 1, cols - 1] * (parameters["count_win_size"] * parameters["count_win_size"]) // (last_row_size * last_col_size)
 
     if times:
-        print "The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size)
-        print "Counting finished ({0} s)".format(time() - s2)
+        print("The size of the last row/column was {0}/{1}bps.".format(last_row_size, last_col_size))
+        print("Counting finished ({0} s)".format(time() - s2))
 
     #############################
     # Step 2: Counts to Z-Scores#
@@ -262,7 +261,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     np.seterr(divide='ignore', invalid='ignore')
     counts2 = np.nan_to_num(stats.zscore(counts, axis=1) + stats.zscore(counts, axis=0))
     if times:
-        print "Z-Score computation finished ({0} s)".format(time() - s3)
+        print("Z-Score computation finished ({0} s)".format(time() - s3))
 
     ############################################
     # Step 3: Z-Scores to stretches to segments#
@@ -279,14 +278,14 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     counts3 = np.zeros((rows, cols), dtype=int)
     completed_segments = []
     active_segments = []
-    for offset in xrange(neg_lim, pos_lim):
+    for offset in range(neg_lim, pos_lim):
         # Find stretches
         values = np.diagonal(counts2, offset)
         stretches = find_stretches(values, parameters["stretch_threshold"], parameters["stretch_tolerance"], parameters["stretch_min_length"])
 
         # Visualize stretches
         for start, end in stretches:
-            for i in xrange(start, end + 1):
+            for i in range(start, end + 1):
                 if offset >= 0:
                     counts3[i, i + offset] = 1
                 else:
@@ -334,11 +333,11 @@ def find_svs(ref, read, parameters, debug=False, times=False):
 
     completed_segments.extend(active_segments)
     if times:
-        print "Line finding finished ({0} s)".format(time() - s4)
+        print("Line finding finished ({0} s)".format(time() - s4))
 
     final_segments = convert_segments(completed_segments)
     if debug:
-        print "Final segments", final_segments
+        print("Final segments", final_segments)
 
     #########################################
     # Step 4: Path finding through segments #
@@ -349,7 +348,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     # Step 5: Search best path for SVs #
     ####################################
     sv_results = []
-    for index in xrange(len(best_path) - 1):
+    for index in range(len(best_path) - 1):
         if best_path[index + 1]['start'][0] + parameters["path_tolerance"] >= best_path[index]['end'][0] and best_path[index + 1]['start'][1] + parameters["path_tolerance"] >= best_path[index]['end'][1]:
             # normal
             point1, point2 = best_path[index]['end'], best_path[index + 1]['start']
@@ -400,7 +399,7 @@ def find_svs(ref, read, parameters, debug=False, times=False):
 
     total_time = time() - start_time
     if times:
-        print "Total time: {0}s".format(total_time)
+        print("Total time: {0}s".format(total_time))
     if debug:
         return sv_results, counts, counts2, counts3
     if parameters["debug_confirm"]:
@@ -409,9 +408,8 @@ def find_svs(ref, read, parameters, debug=False, times=False):
     return sv_results
 
 
-def main_one_sample():
+def main_one_sample(parameters):
     options = parse_arguments()
-    parameters = SVIMParameters()
 
     options.fasta.readline()
     read = options.fasta.readline().strip()
@@ -422,17 +420,16 @@ def main_one_sample():
     plot_array(counts, 1, 1, 1, 1)
     plot_array(zscores, 1, 1, 1, 2)
     plot_array(stretches, 1, 1, 1, 3)
-    print sv_results
+    print(sv_results)
     print("")
     plt.show()
 
 
-def main_multiple_samples():
+def main_multiple_samples(parameters):
     options = parse_arguments()
-    parameters = SVIMParameters()
 
-    for i in xrange(0, 4):
-        for j in xrange(0, 5):
+    for i in range(0, 4):
+        for j in range(0, 5):
             options.fasta.readline()
             read = options.fasta.readline().strip()
             options.fasta.readline()
@@ -442,10 +439,11 @@ def main_multiple_samples():
             #plot_array(counts, 2, 2, i + 1, 1)
             plot_array(zscores, 2, 2, i + 1, j)
             #plot_array(stretches, 2, 2, i + 1, 3)
-            print sv_results
+            print(sv_results)
             print("")
     plt.show()
 
 
 if __name__ == "__main__":
-    sys.exit(main_one_sample())
+    pass
+    #sys.exit(main_one_sample())
