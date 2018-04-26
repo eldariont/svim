@@ -160,17 +160,17 @@ def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplement
     #all segments on same contig
     if ordered_alns_reference_names[0] == ordered_alns_reference_names[1] == ordered_alns_reference_names[2]:
         query_order_nice = True
-        for i in xrange(len(ordered_alns) - 1):
+        for i in range(len(ordered_alns) - 1):
             if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters["segment_overlap_tolerance"] or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters["max_segment_gap_tolerance"]:
                 query_order_nice = False
         
         reference_012 = True
-        for i in xrange(len(ordered_alns) - 1):
+        for i in range(len(ordered_alns) - 1):
             if ordered_alns[i+1].reference_start - ordered_alns[i].reference_end < -parameters["segment_overlap_tolerance"] or ordered_alns[i+1].reference_start - ordered_alns[i].reference_end > parameters["max_segment_gap_tolerance"]:
                 reference_012 = False
 
         reference_210 = True
-        for i in xrange(len(ordered_alns) - 1):
+        for i in range(len(ordered_alns) - 1):
             if ordered_alns[i].reference_start - ordered_alns[i+1].reference_end < -parameters["segment_overlap_tolerance"] or ordered_alns[i].reference_start - ordered_alns[i+1].reference_end > parameters["max_segment_gap_tolerance"]:
                 reference_210 = False
         
@@ -279,7 +279,7 @@ def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplement
 
     elif ordered_alns_reference_names[0] == ordered_alns_reference_names[2]:
         query_order_nice = True
-        for i in xrange(len(ordered_alns) - 1):
+        for i in range(len(ordered_alns) - 1):
             if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters["segment_overlap_tolerance"] or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters["max_segment_gap_tolerance"]:
                 query_order_nice = False
 

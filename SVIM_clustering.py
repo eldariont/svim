@@ -92,8 +92,8 @@ def consolidate_clusters_unilocal(clusters, parameters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
-        average_start = sum([member.get_source()[1] for member in cluster]) / float(len(cluster))
-        average_end = sum([member.get_source()[2] for member in cluster]) / float(len(cluster))
+        average_start = sum([member.get_source()[1] for member in cluster]) / len(cluster)
+        average_end = sum([member.get_source()[2] for member in cluster]) / len(cluster)
         if cluster[0].type == "inv":
             score = calculate_score_inversion(cluster, average_end - average_start, parameters)
         else:
@@ -113,8 +113,8 @@ def consolidate_clusters_bilocal(clusters):
         score = calculate_score(len(cigar_evidences), len(suppl_evidences))
         
         #Source
-        source_average_start = sum([member.get_source()[1] for member in cluster]) / float(len(cluster))
-        source_average_end = sum([member.get_source()[2] for member in cluster]) / float(len(cluster))
+        source_average_start = sum([member.get_source()[1] for member in cluster]) / len(cluster)
+        source_average_end = sum([member.get_source()[2] for member in cluster]) / len(cluster)
 
         if cluster[0].type == "dup":
             max_copies = max([member.copies for member in cluster])
@@ -129,8 +129,8 @@ def consolidate_clusters_bilocal(clusters):
                                                                 score, len(cluster), cluster, cluster[0].type))
         else:
             #Destination
-            destination_average_start = sum([member.get_destination()[1] for member in cluster]) / float(len(cluster))
-            destination_average_end = sum([member.get_destination()[2] for member in cluster]) / float(len(cluster))
+            destination_average_start = sum([member.get_destination()[1] for member in cluster]) / len(cluster)
+            destination_average_end = sum([member.get_destination()[2] for member in cluster]) / len(cluster)
             consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type))
     return consolidated_clusters
@@ -147,12 +147,12 @@ def partition_and_cluster_candidates(candidates, parameters):
         combined_members = [member for candidate in cluster for member in candidate.members]
 
         #Source
-        source_average_start = (sum([candidate.get_source()[1] for candidate in cluster]) / float(len(cluster)))
-        source_average_end = (sum([candidate.get_source()[2] for candidate in cluster]) / float(len(cluster)))
+        source_average_start = (sum([candidate.get_source()[1] for candidate in cluster]) / len(cluster))
+        source_average_end = (sum([candidate.get_source()[2] for candidate in cluster]) / len(cluster))
 
         #Destination
-        destination_average_start = (sum([candidate.get_destination()[1] for candidate in cluster]) / float(len(cluster)))
-        destination_average_end = (sum([candidate.get_destination()[2] for candidate in cluster]) / float(len(cluster)))
+        destination_average_start = (sum([candidate.get_destination()[1] for candidate in cluster]) / len(cluster))
+        destination_average_end = (sum([candidate.get_destination()[2] for candidate in cluster]) / len(cluster))
 
         if cluster[0].type == "ins":
             final_candidates.append(CandidateInsertion(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),

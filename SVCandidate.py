@@ -17,7 +17,7 @@ class Candidate:
 
     def get_key(self):
         contig, start, end = self.get_source()
-        return (self.type, contig, (start + end) / 2)
+        return (self.type, contig, (start + end) // 2)
 
 
     def mean_distance_to(self, candidate2):
@@ -25,7 +25,7 @@ class Candidate:
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
         if self.type == candidate2.type and this_contig == other_contig:
-            return abs(((this_start +this_end) / 2) - ((other_start + other_end) / 2))
+            return abs(((this_start +this_end) // 2) - ((other_start + other_end) // 2))
         else:
             return float("inf")
 
@@ -37,13 +37,13 @@ class Candidate:
         # non-intersecting
         if this_end <= other_start or other_end <= this_start:
             return float("inf")
-        dist_pos = abs(this_start - other_start) / float(largest_indel_size)
+        dist_pos = abs(this_start - other_start) / largest_indel_size
         span1 = abs(this_end - this_start)
         span2 = abs(other_end - other_start)
         span_total = abs(max(this_end, other_end) - min(this_start, other_start))
-        dist_span = abs(span1 - span2) / float(span_total)
+        dist_span = abs(span1 - span2) / span_total
         inter = min(this_end, other_end) - max(this_start, other_start)
-        dist_content = (span1 + span2 - 2 * inter) / float(span_total)
+        dist_content = (span1 + span2 - 2 * inter) / span_total
         return dist_pos + dist_span + dist_content
 
 
@@ -53,11 +53,11 @@ class Candidate:
         #Component 1: difference in spans
         this_span = this_end - this_start
         other_span = other_end - other_start
-        dist_span = abs(this_span - other_span) / float(max(this_span, other_span))
+        dist_span = abs(this_span - other_span) / max(this_span, other_span)
         #Component 2: difference in locations
-        this_center = (this_start + this_end) / 2
-        other_center = (other_start + other_end) / 2
-        dist_loc = min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center)) / float(distance_normalizer)
+        this_center = (this_start + this_end) // 2
+        other_center = (other_start + other_end) // 2
+        dist_loc = min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center)) / distance_normalizer
         return dist_span + dist_loc
 
 
@@ -161,8 +161,8 @@ class CandidateInsertion(Candidate):
         other_source_contig, other_source_start, other_source_end = candidate2.get_source()
         other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
         if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) / 2) - ((other_source_start + other_source_end) / 2)) + \
-                   abs(((this_dest_start + this_dest_end) / 2) - ((other_dest_start + other_dest_end) / 2))
+            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
+                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
         else:
             return float("inf")
 
@@ -219,8 +219,8 @@ class CandidateDuplicationTandem(Candidate):
         other_source_contig, other_source_start, other_source_end = candidate2.get_source()
         other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
         if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) / 2) - ((other_source_start + other_source_end) / 2)) + \
-                   abs(((this_dest_start + this_dest_end) / 2) - ((other_dest_start + other_dest_end) / 2))
+            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
+                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
         else:
             return float("inf")
 
@@ -280,8 +280,8 @@ class CandidateDuplicationInterspersed(Candidate):
         other_source_contig, other_source_start, other_source_end = candidate2.get_source()
         other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
         if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) / 2) - ((other_source_start + other_source_end) / 2)) + \
-                   abs(((this_dest_start + this_dest_end) / 2) - ((other_dest_start + other_dest_end) / 2))
+            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
+                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
         else:
             return float("inf")
 

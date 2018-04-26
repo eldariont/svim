@@ -61,7 +61,7 @@ SVIM-COLLECT performs three steps to detect SVs:
 
 
 def read_parameters(options):
-    config = configparser.RawConfigParser()
+    config = configparser.RawConfigParser(inline_comment_prefixes=';')
     config.read(options.config)
 
     parameters = dict()
@@ -245,7 +245,7 @@ def bam_iterator(bam):
     """Returns an iterator for the given SAM/BAM file (must be query-sorted). 
     In each call, the alignments of a single read are yielded as a 4-tuple: (read_name, list of primary pysam.AlignedSegment, list of supplementary pysam.AlignedSegment, list of secondary pysam.AlignedSegment)."""
     alignments = bam.fetch(until_eof=True)
-    current_aln = alignments.next()
+    current_aln = next(alignments)
     current_read_name = current_aln.query_name
     current_prim = []
     current_suppl = []
@@ -258,7 +258,7 @@ def bam_iterator(bam):
         current_prim.append(current_aln)
     while True:
         try:
-            next_aln = alignments.next()
+            next_aln = next(alignments)
             next_read_name = next_aln.query_name
             if next_read_name != current_read_name:
                 yield (current_read_name, current_prim, current_suppl, current_sec)
@@ -286,7 +286,7 @@ def analyze_alignment(bam_path, parameters):
 
     while True:
         try:
-            full_iterator_object = full_it.next()
+            full_iterator_object = next(full_it)
             read_nr += 1
             if read_nr % 10000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
@@ -374,7 +374,7 @@ def main():
     plot_histograms(options.working_dir, evidence_clusters)
 
     # Dump obj file
-    evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+    evidences_file = open(options.working_dir + '/sv_evidences.obj', 'wb')
     logging.info("Storing collected evidence clusters into sv_evidences.obj..")
     pickle.dump(evidence_clusters, evidences_file)
     evidences_file.close()

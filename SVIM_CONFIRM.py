@@ -45,13 +45,14 @@ which confirms SV evidences using read-tail mapping.""")
     parser.add_argument('reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser.add_argument('genome', type=str, help='Reference genome file (FASTA)')
     parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
+    parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
     parser.add_argument('--confirm_del_min', type=int, default=0, help='Confirm deletion evidence clusters with this score or larger)')
     parser.add_argument('--confirm_del_max', type=int, default=12, help='Confirm deletion evidence clusters with this score or smaller')
     parser.add_argument('--confirm_ins_min', type=int, default=0, help='Confirm insertion evidence clusters with this score or larger)')
     parser.add_argument('--confirm_ins_max', type=int, default=12, help='Confirm insertion evidence clusters with this score or smaller')
     parser.add_argument('--confirm_inv_min', type=int, default=0, help='Confirm inversion evidence clusters with this score or larger)')
     parser.add_argument('--confirm_inv_max', type=int, default=25, help='Confirm inversion evidence clusters with this score or smaller')
+    parser.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment and confirmation')
     parser.add_argument('--debug_confirm', action='store_true', help='print dot plots when confirming SV evidence clusters')
     return parser.parse_args()
 
@@ -260,7 +261,7 @@ def main():
         evidences_file = options.obj_file
     else:
         logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'rb')
 
     logging.info("Loading object file created by SVIM-COLLECT.")
     evidence_clusters = pickle.load(evidences_file)
@@ -269,7 +270,7 @@ def main():
 
     reads_type = guess_file_type(options.reads)
     full_reads_path = create_tail_files(options.working_dir, options.reads, reads_type, parameters["tail_span"])
-    run_tail_alignments(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+    run_tail_alignments(options.working_dir, options.genome, full_reads_path, options.cores)
 
     ####################
     # Confirm clusters #
@@ -382,7 +383,7 @@ def main():
     # Dump obj file #
     #################
     evidence_clusters = deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations
-    evidences_file = open(options.working_dir + '/sv_confirmed_evidences.obj', 'w')
+    evidences_file = open(options.working_dir + '/sv_confirmed_evidences.obj', 'wb')
     logging.info("Storing confirmed evidence clusters into sv_confirmed_evidences.obj..")
     pickle.dump(evidence_clusters, evidences_file)
     evidences_file.close()

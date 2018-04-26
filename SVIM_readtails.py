@@ -213,7 +213,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
             reference_dist = left_ref_start - right_ref_end
             if reference_dist > 0:
                 individual_dist = read_length - right_q_end - (parameters["tail_span"] - left_q_start)
-                percent_shift = (individual_dist - reference_dist) / float(read_length)
+                percent_shift = (individual_dist - reference_dist) // read_length
                 if percent_shift > parameters["tail_max_deviation"] or percent_shift < parameters["tail_min_deviation"]:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -parameters["max_deletion_size"]:
@@ -230,7 +230,7 @@ def analyze_pair_of_read_tails(left_iterator_object, right_iterator_object, left
             reference_dist = right_ref_start - left_ref_end
             if reference_dist > 0:
                 individual_dist = read_length - left_q_end - (parameters["tail_span"] - right_q_start)
-                percent_shift = (individual_dist - reference_dist) / float(read_length)
+                percent_shift = (individual_dist - reference_dist) // read_length
                 if percent_shift > parameters["tail_max_deviation"] or percent_shift < parameters["tail_min_deviation"]:
                     size_estimate = individual_dist - reference_dist - (0.04 * read_length)
                     if size_estimate > -parameters["max_deletion_size"]:
@@ -293,7 +293,7 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
     evidences = []
     num_spanning_reads = 0
 
-    for read_name, tails_pair in tails.iteritems():
+    for read_name, tails_pair in tails.items():
         if len(tails_pair) != 2:
             continue
         left_tail = tails_pair[0]
@@ -314,8 +314,8 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                         plt.ylabel('ref')
                         plt.xlabel('read {0}..'.format(read_name[:20]))
 
-                        read_pos = [(left_ref_end - end) / parameters["count_win_size"], (left_ref_end - end) / parameters["count_win_size"]]
-                        ref_pos = [(left_ref_end - end) / parameters["count_win_size"], (left_ref_end - start) / parameters["count_win_size"]]
+                        read_pos = [(left_ref_end - end) // parameters["count_win_size"], (left_ref_end - end) // parameters["count_win_size"]]
+                        ref_pos = [(left_ref_end - end) // parameters["count_win_size"], (left_ref_end - start) // parameters["count_win_size"]]
                         plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                         current_parameters = parameters
                     else:
@@ -333,8 +333,8 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                         plt.ylabel('ref')
                         plt.xlabel('read {0}..'.format(read_name[:20]))
 
-                        read_pos = [(start - left_ref_start) / parameters["count_win_size"], (start - left_ref_start) / parameters["count_win_size"]]
-                        ref_pos = [(start - left_ref_start) / parameters["count_win_size"], (end - left_ref_start) / parameters["count_win_size"]]
+                        read_pos = [(start - left_ref_start) // parameters["count_win_size"], (start - left_ref_start) // parameters["count_win_size"]]
+                        ref_pos = [(start - left_ref_start) // parameters["count_win_size"], (end - left_ref_start) // parameters["count_win_size"]]
                         plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                         current_parameters = parameters
                     else:
@@ -368,7 +368,7 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
     evidences = []
     num_spanning_reads = 0
 
-    for read_name, tails_pair in tails.iteritems():
+    for read_name, tails_pair in tails.items():
         if len(tails_pair) != 2:
             continue
         left_tail = tails_pair[0]
@@ -391,8 +391,8 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                         plt.ylabel('ref')
                         plt.xlabel('read {0}..'.format(read_name[:20]))
 
-                        read_pos = [(left_ref_end - start) / parameters["count_win_size"], (left_ref_end - start + (end-start)) / parameters["count_win_size"]]
-                        ref_pos = [(left_ref_end - start) / parameters["count_win_size"], (left_ref_end - start) / parameters["count_win_size"]]
+                        read_pos = [(left_ref_end - start) // parameters["count_win_size"], (left_ref_end - start + (end-start)) // parameters["count_win_size"]]
+                        ref_pos = [(left_ref_end - start) // parameters["count_win_size"], (left_ref_end - start) // parameters["count_win_size"]]
                         plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                         current_parameters = parameters
                     else:
@@ -410,8 +410,8 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                         plt.ylabel('ref')
                         plt.xlabel('read {0}..'.format(read_name[:20]))
 
-                        read_pos = [(start - left_ref_start) / parameters["count_win_size"], (end - left_ref_start) / parameters["count_win_size"]]
-                        ref_pos = [(start - left_ref_start) / parameters["count_win_size"], (start - left_ref_start) / parameters["count_win_size"]]
+                        read_pos = [(start - left_ref_start) // parameters["count_win_size"], (end - left_ref_start) // parameters["count_win_size"]]
+                        ref_pos = [(start - left_ref_start) // parameters["count_win_size"], (start - left_ref_start) // parameters["count_win_size"]]
                         plt.plot(read_pos, ref_pos, "r-", alpha=0.5)
                         current_parameters = parameters
                     else:
@@ -458,7 +458,7 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, par
     evidences = []
     num_spanning_reads = 0
 
-    for read_name, tails_pair in itertools.chain(tails1.iteritems(), tails2.iteritems()):
+    for read_name, tails_pair in itertools.chain(tails1.items(), tails2.items()):
         if len(tails_pair) != 2:
             continue
         left_tail = tails_pair[0]
