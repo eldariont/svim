@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from Bio import SeqIO
 from matplotlib.backends.backend_pdf import PdfPages
 
-from SVIM_readtails import confirm_del, confirm_ins, confirm_inv
+from SVIM_readtails import confirm_del, confirm_ins, confirm_inv, confirm_del2, confirm_ins2, confirm_inv2
 from SVIM_COLLECT import read_parameters
 
 
@@ -195,6 +195,9 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
     right_fa = "{0}/{1}_right.fa".format(working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
     right_aln_index = "{0}/{1}_right_aln.coordsorted.bam.bai".format(working_dir, reads_file_prefix)
+    full_fa = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
+    full_aln = "{0}/{1}_aln.coordsorted.bam".format(working_dir, reads_file_prefix)
+    full_aln_index = "{0}/{1}_aln.coordsorted.bam.bai".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(left_aln):
         bwa = Popen(['ngmlr',
@@ -232,7 +235,28 @@ def run_tail_alignments(working_dir, genome, reads_path, cores):
 
     logging.info("Tail alignments finished")
 
+    if not os.path.exists(full_aln):
+        ngmlr = Popen(['ngmlr',
+                    '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
+        view = Popen(['samtools',
+                    'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
+        sort = Popen(['samtools',
+                    'sort', '-@', str(cores), '-o', full_aln],
+                    stdin=view.stdout)
+        sort.wait()
+        logging.info("Alignment finished")
+    else:
+        logging.warning("Alignment for full sequences exists. Skip")
 
+    if not os.path.exists(full_aln_index):
+        call(['samtools',
+                    'index', full_aln])
+    else:
+        logging.warning("Alignment index for full sequences exists. Skip")
+    
+    logging.info("Full alignment finished")
+
+    
 def main():
     # Fetch command-line options and configuration file values and set parameters accordingly
     options = parse_arguments()
@@ -277,8 +301,10 @@ def main():
     reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
     left_aln = "{0}/{1}_left_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
     right_aln = "{0}/{1}_right_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
+    full_aln = "{0}/{1}_aln.coordsorted.bam".format(options.working_dir, reads_file_prefix)
     left_bam = pysam.AlignmentFile(left_aln)
     right_bam = pysam.AlignmentFile(right_aln)
+    full_bam = pysam.AlignmentFile(full_aln)
 
     reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
     reference =SeqIO.index_db(options.genome + ".idx", options.genome, "fasta")
@@ -301,13 +327,21 @@ def main():
             if parameters["debug_confirm"]:
                 fig = plt.figure()
                 fig.suptitle('Deleted region cluster (score {0}) {1}:{2}-{3}'.format(del_cluster.score, *del_cluster.get_source()), fontsize=10)
-            successful_confirmations, total_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
-            if total_confirmations > 0:
-                confirmation_rate = successful_confirmations / float(total_confirmations)
-                if confirmation_rate > 0.5:
-                    del_cluster.score += int(confirmation_rate * 20)
-                elif confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_del(left_bam, right_bam, del_cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_del2(full_bam, del_cluster, parameters)
+
+            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+            if confirmation_confidence > 0:
+                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
+            else:
+                mean_confirmation_rate = 0            
+
+            if confirmation_confidence >= 3:
+                if mean_confirmation_rate > 0.5:
+                    del_cluster.score += int(mean_confirmation_rate * 20)
+                elif mean_confirmation_rate < 0.3 and del_cluster.end - del_cluster.start > parameters["count_win_size"] * 3:
                     del_cluster.score = 0
+
             if parameters["debug_confirm"]:
                 del_pdf.savefig(fig)
                 plt.close(fig)
@@ -327,13 +361,22 @@ def main():
             if parameters["debug_confirm"]:
                 fig = plt.figure()
                 fig.suptitle('Inserted region cluster (score {0}) {1}:{2}-{3}'.format(ins_cluster.score, *ins_cluster.get_source()), fontsize=10)
-            successful_confirmations, total_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
-            if total_confirmations > 0:
-                confirmation_rate = successful_confirmations / float(total_confirmations)
-                if confirmation_rate > 0.5:
-                    ins_cluster.score += int(confirmation_rate * 20)
-                elif confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_ins(left_bam, right_bam, ins_cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_ins2(full_bam, ins_cluster, parameters)
+
+            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+            if confirmation_confidence > 0:
+                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
+            else:
+                mean_confirmation_rate = 0
+            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+
+            if confirmation_confidence >= 3:
+                if mean_confirmation_rate > 0.5:
+                    ins_cluster.score += int(mean_confirmation_rate * 20)
+                elif mean_confirmation_rate < 0.3 and ins_cluster.end - ins_cluster.start > parameters["count_win_size"] * 3:
                     ins_cluster.score = 0
+
             if parameters["debug_confirm"]:
                 ins_pdf.savefig(fig)
                 plt.close(fig)
@@ -351,12 +394,19 @@ def main():
             if current_contig != last_contig:
                 contig_record = reference[current_contig]
                 last_contig = current_contig
-            successful_confirmations, total_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
-            if total_confirmations > 0:
-                confirmation_rate = successful_confirmations / float(total_confirmations)
-                if confirmation_rate > 0.5:
-                    inv_cluster.score += int(confirmation_rate * 20)
-                elif confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
+            successful_kmer_confirmations, total_kmer_confirmations = confirm_inv(left_bam, right_bam, inv_cluster, reads, contig_record, parameters)
+            read_evidences, read_contradictions = confirm_inv2(full_bam, inv_cluster, parameters)
+
+            confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
+            if confirmation_confidence > 0:
+                mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
+            else:
+                mean_confirmation_rate = 0
+
+            if confirmation_confidence >= 3:
+                if mean_confirmation_rate > 0.5:
+                    inv_cluster.score += int(mean_confirmation_rate * 20)
+                elif mean_confirmation_rate < 0.3 and inv_cluster.end - inv_cluster.start > parameters["count_win_size"] * 3:
                     inv_cluster.score = 0
 
     ############################
