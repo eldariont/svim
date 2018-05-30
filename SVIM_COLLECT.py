@@ -49,6 +49,7 @@ SVIM-COLLECT performs three steps to detect SVs:
     parser_fasta.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_fasta.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-3.')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -65,8 +66,6 @@ def read_parameters(options):
     config.read(options.config)
 
     parameters = dict()
-    parameters["cores"] = config.getint("alignment", "cores")
-
     parameters["min_mapq"] = config.getint("detection", "min_mapq")
     parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
     parameters["min_sv_size"] = config.getint("detection", "min_sv_size")
@@ -345,14 +344,14 @@ def main():
             for file_path in read_file_list(options.reads):
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
-                run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 sv_evidences.extend(analyze_alignment(full_aln, parameters))
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
-            run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             sv_evidences = analyze_alignment(full_aln, parameters)
