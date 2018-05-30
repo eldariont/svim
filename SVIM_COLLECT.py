@@ -49,6 +49,7 @@ SVIM-COLLECT performs three steps to detect SVs:
     parser_fasta.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
     parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    parser_fasta.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-3.')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -65,8 +66,6 @@ def read_parameters(options):
     config.read(options.config)
 
     parameters = dict()
-    parameters["cores"] = config.getint("alignment", "cores")
-
     parameters["min_mapq"] = config.getint("detection", "min_mapq")
     parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
     parameters["min_sv_size"] = config.getint("detection", "min_sv_size")
@@ -245,7 +244,7 @@ def bam_iterator(bam):
     """Returns an iterator for the given SAM/BAM file (must be query-sorted). 
     In each call, the alignments of a single read are yielded as a 4-tuple: (read_name, list of primary pysam.AlignedSegment, list of supplementary pysam.AlignedSegment, list of secondary pysam.AlignedSegment)."""
     alignments = bam.fetch(until_eof=True)
-    current_aln = alignments.next()
+    current_aln = next(alignments)
     current_read_name = current_aln.query_name
     current_prim = []
     current_suppl = []
@@ -258,7 +257,7 @@ def bam_iterator(bam):
         current_prim.append(current_aln)
     while True:
         try:
-            next_aln = alignments.next()
+            next_aln = next(alignments)
             next_read_name = next_aln.query_name
             if next_read_name != current_read_name:
                 yield (current_read_name, current_prim, current_suppl, current_sec)
@@ -286,7 +285,7 @@ def analyze_alignment(bam_path, parameters):
 
     while True:
         try:
-            full_iterator_object = full_it.next()
+            full_iterator_object = next(full_it)
             read_nr += 1
             if read_nr % 10000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
@@ -345,14 +344,14 @@ def main():
             for file_path in read_file_list(options.reads):
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
-                run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 sv_evidences.extend(analyze_alignment(full_aln, parameters))
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
-            run_full_alignment(options.working_dir, options.genome, full_reads_path, parameters["cores"])
+            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             sv_evidences = analyze_alignment(full_aln, parameters)
@@ -374,7 +373,7 @@ def main():
     plot_histograms(options.working_dir, evidence_clusters)
 
     # Dump obj file
-    evidences_file = open(options.working_dir + '/sv_evidences.obj', 'w')
+    evidences_file = open(options.working_dir + '/sv_evidences.obj', 'wb')
     logging.info("Storing collected evidence clusters into sv_evidences.obj..")
     pickle.dump(evidence_clusters, evidences_file)
     evidences_file.close()

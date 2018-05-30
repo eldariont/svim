@@ -35,7 +35,7 @@ distinct SV types.""")
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('working_dir', type=str, help='working directory')
     parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser.add_argument('--obj_file', '-i', type=argparse.FileType('r'), help='Path of .obj file to load (default: working_dir/sv_confirmed_evidences.obj')
+    parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_confirmed_evidences.obj')
     return parser.parse_args()
 
 
@@ -165,7 +165,7 @@ def main():
         evidences_file = options.obj_file
     else:
         logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'r')
+        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'rb')
 
     logging.info("Loading object file created by SVIM-COLLECT or SVIM_COMBINE.")
     evidence_clusters = pickle.load(evidences_file)
@@ -251,17 +251,17 @@ def main():
     inserted_regions_to_remove_2 = []
 
     try:
-        current_insertion = insertion_iterator.next()
+        current_insertion = next(insertion_iterator)
     except StopIteration:
         insertions_end = True
 
     try:
-        current_int_duplication = int_duplication_iterator.next()
+        current_int_duplication = next(int_duplication_iterator)
     except StopIteration:
         int_duplications_end = True
 
     try:
-        current_tan_duplication = tan_duplication_iterator.next()
+        current_tan_duplication = next(tan_duplication_iterator)
     except StopIteration:
         tan_duplications_end = True
 
@@ -271,7 +271,7 @@ def main():
             contig2, start2, end2 = current_insertion.get_destination()
             while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
                 try:
-                    current_insertion = insertion_iterator.next()
+                    current_insertion = next(insertion_iterator)
                     contig2, start2, end2 = current_insertion.get_destination()
                 except StopIteration:
                     insertions_end = True
@@ -285,7 +285,7 @@ def main():
                 contig2, start2, end2 = current_int_duplication.get_destination()
                 while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
                     try:
-                        current_int_duplication = int_duplication_iterator.next()
+                        current_int_duplication = next(int_duplication_iterator)
                         contig2, start2, end2 = current_int_duplication.get_destination()
                     except StopIteration:
                         int_duplications_end = True
@@ -298,7 +298,7 @@ def main():
                     contig2, start2, end2 = current_tan_duplication.get_destination()
                     while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
                         try:
-                            current_tan_duplication = tan_duplication_iterator.next()
+                            current_tan_duplication = next(tan_duplication_iterator)
                             contig2, start2, end2 = current_tan_duplication.get_destination()
                         except StopIteration:
                             tan_duplications_end = True
