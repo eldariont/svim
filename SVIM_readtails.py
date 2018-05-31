@@ -452,7 +452,7 @@ def confirm_ins2(full_bam, evidence_cluster, parameters):
     if num_nearby_tails > 1000:
         return (0,0)
 
-    #sum up which fraction of the inserted region is spanned by reads contradicting it
+    #sum up which fraction of the inserted region is missing in reads spanning it
     num_spanning_reads = 0
     for full_aln in full_bam.fetch(contig, start-100, start+100):
         if not full_aln.is_unmapped and full_aln.mapping_quality >= parameters["min_mapq"] and not full_aln.is_secondary:

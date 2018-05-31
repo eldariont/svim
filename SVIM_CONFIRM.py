@@ -283,17 +283,27 @@ def confirm_clusters_in_contig(evidence_clusters, type, left_aln, right_aln, ful
             successful_kmer_confirmations, total_kmer_confirmations = confirm_inv(left_bam, right_bam, cluster, reads, contig_record, parameters)
             read_evidences, read_contradictions = confirm_inv2(full_bam, cluster, parameters)
 
-        confirmation_confidence = total_kmer_confirmations + read_evidences + read_contradictions
-        if confirmation_confidence > 0:
-            mean_confirmation_rate = (read_evidences + successful_kmer_confirmations) / confirmation_confidence
+        if total_kmer_confirmations + read_evidences + read_contradictions == 0:
+            score = -1
+        elif type == "inversion":
+            if cluster.score == 0:
+                score = 0
+            else:
+                #Number of confirmed (maximally 100)
+                num_confirmed =  min(100, successful_kmer_confirmations + cluster.score)
+                #Rate of confirmed in percent
+                rate_confirmed =  (cluster.score + successful_kmer_confirmations) * 100 / (total_kmer_confirmations + cluster.score + read_contradictions)
+                #compute score as the sum of square roots, scale to a range between 0 and 100
+                score = 5 * (sqrt(num_confirmed) + sqrt(rate_confirmed))
         else:
-            mean_confirmation_rate = 0
+            #Number of confirmed (maximally 100)
+            num_confirmed =  min(100, successful_kmer_confirmations + read_evidences)
+            #Rate of confirmed in percent
+            rate_confirmed =  (read_evidences + successful_kmer_confirmations) * 100 / (total_kmer_confirmations + read_evidences + read_contradictions)
+            #compute score as the sum of square roots, scale to a range between 0 and 100
+            score = 5 * (sqrt(num_confirmed) + sqrt(rate_confirmed))
 
-        if confirmation_confidence >= 3:
-            if mean_confirmation_rate > 0.5:
-                cluster.score += int(mean_confirmation_rate * 20)
-            elif mean_confirmation_rate < 0.3 and cluster.end - cluster.start > parameters["count_win_size"] * 3:
-                cluster.score = 0
+        cluster.score = score
 
     return evidence_clusters
 
@@ -348,7 +358,7 @@ def main():
 
     reads = SeqIO.index_db(full_reads_path + ".idx", full_reads_path, "fasta")
     reference =SeqIO.index_db(options.genome + ".idx", options.genome, "fasta")
-    pool = Pool(processes=12)
+    pool = Pool(processes=options.cores)
     logging.info("Indexing reads and reference finished")
 
     #DELETIONS
