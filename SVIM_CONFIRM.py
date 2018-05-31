@@ -48,12 +48,9 @@ which confirms SV evidences using read-tail mapping.""")
     parser.add_argument('genome', type=str, help='Reference genome file (FASTA)')
     parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
     parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
-    parser.add_argument('--confirm_del_min', type=int, default=0, help='Confirm deletion evidence clusters with this score or larger)')
-    parser.add_argument('--confirm_del_max', type=int, default=12, help='Confirm deletion evidence clusters with this score or smaller')
-    parser.add_argument('--confirm_ins_min', type=int, default=0, help='Confirm insertion evidence clusters with this score or larger)')
-    parser.add_argument('--confirm_ins_max', type=int, default=12, help='Confirm insertion evidence clusters with this score or smaller')
-    parser.add_argument('--confirm_inv_min', type=int, default=0, help='Confirm inversion evidence clusters with this score or larger)')
-    parser.add_argument('--confirm_inv_max', type=int, default=25, help='Confirm inversion evidence clusters with this score or smaller')
+    parser.add_argument('--confirm_del_min', type=int, default=0, help='Confirm deletion evidence clusters with this score or larger.')
+    parser.add_argument('--confirm_ins_min', type=int, default=0, help='Confirm insertion evidence clusters with this score or larger')
+    parser.add_argument('--confirm_inv_min', type=int, default=0, help='Confirm inversion evidence clusters with this score or larger')
     parser.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment and confirmation')
     parser.add_argument('--debug_confirm', action='store_true', help='print dot plots when confirming SV evidence clusters')
     return parser.parse_args()
@@ -362,53 +359,65 @@ def main():
     logging.info("Indexing reads and reference finished")
 
     #DELETIONS
-    num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max)
-    logging.info("Confirming {0} deletion evidence clusters with scores between {1} and {2}".format(num_confirming_del, options.confirm_del_min, options.confirm_del_max))
+    num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min)
+    logging.info("Confirming {0} deletion evidence clusters with scores above {1}".format(num_confirming_del, options.confirm_del_min))
 
-    dels_dict = defaultdict(list)
+    dels_to_confirm_dict = defaultdict(list)
+    dels_not_to_confirm = list()
     for del_cluster in deletion_evidence_clusters:
-        if del_cluster.score >= options.confirm_del_min and del_cluster.score <= options.confirm_del_max:
+        if del_cluster.score >= options.confirm_del_min:
             current_contig = del_cluster.get_source()[0]
-            dels_dict[current_contig].append(del_cluster)
+            dels_to_confirm_dict[current_contig].append(del_cluster)
+        else:
+            del_cluster.score = 0
+            dels_not_to_confirm.append(del_cluster)
 
     inputs = []
-    for contig in sorted(dels_dict.keys()):
-        inputs.append((dels_dict[contig], "deletion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    for contig in sorted(dels_to_confirm_dict.keys()):
+        inputs.append((dels_to_confirm_dict[contig], "deletion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
     results = pool.starmap(confirm_clusters_in_contig, inputs)
-    deletion_evidence_clusters = list(itertools.chain.from_iterable(results))
+    deletion_evidence_clusters = list(itertools.chain.from_iterable(results)) + dels_not_to_confirm
 
     #INSERTIONS
-    num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max)
-    logging.info("Confirming {0} insertion evidence clusters with scores between {1} and {2}".format(num_confirming_ins, options.confirm_ins_min, options.confirm_ins_max))
+    num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min)
+    logging.info("Confirming {0} insertion evidence clusters with scores above {1}".format(num_confirming_ins, options.confirm_ins_min))
 
-    ins_dict = defaultdict(list)
+    ins_to_confirm_dict = defaultdict(list)
+    ins_not_to_confirm = list()
     for ins_cluster in insertion_evidence_clusters:
-        if ins_cluster.score >= options.confirm_ins_min and ins_cluster.score <= options.confirm_ins_max:
+        if ins_cluster.score >= options.confirm_ins_min:
             current_contig = ins_cluster.get_source()[0]
-            ins_dict[current_contig].append(ins_cluster)
+            ins_to_confirm_dict[current_contig].append(ins_cluster)
+        else:
+            ins_cluster.score = 0
+            ins_not_to_confirm.append(ins_cluster)
 
     inputs = []
-    for contig in sorted(ins_dict.keys()):
-        inputs.append((ins_dict[contig], "insertion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    for contig in sorted(ins_to_confirm_dict.keys()):
+        inputs.append((ins_to_confirm_dict[contig], "insertion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
     results = pool.starmap(confirm_clusters_in_contig, inputs)
-    insertion_evidence_clusters = list(itertools.chain.from_iterable(results))
+    insertion_evidence_clusters = list(itertools.chain.from_iterable(results)) + ins_not_to_confirm
 
     #INVERSIONS
-    num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max)
-    logging.info("Confirming {0} inversion evidence clusters with scores between {1} and {2}".format(num_confirming_inv, options.confirm_inv_min, options.confirm_inv_max))
+    num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min)
+    logging.info("Confirming {0} inversion evidence clusters with scores above {1}".format(num_confirming_inv, options.confirm_inv_min))
 
-    inv_dict = defaultdict(list)
+    inv_to_confirm_dict = defaultdict(list)
+    inv_not_to_confirm = list()
     for inv_cluster in inversion_evidence_clusters:
         contig, start, end = inv_cluster.get_source()
-        if inv_cluster.score >= options.confirm_inv_min and inv_cluster.score <= options.confirm_inv_max and end - start <= parameters["max_sv_size"]:
+        if inv_cluster.score >= options.confirm_inv_min and end - start <= parameters["max_sv_size"]:
             current_contig = contig
-            inv_dict[current_contig].append(inv_cluster)
+            inv_to_confirm_dict[current_contig].append(inv_cluster)
+        else:
+            inv_cluster.score = 0
+            inv_not_to_confirm.append(inv_cluster)
 
     inputs = []
-    for contig in sorted(inv_dict.keys()):
-        inputs.append((inv_dict[contig], "inversion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
+    for contig in sorted(inv_to_confirm_dict.keys()):
+        inputs.append((inv_to_confirm_dict[contig], "inversion", left_aln, right_aln, full_aln, full_reads_path, options.genome, parameters))
     results = pool.starmap(confirm_clusters_in_contig, inputs)
-    inversion_evidence_clusters = list(itertools.chain.from_iterable(results))
+    inversion_evidence_clusters = list(itertools.chain.from_iterable(results)) + inv_not_to_confirm
 
     ############################
     # Write confirmed clusters #
