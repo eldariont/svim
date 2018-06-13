@@ -35,7 +35,7 @@ distinct SV types.""")
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument('working_dir', type=str, help='working directory')
     parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_confirmed_evidences.obj')
+    parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
     return parser.parse_args()
 
 
@@ -167,7 +167,7 @@ def main():
         logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
         evidences_file = open(options.working_dir + '/sv_evidences.obj', 'rb')
 
-    logging.info("Loading object file created by SVIM-COLLECT or SVIM_COMBINE.")
+    logging.info("Loading object file created by SVIM-COLLECT or SVIM_CONFIRM.")
     evidence_clusters = pickle.load(evidences_file)
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
     evidences_file.close()
@@ -177,8 +177,7 @@ def main():
     ###############################
     inversion_candidates = []
     for inv_cluster in inversion_evidence_clusters:
-        if inv_cluster.score > 0:
-            inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
+        inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
 
     ########################################
     # Create tandem duplication candidates #
