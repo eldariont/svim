@@ -345,8 +345,28 @@ def confirm_del(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                 evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, reads[read_name].seq, contig_record, current_parameters))
 
     deletion_confirmations = [ev for ev in evidences if ev.type == "del" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for deletion at {2}:{3}-{4} ({5} tails in region)".format(len(deletion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(deletion_confirmations), num_spanning_reads)
+
+
+def confirm_del2(full_bam, evidence_cluster, parameters):
+    contig, start, end = evidence_cluster.get_source()
+    num_nearby_tails = full_bam.count(contig, start, end)
+    if num_nearby_tails > 1000:
+        return (0,0)
+
+    #sum up which fraction of the deleted region is spanned by reads contradicting it
+    num_spanning_reads = 0
+    for full_aln in full_bam.fetch(contig, start, end):
+        if not full_aln.is_unmapped and full_aln.mapping_quality >= parameters["min_mapq"] and not full_aln.is_secondary:
+            ref_start = full_aln.reference_start
+            ref_end = full_aln.reference_end
+            if ref_start < start - 100 and ref_end > start or ref_end > end + 100 and ref_start < end - 100:
+                aligned_basepairs_of_deletion = full_aln.get_overlap(start, end)
+                num_spanning_reads += aligned_basepairs_of_deletion / (end - start)
+
+    #logging.info("Found {0} vs. {1} reads in favor of or contradicting the deletion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
+    return (len(evidence_cluster.members), num_spanning_reads)
 
 
 def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
@@ -422,8 +442,30 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                 evidences.extend(check_indel_candidate_plus(left_tail, right_tail, left_ref_chr, full_read, contig_record, current_parameters))
 
     insertion_confirmations = [ev for ev in evidences if ev.type == "ins" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for insertion at {2}:{3}-{4} ({5} tails in region)".format(len(insertion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(insertion_confirmations), num_spanning_reads)
+
+
+def confirm_ins2(full_bam, evidence_cluster, parameters):
+    contig, start, end = evidence_cluster.get_source()
+    num_nearby_tails = full_bam.count(contig, start-100, start+100)
+    if num_nearby_tails > 1000:
+        return (0,0)
+
+    #sum up which fraction of the inserted region is missing in reads spanning it
+    num_spanning_reads = 0
+    for full_aln in full_bam.fetch(contig, start-100, start+100):
+        if not full_aln.is_unmapped and full_aln.mapping_quality >= parameters["min_mapq"] and not full_aln.is_secondary:
+            ref_start = full_aln.reference_start
+            ref_end = full_aln.reference_end
+            if ref_start < start - 100 and ref_end > start + 100:
+                aligned_basepairs_of_read = full_aln.get_overlap(ref_start, ref_end)
+                basepairs_of_read = full_aln.query_alignment_end - full_aln.query_alignment_start
+                insertions_in_read = basepairs_of_read - aligned_basepairs_of_read
+                num_spanning_reads += max(0, (end - start - insertions_in_read)) / (end - start)
+
+    #logging.info("Found {0} vs. {1} reads in favor of or contradicting the insertion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
+    return (len(evidence_cluster.members), num_spanning_reads)
 
 
 def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, parameters):
@@ -495,5 +537,25 @@ def confirm_inv(left_bam, right_bam, evidence_cluster, reads, contig_record, par
                     evidences.extend(check_inv_4(left_tail, right_tail, left_ref_chr, full_read, contig_record, parameters))
 
     inversion_confirmations = [ev for ev in evidences if ev.type == "inv" and evidence_cluster.gowda_diday_distance(ev, 10000) < 1]
-    logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
+    #logging.info("Found {0}/{1} confirmations for inversion at {2}:{3}-{4} ({5} tails in region)".format(len(inversion_confirmations), num_spanning_reads, contig, start, end, num_nearby_tails))
     return (len(inversion_confirmations), num_spanning_reads)
+
+
+def confirm_inv2(full_bam, evidence_cluster, parameters):
+    contig, start, end = evidence_cluster.get_source()
+    num_nearby_tails = full_bam.count(contig, start, end)
+    if num_nearby_tails > 1000:
+        return (0,0)
+
+    #sum up which fraction of the inverted region is spanned by reads contradicting it
+    num_spanning_reads = 0
+    for full_aln in full_bam.fetch(contig, start, end):
+        if not full_aln.is_unmapped and full_aln.mapping_quality >= parameters["min_mapq"] and not full_aln.is_secondary:
+            ref_start = full_aln.reference_start
+            ref_end = full_aln.reference_end
+            if ref_start < start - 100 and ref_end > start or ref_end > end + 100 and ref_start < end - 100:
+                aligned_basepairs_of_inversion = full_aln.get_overlap(start, end)
+                num_spanning_reads += aligned_basepairs_of_inversion / (end - start)
+
+    #logging.info("Found {0} vs. {1} reads in favor of or contradicting the inversion at {2}:{3}-{4} ({5} reads in region)".format(len(evidence_cluster.members), num_spanning_reads, contig, start, end, num_nearby_tails))
+    return (len(evidence_cluster.members), num_spanning_reads)
