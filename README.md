@@ -17,8 +17,12 @@ SVIM analyzes long reads contained in a FASTA file. It was tested on PacBio data
 
 SVIM distinguishes six different SV classes (see above schema): deletions, inversions, cut&paste insertions, novel insertions, interspersed and tandem duplications. For each of these SV classes, it produces a BED file with the SV coordinates. Additonally, a VCF file is produced containing all found SVs.
 
+### Installation and Usage
+
+Please see our wiki (https://github.com/eldariont/svim/wiki).
 
 ### Contact
+
 If you experience problems or have suggestions please create an issue or a pull request or contact heller_d@molgen.mpg.de.
 
 ### License
