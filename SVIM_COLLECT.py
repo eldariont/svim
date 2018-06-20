@@ -318,6 +318,11 @@ def main():
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.INFO)
 
+    # Create working dir if it does not exist
+    if not os.path.exists(options.working_dir):
+        os.makedirs(options.working_dir)
+
+    # Create log file
     fileHandler = logging.FileHandler("{0}/SVIM-COLLECT_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
