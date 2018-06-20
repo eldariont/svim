@@ -175,7 +175,7 @@ def create_full_file(working_dir, reads_path, reads_type):
         if reads_type == "fasta" or reads_type == "fastq":
             reads_file = open(reads_path, "r")
         elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-            reads_file = gzip.open(reads_path, "rb")
+            reads_file = gzip.open(reads_path, "rt")
 
         if reads_type == "fasta" or reads_type == "fasta_gzip":
             sequence = ""
