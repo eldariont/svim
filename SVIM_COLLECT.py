@@ -311,6 +311,11 @@ def read_file_list(path):
 def main():
     # Fetch command-line options and configuration file values and set parameters accordingly
     options = parse_arguments()
+
+    if not options.sub:
+        print("Please choose one of the two modes ('reads' or 'alignment'). See --help for more information.")
+        return
+
     parameters = read_parameters(options)
 
     # Set up logging
