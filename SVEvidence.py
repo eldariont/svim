@@ -227,19 +227,21 @@ class EvidenceTranslocation(Evidence):
 
 
 class EvidenceClusterUniLocal(Evidence):
-    def __init__(self, contig, start, end, score, size, members, type):
+    def __init__(self, contig, start, end, score, size, members, type, std_span, std_pos):
         self.contig = contig
         self.start = start
         self.end = end
         
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.size = size
         self.members = members
         self.type = type
 
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.contig, self.start, self.end, "{0};{1}".format(self.type, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.contig, self.start, self.end, "{0};{1};{2};{3}".format(self.type, self.size, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
     def get_vcf_entry(self):
@@ -251,14 +253,14 @@ class EvidenceClusterUniLocal(Evidence):
             svtype = "INV"
         else:
             return
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.end, self.end - self.start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, self.end, self.end - self.start, self.std_span, self.std_pos))
 
 
     def get_length(self):
         return self.end - self.start
 
 class EvidenceClusterBiLocal(Evidence):
-    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, score, size, members, type):
+    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, score, size, members, type, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
@@ -267,6 +269,8 @@ class EvidenceClusterBiLocal(Evidence):
         self.dest_end = dest_end
         
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.size = size
         self.members = members
         self.type = type
@@ -281,7 +285,7 @@ class EvidenceClusterBiLocal(Evidence):
 
 
     def get_bed_entries(self):
-        source_entry = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}_source;{1}:{2}-{3};{4}".format(self.type, self.dest_contig, self.dest_start, self.dest_end, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        source_entry = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}_source;{1}:{2}-{3};{4};{5};{6}".format(self.type, self.dest_contig, self.dest_start, self.dest_end, self.size, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         dest_entry = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0}_dest;{1}:{2}-{3};{4}".format(self.type, self.source_contig, self.source_start, self.source_end, self.size), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         return (source_entry, dest_entry)
 
@@ -291,7 +295,7 @@ class EvidenceClusterBiLocal(Evidence):
             svtype = "DUP:TANDEM"
         else:
             return
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.source_contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, self.source_end, self.source_end - self.source_start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.source_contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, self.source_end, self.source_end - self.source_start, self.std_span, self.std_pos))
 
 
     def get_source_length(self):

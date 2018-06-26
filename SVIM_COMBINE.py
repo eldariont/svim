@@ -177,7 +177,7 @@ def main():
     ###############################
     inversion_candidates = []
     for inv_cluster in inversion_evidence_clusters:
-        inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score))
+        inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score, inv_cluster.std_span, inv_cluster.std_pos))
 
     ########################################
     # Create tandem duplication candidates #
@@ -187,7 +187,7 @@ def main():
         source_contig, source_start, source_end = tan_dup_cluster.get_source()
         dest_contig, dest_start, dest_end = tan_dup_cluster.get_destination()
         num_copies = int(round((dest_end - dest_start) / (source_end - source_start)))
-        tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score))
+        tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score, tan_dup_cluster.std_span, tan_dup_cluster.std_pos))
 
     ###################################
     # Merge translocation breakpoints #
@@ -317,7 +317,7 @@ def main():
     deletion_candidates = []
     for del_cluster in deletion_evidence_clusters:
         if del_cluster.score > 0:
-            deletion_candidates.append(CandidateDeletion(del_cluster.contig, del_cluster.start, del_cluster.end, del_cluster.members, del_cluster.score))
+            deletion_candidates.append(CandidateDeletion(del_cluster.contig, del_cluster.start, del_cluster.end, del_cluster.members, del_cluster.score, del_cluster.std_span, del_cluster.std_pos))
 
     #####################################
     # Create novel insertion candidates #
@@ -325,7 +325,7 @@ def main():
     novel_insertion_candidates = []
     for ins_cluster in insertion_evidence_clusters:
         if ins_cluster.score > 0:
-            novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members, ins_cluster.score))
+            novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
 
     ######################
     # Cluster candidates #

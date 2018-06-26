@@ -1,13 +1,15 @@
 class Candidate:
     """Candidate class for structural variant candidates. Candidates reflect the final SV types and can be merged from evidences of several reads.
     """
-    def __init__(self, source_contig, source_start, source_end, members, score):
+    def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
         
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "unk"
 
 
@@ -62,7 +64,7 @@ class Candidate:
 
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0}".format(self.type), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
     def get_vcf_entry(self):
@@ -70,63 +72,69 @@ class Candidate:
 
 
 class CandidateDeletion(Candidate):
-    def __init__(self, source_contig, source_start, source_end, members, score):
+    def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "del"
 
 
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "DEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateInversion(Candidate):
-    def __init__(self, source_contig, source_start, source_end, members, score):
+    def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "inv"
 
 
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "INV"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateNovelInsertion(Candidate):
-    def __init__(self, dest_contig, dest_start, dest_end, members, score):
+    def __init__(self, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
         self.dest_contig = dest_contig
         self.dest_start = dest_start
         self.dest_end = dest_end
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "nov_ins"
 
     def get_destination(self):
         return (self.dest_contig, self.dest_start, self.dest_end)
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0}".format(self.type), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS:NOVEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateInsertion(Candidate):
-    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score):
+    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
@@ -137,6 +145,8 @@ class CandidateInsertion(Candidate):
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "ins"
 
 
@@ -148,9 +158,9 @@ class CandidateInsertion(Candidate):
         source_contig, source_start, source_end = self.get_source()
         dest_contig, dest_start, dest_end = self.get_destination()
         source_entry = sep.join(["{0}","{1}","{2}","{3}","{4}","{5}",]).format(source_contig, source_start, source_end,
-                                                                       "ins_source;>{0}:{1}-{2}".format(dest_contig, dest_start, dest_end), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+                                                                       "ins_source;>{0}:{1}-{2};{3};{4}".format(dest_contig, dest_start, dest_end, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         dest_entry = sep.join(["{0}","{1}","{2}","{3}","{4}","{5}",]).format(dest_contig, dest_start, dest_end,
-                                                                             "ins_dest;<{0}:{1}-{2}".format(source_contig, source_start, source_end), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+                                                                             "ins_dest;<{0}:{1}-{2};{3};{4}".format(source_contig, source_start, source_end, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
         return (source_entry, dest_entry)
 
 
@@ -170,11 +180,11 @@ class CandidateInsertion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateDuplicationTandem(Candidate):
-    def __init__(self, source_contig, source_start, source_end, copies, members, score):
+    def __init__(self, source_contig, source_start, source_end, copies, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
@@ -183,6 +193,8 @@ class CandidateDuplicationTandem(Candidate):
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "dup_tan"
 
 
@@ -196,16 +208,16 @@ class CandidateDuplicationTandem(Candidate):
         dest_contig, dest_start, dest_end = self.get_destination()
         source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(source_contig, source_start,
                                                                                      source_end,
-                                                                                     "int_dup_source;>{0}:{1}-{2}".format(
+                                                                                     "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end), self.score,
+                                                                                         dest_end, self.std_span, self.std_pos), self.score,
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(dest_contig, dest_start, dest_end,
-                                                                                   "int_dup_dest;<{0}:{1}-{2}".format(
+                                                                                   "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end), self.score,
+                                                                                       source_end, self.std_span, self.std_pos), self.score,
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -230,11 +242,11 @@ class CandidateDuplicationTandem(Candidate):
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
         svtype = "DUP:TANDEM"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateDuplicationInterspersed(Candidate):
-    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score):
+    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
@@ -245,6 +257,8 @@ class CandidateDuplicationInterspersed(Candidate):
 
         self.members = members
         self.score = score
+        self.std_span = std_span
+        self.std_pos = std_pos
         self.type = "dup_int"
 
 
@@ -257,16 +271,16 @@ class CandidateDuplicationInterspersed(Candidate):
         dest_contig, dest_start, dest_end = self.get_destination()
         source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(source_contig, source_start,
                                                                                      source_end,
-                                                                                     "int_dup_source;>{0}:{1}-{2}".format(
+                                                                                     "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end), self.score,
+                                                                                         dest_end, self.std_span, self.std_pos), self.score,
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(dest_contig, dest_start, dest_end,
-                                                                                   "int_dup_dest;<{0}:{1}-{2}".format(
+                                                                                   "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end), self.score,
+                                                                                       source_end, self.std_span, self.std_pos), self.score,
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -289,4 +303,4 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2}".format(svtype, end, end - start))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
