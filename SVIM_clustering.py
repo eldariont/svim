@@ -56,15 +56,23 @@ def clusters_from_partitions(partitions, parameters):
     return clusters_full
 
 
-def calculate_score(num_evidences, std_span, std_pos, span):
+def calculate_score(cigar_evidences, suppl_evidences, std_span, std_pos, span):
     if std_span == None or std_pos == None:
         span_deviation_score = 0
         pos_deviation_score = 0
     else:
         span_deviation_score = 1 - min(1, std_span / span)
         pos_deviation_score = 1 - min(1, std_pos / span)
+
+    num_evidences = min(20, cigar_evidences) + min(20, suppl_evidences)
+    evidence_boost = 0
+    if cigar_evidences > 0:
+        evidence_boost += 10
+    if suppl_evidences > 0:
+        evidence_boost += 20
     #return min(50, num_evidences) + span_deviation_score * 25 + pos_deviation_score * 25
-    return 2 * min(40, num_evidences) + span_deviation_score * 15 + pos_deviation_score * 5
+    #return 2 * min(40, num_evidences) + span_deviation_score * 15 + pos_deviation_score * 5
+    return num_evidences + evidence_boost + span_deviation_score * 20 + pos_deviation_score * 10
 
 
 def calculate_score_inversion(inv_cluster, inversion_length, parameters):
@@ -105,7 +113,9 @@ def consolidate_clusters_unilocal(clusters, parameters):
         if cluster[0].type == "inv":
             score = calculate_score_inversion(cluster, average_end - average_start, parameters)
         else:
-            score = calculate_score(len(cluster), std_span, std_pos, average_end - average_start)
+            cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
+            suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
+            score = calculate_score(len(cigar_evidences), len(suppl_evidences), std_span, std_pos, average_end - average_start)
         consolidated_clusters.append(EvidenceClusterUniLocal(cluster[0].get_source()[0], int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type, std_span, std_pos))
     return consolidated_clusters
 
@@ -129,7 +139,7 @@ def consolidate_clusters_bilocal(clusters):
 
         if cluster[0].type == "dup":
             max_copies = max([member.copies for member in cluster])
-            score = calculate_score(len(cluster), source_std_span, source_std_pos, source_average_end - source_average_start)
+            score = calculate_score(len(cigar_evidences), len(suppl_evidences), source_std_span, source_std_pos, source_average_end - source_average_start)
             consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0],
                                                                 int(round(source_average_start)),
                                                                 int(round(source_average_end)),
@@ -150,11 +160,11 @@ def consolidate_clusters_bilocal(clusters):
                 destination_std_span = None
                 destination_std_pos = None
             if source_std_span == None or source_std_pos == None or destination_std_span == None or destination_std_pos == None:
-                score = calculate_score(len(cluster), None, None, mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
+                score = calculate_score(len(cigar_evidences), len(suppl_evidences), None, None, mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
                 consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, None, None))
             else:
-                score = calculate_score(len(cluster), mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos]), mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
+                score = calculate_score(len(cigar_evidences), len(suppl_evidences), mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos]), mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
                 consolidated_clusters.append(EvidenceClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos])))
     return consolidated_clusters
