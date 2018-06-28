@@ -75,7 +75,14 @@ def calculate_score(cigar_evidences, suppl_evidences, std_span, std_pos, span):
     return num_evidences + evidence_boost + span_deviation_score * 20 + pos_deviation_score * 10
 
 
-def calculate_score_inversion(inv_cluster, inversion_length, parameters):
+def calculate_score_inversion(inv_cluster, std_span, std_pos, span):
+    if std_span == None or std_pos == None:
+        span_deviation_score = 0
+        pos_deviation_score = 0
+    else:
+        span_deviation_score = 1 - min(1, std_span / span)
+        pos_deviation_score = 1 - min(1, std_pos / span)
+
     directions = [ev.direction for ev in inv_cluster]
     direction_counts = [0, 0, 0, 0, 0]
     for direction in directions:
@@ -92,10 +99,8 @@ def calculate_score_inversion(inv_cluster, inversion_length, parameters):
     left_evidences = direction_counts[0] + direction_counts[1]
     right_evidences = direction_counts[2] + direction_counts[3]
     valid_suppl_evidences = min(left_evidences, right_evidences) + direction_counts[4]
-    if inversion_length > parameters["max_sv_size"]:
-        return 0
-    else:
-        return valid_suppl_evidences
+
+    return min(70, valid_suppl_evidences) + span_deviation_score * 20 + pos_deviation_score * 10
 
 
 def consolidate_clusters_unilocal(clusters, parameters):
@@ -111,7 +116,9 @@ def consolidate_clusters_unilocal(clusters, parameters):
             std_span = None
             std_pos = None
         if cluster[0].type == "inv":
-            score = calculate_score_inversion(cluster, average_end - average_start, parameters)
+            if average_end - average_start > parameters["max_sv_size"]:
+                continue
+            score = calculate_score_inversion(cluster, std_span, std_pos, average_end - average_start)
         else:
             cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
             suppl_evidences = [member for member in cluster if member.evidence == "suppl"]
