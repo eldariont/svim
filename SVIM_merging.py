@@ -81,26 +81,60 @@ def cluster_positions_simple(positions, max_delta):
 def calculate_score_deletion(main_score, translocation_distances, translocation_stds, translocation_deviation):
     """Calculate the score of a merged insertion detected from a deletion.
        Parameters: - main_score - score of the underlying main deletion
-                   - translocation_distances - distance of the translocation clusters flanking the main deletion (left, right or both sides)
+                   - translocation_distances - mean distance of the translocation clusters flanking the main deletion (left, right or both sides)
                    - translocation_stds - standard deviation of the translocation clusters flanking the main deletion (left, right or both sides)
                    - translocation_deviation - distance between left and right translocation destinations"""
     if len(translocation_distances) == 2:
-        final_score = int(2 * main_score - 0.5 * sum(translocation_distances) - 0.3 * sum(translocation_stds) - 0.5 * translocation_deviation)
+        #scale translocation distances to [0, 1] range
+        td0 = max(0, 100 - translocation_distances[0]) / 100
+        td1 = max(0, 100 - translocation_distances[1]) / 100
+
+        #scale translocation stds to [0, 1] range
+        ts0 = max(0, 100 - translocation_stds[0]) / 100
+        ts1 = max(0, 100 - translocation_stds[1]) / 100
+
+        #scale translocation deviation to [0, 1] range
+        tv = max(0, 100 - translocation_deviation) / 100
+
+        #calculate final score as product of components
+        final_score = main_score * td0 * td1 * ts0 * ts1 * tv
     if len(translocation_distances) == 1:
-        final_score = int(main_score - 0.5 * sum(translocation_distances) - 0.3 * sum(translocation_stds) - 0.5 * translocation_deviation)
+        #scale translocation distance to [0, 1] range
+        td0 = max(0, 100 - translocation_distances[0]) / 100
+
+        #scale translocation std to [0, 1] range
+        ts0 = max(0, 100 - translocation_stds[0]) / 100
+
+        #scale translocation deviation to [0, 1] range
+        tv = max(0, 100 - translocation_deviation) / 100
+
+        #calculate final score as product of components (half score)
+        final_score = (main_score / 2) * td0 * td0 * ts0 * ts0 * tv
     # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distances, translocation_stds, translocation_deviation))
-    return max(0, final_score)
+    return final_score
 
 
 def calculate_score_insertion(main_score, translocation_distance, translocation_std, destination_stds):
     """Calculate the score of a merged insertion or duplication detected from an insertion.
        Parameters: - main_score - score of the underlying main insertion
-                   - translocation_distance - distance of the translocation clusters flanking the main insertion (left)
-                   - translocation_std - standard deviation of the translocation clusters flanking the main deletion (left)
+                   - translocation_distance - mean distance of the translocation cluster flanking the main insertion (left)
+                   - translocation_std - standard deviation of the translocation cluster flanking the main deletion (left)
                    - destination_stds - standard deviations of the left and right translocation destinations"""
     final_score = int(2 * main_score - 0.5 * translocation_distance - 0.2 * translocation_std - 0.1 * sum(destination_stds))
+    #scale translocation distance to [0, 1] range
+    td = max(0, 100 - translocation_distance) / 100
+
+    #scale translocation std to [0, 1] range
+    ts = max(0, 100 - translocation_std) / 100
+
+    #scale destination stds to [0, 1] range
+    ds0 = max(0, 100 - destination_stds[0]) / 100
+    ds1 = max(0, 100 - destination_stds[1]) / 100
+
+    #calculate final score as product of components
+    final_score = main_score * td * ts * ds0 * ds1
     # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distance, translocation_std, destination_stds))
-    return max(0, final_score)
+    return final_score
 
 
 def merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters):
