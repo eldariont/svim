@@ -97,7 +97,8 @@ def calculate_score_deletion(main_score, translocation_distances, translocation_
         tv = max(0, 100 - translocation_deviation) / 100
 
         #calculate final score as product of components
-        final_score = main_score * td0 * td1 * ts0 * ts1 * tv
+        product = (main_score / 100) * td0 * td1 * ts0 * ts1 * tv
+        final_score = pow(product, 1/6) * 100
     if len(translocation_distances) == 1:
         #scale translocation distance to [0, 1] range
         td0 = max(0, 100 - translocation_distances[0]) / 100
@@ -109,7 +110,8 @@ def calculate_score_deletion(main_score, translocation_distances, translocation_
         tv = max(0, 100 - translocation_deviation) / 100
 
         #calculate final score as product of components (half score)
-        final_score = (main_score / 2) * td0 * td0 * ts0 * ts0 * tv
+        product = (main_score / 100) * td0 * td0 * ts0 * ts0 * tv
+        final_score = pow(product, 1/6) * 50
     # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distances, translocation_stds, translocation_deviation))
     return final_score
 
@@ -120,7 +122,6 @@ def calculate_score_insertion(main_score, translocation_distance, translocation_
                    - translocation_distance - mean distance of the translocation cluster flanking the main insertion (left)
                    - translocation_std - standard deviation of the translocation cluster flanking the main deletion (left)
                    - destination_stds - standard deviations of the left and right translocation destinations"""
-    final_score = int(2 * main_score - 0.5 * translocation_distance - 0.2 * translocation_std - 0.1 * sum(destination_stds))
     #scale translocation distance to [0, 1] range
     td = max(0, 100 - translocation_distance) / 100
 
@@ -132,7 +133,8 @@ def calculate_score_insertion(main_score, translocation_distance, translocation_
     ds1 = max(0, 100 - destination_stds[1]) / 100
 
     #calculate final score as product of components
-    final_score = main_score * td * ts * ds0 * ds1
+    product = (main_score / 100) * td * ts * ds0 * ds1
+    final_score = pow(product, 1/5) * 100
     # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distance, translocation_std, destination_stds))
     return final_score
 
