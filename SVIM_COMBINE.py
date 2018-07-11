@@ -23,13 +23,13 @@ from SVIM_COLLECT import read_parameters
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It combines full alignment analysis, split-read mapping, and read-tail mapping to 
-distinguish five classes of structural variants. SVIM discriminates between similar 
+It combines full alignment analysis and split-read mapping to 
+distinguish six classes of structural variants. SVIM discriminates between similar 
 SV classes such as interspersed duplications and cut&paste insertions and is unique 
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of three programs SVIM-COLLECT, SVIM-CONFIRM, and SVIM-COMBINE. You are 
+SVIM consists of two programs SVIM-COLLECT and SVIM-COMBINE. You are 
 running SVIM-COMBINE which combines different SV evidences and classifies them into 
 distinct SV types.""")
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))

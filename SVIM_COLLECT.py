@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-__version__ = '0.1'
+__version__ = '0.2'
 __author__ = 'David Heller'
 
 import sys
@@ -26,13 +26,13 @@ from SVIM_postprocessing import cluster_sv_evidences, write_evidence_clusters_be
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It combines full alignment analysis, split-read mapping, and read-tail mapping to 
-distinguish five classes of structural variants. SVIM discriminates between similar 
+It combines full alignment analysis and split-read mapping to 
+distinguish six classes of structural variants. SVIM discriminates between similar 
 SV classes such as interspersed duplications and cut&paste insertions and is unique 
 in its capability of extracting both the genomic origin and destination of insertions 
 and duplications.
 
-SVIM consists of three programs SVIM-COLLECT, SVIM-CONFIRM, and SVIM-COMBINE. You are running SVIM-COLLECT 
+SVIM consists of two programs SVIM-COLLECT and SVIM-COMBINE. You are running SVIM-COLLECT 
 which analyzes read alignments to collect evidences for SVs.
 
 SVIM-COLLECT performs three steps to detect SVs: 
