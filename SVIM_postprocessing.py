@@ -146,6 +146,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(deletion_scores, bins=100)
     plt.xlabel('Score')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Score')
     plt.grid(True)
 
@@ -154,6 +155,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(deletion_sizes, bins=20)
     plt.xlabel('Size in bp')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Size')
     plt.grid(True)
 
@@ -167,6 +169,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(insertion_scores, bins=100)
     plt.xlabel('Score')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Score')
     plt.grid(True)
 
@@ -175,6 +178,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(insertion_sizes, bins=20)
     plt.xlabel('Size in bp')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Size')
     plt.grid(True)
 
@@ -188,6 +192,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(inversion_scores, bins=100)
     plt.xlabel('Score')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Score')
     plt.grid(True)
 
@@ -196,6 +201,7 @@ def plot_histograms(working_dir, clusters):
     plt.hist(inversion_sizes, bins=20)
     plt.xlabel('Size in bp')
     plt.ylabel('Count')
+    plt.yscale('log', nonposy='clip')
     plt.title('Histogram of Size')
     plt.grid(True)
 
