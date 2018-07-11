@@ -360,7 +360,7 @@ def main():
 
     #DELETIONS
     num_confirming_del = sum(1 for del_cluster in deletion_evidence_clusters if del_cluster.score >= options.confirm_del_min)
-    logging.info("Confirming {0} deletion evidence clusters with scores above {1}".format(num_confirming_del, options.confirm_del_min))
+    logging.info("Confirming {0} deletion evidence clusters with scores of at least {1}".format(num_confirming_del, options.confirm_del_min))
 
     dels_to_confirm_dict = defaultdict(list)
     dels_not_to_confirm = list()
@@ -380,7 +380,7 @@ def main():
 
     #INSERTIONS
     num_confirming_ins = sum(1 for ins_cluster in insertion_evidence_clusters if ins_cluster.score >= options.confirm_ins_min)
-    logging.info("Confirming {0} insertion evidence clusters with scores above {1}".format(num_confirming_ins, options.confirm_ins_min))
+    logging.info("Confirming {0} insertion evidence clusters with scores of at least {1}".format(num_confirming_ins, options.confirm_ins_min))
 
     ins_to_confirm_dict = defaultdict(list)
     ins_not_to_confirm = list()
@@ -400,7 +400,7 @@ def main():
 
     #INVERSIONS
     num_confirming_inv = sum(1 for inv_cluster in inversion_evidence_clusters if inv_cluster.score >= options.confirm_inv_min)
-    logging.info("Confirming {0} inversion evidence clusters with scores above {1}".format(num_confirming_inv, options.confirm_inv_min))
+    logging.info("Confirming {0} inversion evidence clusters with scores of at least {1}".format(num_confirming_inv, options.confirm_inv_min))
 
     inv_to_confirm_dict = defaultdict(list)
     inv_not_to_confirm = list()
