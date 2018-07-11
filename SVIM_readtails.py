@@ -448,13 +448,13 @@ def confirm_ins(left_bam, right_bam, evidence_cluster, reads, contig_record, par
 
 def confirm_ins2(full_bam, evidence_cluster, parameters):
     contig, start, end = evidence_cluster.get_source()
-    num_nearby_tails = full_bam.count(contig, start-100, start+100)
+    num_nearby_tails = full_bam.count(contig, max(0, start-100), start+100)
     if num_nearby_tails > 1000:
         return (0,0)
 
     #sum up which fraction of the inserted region is missing in reads spanning it
     num_spanning_reads = 0
-    for full_aln in full_bam.fetch(contig, start-100, start+100):
+    for full_aln in full_bam.fetch(contig, max(0, start-100), start+100):
         if not full_aln.is_unmapped and full_aln.mapping_quality >= parameters["min_mapq"] and not full_aln.is_secondary:
             ref_start = full_aln.reference_start
             ref_end = full_aln.reference_end
