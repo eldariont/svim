@@ -184,7 +184,7 @@ def partition_and_cluster_candidates(candidates, parameters):
 
     final_candidates = []
     for cluster in clusters:
-        combined_score = sum([candidate.score for candidate in cluster])
+        combined_score = mean([candidate.score for candidate in cluster])
         combined_members = [member for candidate in cluster for member in candidate.members]
         try:
             combined_std_span = mean([candidate.std_span for candidate in cluster])
