@@ -75,23 +75,23 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         #INS candidate
                         if deviation >= parameters["min_sv_size"]:
                             #No gap on reference
-                            if distance_on_reference <= parameters["max_segment_gap_tolerance"]:
+                            if distance_on_reference <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
                                     sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name))
                                 else:
                                     sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name))
                         #DEL candidate
-                        elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
+                        elif -parameters["max_sv_size"] <= deviation <= -parameters["min_sv_size"]:
                             #No gap on read
-                            if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                            if distance_on_read <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
                                     sv_evidences.append(EvidenceDeletion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] - deviation, "suppl", read_name))
                                 else:
                                     sv_evidences.append(EvidenceDeletion(ref_chr, alignment_next['ref_end'], alignment_next['ref_end'] - deviation, "suppl", read_name))
                         #Either very large DEL or TRANS
-                        elif deviation < -parameters["max_deletion_size"]:
+                        elif deviation < -parameters["max_sv_size"]:
                             #No gap on read
-                            if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                            if distance_on_read <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
                                     sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                     translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
@@ -122,10 +122,10 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
             else:
                 #Normal to reverse
                 if not alignment_current['is_reverse'] and alignment_next['is_reverse']:
-                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["segment_gap_tolerance"]:
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 1
                             #INV candidate
-                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= parameters["max_inversion_size"]:
+                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= parameters["max_sv_size"]:
                                 sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
                                 #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
                             #Either very large INV or TRANS
@@ -134,7 +134,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 3
                             #INV candidate
-                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= parameters["max_inversion_size"]:
+                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= parameters["max_sv_size"]:
                                 sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
                                 #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
                             #Either very large INV or TRANS
@@ -146,10 +146,10 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         #print("Overlapping read segments in read", read_name)
                 #Reverse to normal
                 if alignment_current['is_reverse'] and not alignment_next['is_reverse']:
-                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["segment_gap_tolerance"]:
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 2
                             #INV candidate
-                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= parameters["max_inversion_size"]:
+                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= parameters["max_sv_size"]:
                                 sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
                                 #transitions.append(('inversion', 'right_fwd', ref_chr, alignment_current['ref_start'], alignment_next['ref_start']))
                             #Either very large INV or TRANS
@@ -158,7 +158,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 4
                             #INV candidate
-                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= parameters["max_inversion_size"]:
+                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= parameters["max_sv_size"]:
                                 sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
                                 #transitions.append(('inversion', 'right_rev', ref_chr, alignment_next['ref_start'], alignment_current['ref_start']))
                             #Either very large INV or TRANS
@@ -177,7 +177,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                 #No overlap on read
                 if distance_on_read >= -parameters["segment_overlap_tolerance"]:
                     #No gap on read
-                    if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                    if distance_on_read <= parameters["segment_gap_tolerance"]:
                         if not alignment_current['is_reverse']:
                             sv_evidences.append(EvidenceTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                             translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'], ref_chr_next, alignment_next['ref_start']))

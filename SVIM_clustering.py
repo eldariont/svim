@@ -116,8 +116,6 @@ def consolidate_clusters_unilocal(clusters, parameters):
             std_span = None
             std_pos = None
         if cluster[0].type == "inv":
-            if average_end - average_start > parameters["max_sv_size"]:
-                continue
             score = calculate_score_inversion(cluster, std_span, std_pos, average_end - average_start)
         else:
             cigar_evidences = [member for member in cluster if member.evidence == "cigar"]
