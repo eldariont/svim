@@ -188,11 +188,13 @@ class EvidenceDuplicationTandem(Evidence):
 
 class EvidenceTranslocation(Evidence):
     """SV Evidence: two positions (contig1:pos1 and contig2:pos2) are connected in the sample"""
-    def __init__(self, contig1, pos1, contig2, pos2, evidence, read):
+    def __init__(self, contig1, pos1, direction1, contig2, pos2, direction2, evidence, read):
         self.contig1 = contig1
         self.pos1 = pos1
+        self.direction1 = direction1
         self.contig2 = contig2
         self.pos2 = pos2
+        self.direction2 = direction2
         self.evidence = evidence
         self.read = read
         self.type = "tra"

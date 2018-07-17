@@ -1,335 +1,249 @@
 from __future__ import print_function
 
 import sys
+from statistics import mean
 
 from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
 from SVIM_clustering import consolidate_clusters_bilocal, clusters_from_partitions
 
 
-def analyze_full_read_segments_two(primary_aln, supplementary_aln, full_bam, parameters):
-    read_name = primary_aln.query_name
-    primary_ref_chr = full_bam.getrname(primary_aln.reference_id)
-    primary_ref_start = primary_aln.reference_start
-    primary_ref_end = primary_aln.reference_end
-    primary_q_start = primary_aln.query_alignment_start
-    primary_q_end = primary_aln.query_alignment_end
-
-    supplementary_ref_chr = full_bam.getrname(supplementary_aln.reference_id)
-    supplementary_ref_start = supplementary_aln.reference_start
-    supplementary_ref_end = supplementary_aln.reference_end
-    supplementary_q_start = supplementary_aln.query_alignment_start
-    supplementary_q_end = supplementary_aln.query_alignment_end
-
-    if primary_ref_chr == supplementary_ref_chr:
-        if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
-            if supplementary_q_start - primary_q_end >= -parameters["segment_overlap_tolerance"]:
-                individual_dist = supplementary_q_start - primary_q_end
-                reference_dist = supplementary_ref_start - primary_ref_end
-                if reference_dist >= 0:                    
-                    deviation = individual_dist - reference_dist
-                    if deviation >= parameters["min_sv_size"]:
-                        #INS candidate
-                        if reference_dist <= parameters["max_segment_gap_tolerance"]:
-                            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
-                            return EvidenceInsertion(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, "suppl", read_name)
-                        else:
-                            pass
-                            #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
-                        #DEL candidate
-                        if individual_dist <= parameters["max_segment_gap_tolerance"]:
-                            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
-                            return EvidenceDeletion(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, "suppl", read_name)
-                        else:
-                            pass
-                            #print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, primary_ref_end - deviation, -deviation), file=sys.stdout)
-                    elif deviation < -parameters["max_deletion_size"]:
-                        #Either very large DEL or TRANS
-                        #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
-                        return EvidenceTranslocation(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start, "suppl", read_name)
-                elif reference_dist < -parameters["min_sv_size"] and supplementary_ref_end > primary_ref_start:
-                    #Tandem Duplication
-                    #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_end, primary_ref_end - supplementary_ref_start), file=sys.stdout)
-                    return EvidenceDuplicationTandem(primary_ref_chr, supplementary_ref_start, primary_ref_end, 1, "suppl", read_name)
-            elif primary_q_start - supplementary_q_end >= -parameters["segment_overlap_tolerance"]:
-                reference_dist = primary_ref_start - supplementary_ref_end
-                individual_dist = primary_q_start - supplementary_q_end
-                if reference_dist >= 0:
-                    deviation = individual_dist - reference_dist
-                    if deviation >= parameters["min_sv_size"]:
-                        #INS candidate
-                        if reference_dist <= parameters["max_segment_gap_tolerance"]:
-                            #print("Insertion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
-                            return EvidenceInsertion(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, "suppl", read_name)
-                        else:
-                            pass
-                            #print("Insertion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end + deviation, deviation), file=sys.stdout)
-                    elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
-                        #DEL candidate
-                        if individual_dist <= parameters["max_segment_gap_tolerance"]:
-                            #print("Deletion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
-                            return EvidenceDeletion(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, "suppl", read_name)
-                        else:
-                            pass
-                            #print("Deletion detected (imprecise): {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, supplementary_ref_end - deviation, -deviation), file=sys.stdout)
-                    elif deviation < -parameters["max_deletion_size"]:
-                        #Either very large DEL or TRANS
-                        #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
-                        return EvidenceTranslocation(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start, "suppl", read_name)
-                elif reference_dist < -parameters["min_sv_size"] and primary_ref_end > supplementary_ref_start:
-                    #Tandem Duplication
-                    #print("Tandem duplication detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_end, supplementary_ref_start - primary_ref_end), file=sys.stdout)
-                    return EvidenceDuplicationTandem(primary_ref_chr, primary_ref_start, supplementary_ref_end, 1, "suppl", read_name)
-            else:
-                pass
-                #print("Overlapping read segments in read", read_name)
-        elif not primary_aln.is_reverse and supplementary_aln.is_reverse:
-            supplementary_q_end = primary_aln.infer_read_length() - supplementary_aln.query_alignment_start
-            supplementary_q_start = primary_aln.infer_read_length() - supplementary_aln.query_alignment_end
-            if -parameters["segment_overlap_tolerance"] <= supplementary_q_start - primary_q_end <= parameters["max_segment_gap_tolerance"]:
-                if supplementary_ref_start - primary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 1
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name, "left_fwd")
-                elif primary_ref_start - supplementary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 3
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name, "left_rev")
-            elif -parameters["segment_overlap_tolerance"] <= primary_q_start - supplementary_q_end <= parameters["max_segment_gap_tolerance"]:
-                if primary_ref_start - supplementary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 2
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name, "right_fwd")
-                elif supplementary_ref_start - primary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 4
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name, "right_rev")
-            else:
-                pass
-                #print("Overlapping read segments in read", read_name)
-        elif primary_aln.is_reverse and not supplementary_aln.is_reverse:
-            primary_q_end = primary_aln.infer_read_length() - primary_aln.query_alignment_start
-            primary_q_start = primary_aln.infer_read_length() - primary_aln.query_alignment_end
-            if -parameters["segment_overlap_tolerance"] <= supplementary_q_start - primary_q_end <= parameters["max_segment_gap_tolerance"]:
-                if supplementary_ref_start - primary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 2
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_start, supplementary_ref_start, supplementary_ref_start - primary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_start, supplementary_ref_start, "suppl", read_name, "right_fwd")
-                elif primary_ref_start - supplementary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 4
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_start, primary_ref_start, primary_ref_start - supplementary_ref_start), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_start, primary_ref_start, "suppl", read_name, "right_rev")
-            elif -parameters["segment_overlap_tolerance"] <= primary_q_start - supplementary_q_end <= parameters["max_segment_gap_tolerance"]:
-                if primary_ref_start - supplementary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 1
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, supplementary_ref_end, primary_ref_end, primary_ref_end - supplementary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, supplementary_ref_end, primary_ref_end, "suppl", read_name, "left_fwd")
-                elif supplementary_ref_start - primary_ref_end >= -parameters["segment_overlap_tolerance"]: # Case 3
-                    #print("Inversion detected: {0}:{1}-{2} (length {3})".format(primary_ref_chr, primary_ref_end, supplementary_ref_end, supplementary_ref_end - primary_ref_end), file=sys.stdout)
-                    return EvidenceInversion(primary_ref_chr, primary_ref_end, supplementary_ref_end, "suppl", read_name, "left_rev")
-            else:
-                pass
-                #print("Overlapping read segments in read", read_name)
+def is_similar(chr1, start1, end1, chr2, start2, end2):
+    if chr1 == chr2 and abs(start1 - start2) < 20 and abs(end1 - end2) < 20:
+        return True
     else:
-        if (primary_aln.is_reverse and supplementary_aln.is_reverse) or (not primary_aln.is_reverse and not supplementary_aln.is_reverse):
-            if -parameters["segment_overlap_tolerance"] <= supplementary_q_start - primary_q_end:
-                if supplementary_q_start - primary_q_end <= parameters["max_segment_gap_tolerance"]:
-                    #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
-                    return EvidenceTranslocation(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start, "suppl", read_name)
-                else:
-                    pass
-                    #print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(primary_ref_chr, primary_ref_end, supplementary_ref_chr, supplementary_ref_start), file=sys.stdout)
-            elif -parameters["segment_overlap_tolerance"] <= primary_q_start - supplementary_q_end:
-                if primary_q_start - supplementary_q_end <= parameters["max_segment_gap_tolerance"]:
-                    #print("Translocation breakpoint detected: {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
-                    return EvidenceTranslocation(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start, "suppl", read_name)
-                    #print("Translocation breakpoint detected (imprecise): {0}:{1} -> {2}:{3}".format(supplementary_ref_chr, supplementary_ref_end, primary_ref_chr, primary_ref_start), file=sys.stdout)
-                else:
-                    pass
-            else:
-                pass
-                #print("Overlapping read segments in read", read_name)
-        else:
-            #INV + TRANS
-            pass
-    return None
-
-
-def analyze_full_read_segments_three(primary_aln, supplementary_aln1, supplementary_aln2, full_bam, parameters):
-    read_name = primary_aln.query_name
-    alns = [primary_aln, supplementary_aln1, supplementary_aln2]
-
-    results = []
-    ordered_alns = sorted(alns, key = lambda aln: aln.infer_read_length() - aln.query_alignment_end if aln.is_reverse else aln.query_alignment_start)
-    ordered_alns_query_limits = [(aln.infer_read_length() - aln.query_alignment_end, aln.infer_read_length() - aln.query_alignment_start) if aln.is_reverse else (aln.query_alignment_start, aln.query_alignment_end) for aln in ordered_alns]
-    ordered_alns_reference_names = [full_bam.getrname(aln.reference_id) for aln in ordered_alns]
-
-    #all segments on same contig
-    if ordered_alns_reference_names[0] == ordered_alns_reference_names[1] == ordered_alns_reference_names[2]:
-        query_order_nice = True
-        for i in range(len(ordered_alns) - 1):
-            if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters["segment_overlap_tolerance"] or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters["max_segment_gap_tolerance"]:
-                query_order_nice = False
-        
-        reference_012 = True
-        for i in range(len(ordered_alns) - 1):
-            if ordered_alns[i+1].reference_start - ordered_alns[i].reference_end < -parameters["segment_overlap_tolerance"] or ordered_alns[i+1].reference_start - ordered_alns[i].reference_end > parameters["max_segment_gap_tolerance"]:
-                reference_012 = False
-
-        reference_210 = True
-        for i in range(len(ordered_alns) - 1):
-            if ordered_alns[i].reference_start - ordered_alns[i+1].reference_end < -parameters["segment_overlap_tolerance"] or ordered_alns[i].reference_start - ordered_alns[i+1].reference_end > parameters["max_segment_gap_tolerance"]:
-                reference_210 = False
-        
-        if -parameters["segment_overlap_tolerance"] <= ordered_alns[2].reference_start - ordered_alns[0].reference_end <= parameters["max_segment_gap_tolerance"]:
-            reference_02 = True
-        else:
-            reference_02 = False
-
-        if -parameters["segment_overlap_tolerance"] <= ordered_alns[0].reference_start - ordered_alns[2].reference_end <= parameters["max_segment_gap_tolerance"]:
-            reference_20 = True
-        else:
-            reference_20 = False
-
-        if ordered_alns[1].reference_start < ordered_alns[0].reference_end and \
-                        ordered_alns[1].reference_end > ordered_alns[0].reference_start:
-            reference_01_overlap = True
-        else:
-            reference_01_overlap = False
-
-        if ordered_alns[0].reference_start < ordered_alns[1].reference_end and \
-                        ordered_alns[0].reference_end > ordered_alns[1].reference_start:
-            reference_10_overlap = True
-        else:
-            reference_10_overlap = False
-
-        if ordered_alns[2].reference_start < ordered_alns[1].reference_end and \
-                        ordered_alns[2].reference_end > ordered_alns[1].reference_start:
-            reference_12_overlap = True
-        else:
-            reference_12_overlap = False
-
-        if ordered_alns[1].reference_start < ordered_alns[2].reference_end and \
-                        ordered_alns[1].reference_end > ordered_alns[2].reference_start:
-            reference_21_overlap = True
-        else:
-            reference_21_overlap = False
-
-        # all segments come right after another
-        if query_order_nice:
-            # all segments are mapped right after another
-            if reference_012 or reference_210:
-                if not ordered_alns[0].is_reverse and ordered_alns[1].is_reverse and not ordered_alns[2].is_reverse:
-                    #print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name, "all"))
-                elif ordered_alns[0].is_reverse and not ordered_alns[1].is_reverse and ordered_alns[2].is_reverse:
-                    #print("Inversion detected: {0}:{1}-{2} (length {3}, 3 segments)".format(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[1].reference_end - ordered_alns[1].reference_start), file=sys.stdout)
-                    results.append(EvidenceInversion(ordered_alns_reference_names[0], ordered_alns[1].reference_start, ordered_alns[1].reference_end, "suppl", read_name, "all"))
-            # segments 0 and 2 are mapped right after another and are from the + strand
-            elif reference_02 and not ordered_alns[0].is_reverse and not ordered_alns[2].is_reverse:
-                if ordered_alns[1].reference_start >= ordered_alns[2].reference_end or ordered_alns[1].reference_end <= ordered_alns[0].reference_start:
-                    #Duplication or Insertion
-                    #print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[0].reference_end), file=sys.stdout)
-                    results.append(EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[0], ordered_alns[0].reference_end, "suppl", read_name))
-            # segments 2 and 0 are mapped right after another and are from the - strand
-            elif reference_20 and ordered_alns[0].is_reverse and ordered_alns[2].is_reverse:
-                if ordered_alns[1].reference_start >= ordered_alns[0].reference_end or ordered_alns[1].reference_end <= ordered_alns[2].reference_start:
-                    #Duplication or Insertion
-                    #print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[2].reference_end), file=sys.stdout)
-                    results.append(EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[2], ordered_alns[2].reference_end, "suppl", read_name))
-            # all segments map to + strand
-            elif not ordered_alns[0].is_reverse and not ordered_alns[1].is_reverse and not ordered_alns[2].is_reverse:
-                if reference_01_overlap and reference_12_overlap:
-                    overlaps = [EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[1].reference_start,
-                                                      ordered_alns[0].reference_end, 1, "suppl", read_name),
-                                EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[2].reference_start,
-                                                      ordered_alns[1].reference_end, 1, "suppl", read_name)]
-                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps], parameters))
-                    if len(clustered_overlaps) > 1:
-                        results.extend(overlaps)
-                    else:
-                        contig, start, end = clustered_overlaps[0].get_source()
-                        results.append(EvidenceDuplicationTandem(contig, start, end, 2, "suppl", read_name))
-                elif reference_01_overlap:
-                    results.append(EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[1].reference_start,
-                                                      ordered_alns[0].reference_end, 1, "suppl", read_name))
-                elif reference_12_overlap:
-                    results.append(
-                        EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[2].reference_start,
-                                                  ordered_alns[1].reference_end, 1, "suppl", read_name))
-            # all segments map to - strand
-            elif ordered_alns[0].is_reverse and ordered_alns[1].is_reverse and ordered_alns[2].is_reverse:
-                if reference_10_overlap and reference_21_overlap:
-                    overlaps = [EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[0].reference_start,
-                                                      ordered_alns[1].reference_end, 1, "suppl", read_name),
-                                EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[1].reference_start,
-                                                      ordered_alns[2].reference_end, 1, "suppl", read_name)]
-                    clustered_overlaps = consolidate_clusters_bilocal(clusters_from_partitions([overlaps], parameters))
-                    if len(clustered_overlaps) > 1:
-                        results.extend(overlaps)
-                    else:
-                        contig, start, end = clustered_overlaps[0].get_source()
-                        results.append(EvidenceDuplicationTandem(contig, start, end, 2, "suppl", read_name))
-                elif reference_10_overlap:
-                    results.append(EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[0].reference_start,
-                                                      ordered_alns[1].reference_end, 1, "suppl", read_name))
-                elif reference_21_overlap:
-                    results.append(
-                        EvidenceDuplicationTandem(ordered_alns_reference_names[0], ordered_alns[1].reference_start,
-                                                  ordered_alns[2].reference_end, 1, "suppl", read_name))
-            else:
-                pass
-                #print("group01", read_name, file=sys.stderr)
-        else:
-            pass
-            #print("group02", file=sys.stderr)
-
-    elif ordered_alns_reference_names[0] == ordered_alns_reference_names[2]:
-        query_order_nice = True
-        for i in range(len(ordered_alns) - 1):
-            if ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] < -parameters["segment_overlap_tolerance"] or ordered_alns_query_limits[i+1][0] - ordered_alns_query_limits[i][1] > parameters["max_segment_gap_tolerance"]:
-                query_order_nice = False
-
-        if -parameters["segment_overlap_tolerance"] <= ordered_alns[2].reference_start - ordered_alns[0].reference_end <= parameters["max_segment_gap_tolerance"]:
-            reference_02 = True
-        else:
-            reference_02 = False
-
-        if -parameters["segment_overlap_tolerance"] <= ordered_alns[0].reference_start - ordered_alns[2].reference_end <= parameters["max_segment_gap_tolerance"]:
-            reference_20 = True
-        else:
-            reference_20 = False
-
-        if query_order_nice:
-            if reference_02:
-                #Duplication or Insertion
-                #print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[0].reference_end), file=sys.stdout)
-                results.append(EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[0], ordered_alns[0].reference_end, "suppl", read_name))
-            elif reference_20:
-                #Duplication or Insertion
-                #print("Duplication/Insertion detected from {0}:{1}-{2} to {0}:{3}".format(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns[2].reference_end), file=sys.stdout)
-                results.append(EvidenceInsertionFrom(ordered_alns_reference_names[1], ordered_alns[1].reference_start, ordered_alns[1].reference_end, ordered_alns_reference_names[2], ordered_alns[2].reference_end, "suppl", read_name))
-        else:
-            pass
-            #print("group03", file=sys.stderr)
-    else:
-        pass
-        #print("group04", file=sys.stderr)
-    return results
+        return False
 
 
 def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
-    """Analyze the positions and orientations of primary and supplementary alignments of a full read for signatures of SVs."""
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
-    sv_evidences = []
-
     if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters["min_mapq"]:
-        return sv_evidences
+        return []
 
     good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters["min_mapq"]]
-    if len(good_suppl_alns) == 1:
-        result = analyze_full_read_segments_two(full_prim[0], good_suppl_alns[0], full_bam, parameters)
-        if result != None:
-            sv_evidences.append(result)
-    elif len(good_suppl_alns) == 2:
-        results = analyze_full_read_segments_three(full_prim[0], good_suppl_alns[0], good_suppl_alns[1], full_bam, parameters)
-        sv_evidences.extend(results)
-    elif 2 < len(good_suppl_alns) < 6:
-        pass
-        #print("Read", full_read_name.split("_")[1], "has", len(good_suppl_alns), "good supplementary segments.") 
-    
+    if len(good_suppl_alns) > 3:
+        return []
+
+    read_name = full_prim[0].query_name
+    alignments = [full_prim[0]] + good_suppl_alns
+    alignment_list = []
+    for alignment in alignments:
+        #correct query coordinates for reversely mapped reads
+        if alignment.is_reverse:
+            q_start = alignment.infer_read_length() - alignment.query_alignment_end
+            q_end = alignment.infer_read_length() - alignment.query_alignment_start
+        else:
+            q_start = alignment.query_alignment_start
+            q_end = alignment.query_alignment_end
+
+        new_alignment_dict = {  'q_start': q_start, 
+                                'q_end': q_end, 
+                                'ref_id': alignment.reference_id, 
+                                'ref_start': alignment.reference_start, 
+                                'ref_end': alignment.reference_end,
+                                'is_reverse': alignment.is_reverse  }
+        alignment_list.append(new_alignment_dict)
+
+    sorted_alignment_list = sorted(alignment_list, key=lambda aln: (aln['q_start'], aln['q_end']))
+    inferred_read_length = alignments[0].infer_read_length()
+
+    sv_evidences = []
+    tandem_duplications = []
+    translocations = []
+
+    for index in range(len(sorted_alignment_list) - 1):
+        alignment_current = sorted_alignment_list[index]
+        alignment_next = sorted_alignment_list[index + 1]
+
+        distance_on_read = alignment_next['q_start'] - alignment_current['q_end']
+
+        #Same chromosome
+        if alignment_current['ref_id'] == alignment_next['ref_id']:
+            ref_chr = full_bam.getrname(alignment_current['ref_id'])
+            #Same orientation
+            if alignment_current['is_reverse'] == alignment_next['is_reverse']:
+                #Compute distance on reference depending on orientation
+                if alignment_current['is_reverse']:
+                    distance_on_reference = alignment_current['ref_start'] - alignment_next['ref_end']
+                else:
+                    distance_on_reference = alignment_next['ref_start'] - alignment_current['ref_end']
+                #No overlap on read
+                if distance_on_read >= -parameters["segment_overlap_tolerance"]:
+                    #No overlap on reference
+                    if distance_on_reference >= -parameters["segment_overlap_tolerance"]:
+                        deviation = distance_on_read - distance_on_reference
+                        #INS candidate
+                        if deviation >= parameters["min_sv_size"]:
+                            #No gap on reference
+                            if distance_on_reference <= parameters["max_segment_gap_tolerance"]:
+                                if not alignment_current['is_reverse']:
+                                    sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name))
+                                else:
+                                    sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name))
+                        #DEL candidate
+                        elif -parameters["max_deletion_size"] <= deviation <= -parameters["min_sv_size"]:
+                            #No gap on read
+                            if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                                if not alignment_current['is_reverse']:
+                                    sv_evidences.append(EvidenceDeletion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] - deviation, "suppl", read_name))
+                                else:
+                                    sv_evidences.append(EvidenceDeletion(ref_chr, alignment_next['ref_end'], alignment_next['ref_end'] - deviation, "suppl", read_name))
+                        #Either very large DEL or TRANS
+                        elif deviation < -parameters["max_deletion_size"]:
+                            #No gap on read
+                            if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                                if not alignment_current['is_reverse']:
+                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
+                                else:
+                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
+                    #overlap on reference
+                    else:
+                        #Tandem Duplication
+                        if distance_on_reference < -parameters["min_sv_size"]:
+                            if not alignment_current['is_reverse']:
+                                #Tandem Duplication
+                                if alignment_next['ref_end'] > alignment_current['ref_start']:
+                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
+                                #Either very large TANDEM or TRANS
+                                else:
+                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
+                            else:
+                                #Tandem Duplication
+                                if alignment_next['ref_start'] < alignment_current['ref_end']:
+                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
+                                #Either very large TANDEM or TRANS
+                                else:
+                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
+            #Different orientations
+            else:
+                #Normal to reverse
+                if not alignment_current['is_reverse'] and alignment_next['is_reverse']:
+                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 1
+                            #INV candidate
+                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= parameters["max_inversion_size"]:
+                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
+                                #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
+                            #Either very large INV or TRANS
+                            else:
+                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
+                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 3
+                            #INV candidate
+                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= parameters["max_inversion_size"]:
+                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
+                                #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
+                            #Either very large INV or TRANS
+                            else:
+                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
+                    else:
+                        pass
+                        #print("Overlapping read segments in read", read_name)
+                #Reverse to normal
+                if alignment_current['is_reverse'] and not alignment_next['is_reverse']:
+                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 2
+                            #INV candidate
+                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= parameters["max_inversion_size"]:
+                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
+                                #transitions.append(('inversion', 'right_fwd', ref_chr, alignment_current['ref_start'], alignment_next['ref_start']))
+                            #Either very large INV or TRANS
+                            else:
+                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
+                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 4
+                            #INV candidate
+                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= parameters["max_inversion_size"]:
+                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
+                                #transitions.append(('inversion', 'right_rev', ref_chr, alignment_next['ref_start'], alignment_current['ref_start']))
+                            #Either very large INV or TRANS
+                            else:
+                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
+                    else:
+                        pass
+                        #print("Overlapping read segments in read", read_name)
+        #Different chromosomes
+        else:
+            ref_chr_current = full_bam.getrname(alignment_current['ref_id'])
+            ref_chr_next = full_bam.getrname(alignment_next['ref_id'])
+            #Same orientation
+            if alignment_current['is_reverse'] == alignment_next['is_reverse']:
+                #No overlap on read
+                if distance_on_read >= -parameters["segment_overlap_tolerance"]:
+                    #No gap on read
+                    if distance_on_read <= parameters["max_segment_gap_tolerance"]:
+                        if not alignment_current['is_reverse']:
+                            sv_evidences.append(EvidenceTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                            translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'], ref_chr_next, alignment_next['ref_start']))
+                        else:
+                            sv_evidences.append(EvidenceTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                            translocations.append(('rev', 'rev', ref_chr_current, alignment_current['ref_start'], ref_chr_next, alignment_next['ref_end']))
+                #Overlap on read
+                else:
+                    pass
+                    #print("Overlapping read segments in read", read_name)
+            #Different orientation
+            else:
+                #INV + TRANS
+                pass
+
+    #Handle tandem duplications
+    current_chromosome = None
+    current_starts = []
+    current_ends = []
+    current_copy_number = 0
+    for tandem_duplication in tandem_duplications:
+        if current_chromosome == None:
+            current_chromosome = tandem_duplication[0]
+            current_starts.append(tandem_duplication[1])
+            current_ends.append(tandem_duplication[2])
+            current_copy_number = 1
+        else:
+            if is_similar(current_chromosome, mean(current_starts), mean(current_ends), tandem_duplication[0], tandem_duplication[1], tandem_duplication[2]):
+                current_starts.append(tandem_duplication[1])
+                current_ends.append(tandem_duplication[2])
+                current_copy_number += 1
+            else:
+                sv_evidences.append(EvidenceDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+                current_chromosome = tandem_duplication[0]
+                current_starts.append(tandem_duplication[1])
+                current_ends.append(tandem_duplication[2])
+                current_copy_number = 1
+    if current_chromosome != None:
+        sv_evidences.append(EvidenceDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+
+    #Handle insertions_from
+    for this_index in range(len(translocations)):
+        this_dir1 = translocations[this_index][0]
+        this_dir2 = translocations[this_index][1]
+        this_chr1 = translocations[this_index][2]
+        this_pos1 = translocations[this_index][3]
+        this_chr2 = translocations[this_index][4]
+        this_pos2 = translocations[this_index][5]
+
+        for before_dir1, before_dir2, before_chr1, before_pos1, before_chr2, before_pos2 in translocations[:this_index]:
+            #Same direction at destination and origin
+            if before_dir1 == this_dir2 and before_dir2 == this_dir1:
+                #Same position at destination
+                if is_similar(before_chr1, before_pos1, 0, this_chr2, this_pos2, 0):
+                    #Same chromosome for origin
+                    if before_chr2 == this_chr1:
+                        #INS_DUP candidate
+                        if before_dir2 == before_dir1:
+                            if before_dir1 == 'fwd':
+                                if this_pos1 - before_pos2 <= parameters["max_sv_size"]:
+                                    sv_evidences.append(EvidenceInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                            elif before_dir1 == 'rev':
+                                if before_pos2 - this_pos1 <= parameters["max_sv_size"]:
+                                    sv_evidences.append(EvidenceInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                        #INV_INS_DUP candidate
+                        else:
+                            pass
+
     return sv_evidences

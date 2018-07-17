@@ -195,29 +195,41 @@ def main():
 
     # Cluster translocations by contig and pos1
     logging.info("Cluster translocations..")
-    translocation_partitions = form_partitions(completed_translocations, parameters["trans_partition_max_distance"])
+    translocations_fwdfwd = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
+    translocations_revrev = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "rev"]
+    translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, parameters["trans_partition_max_distance"])
+    translocation_partitions_revrev = form_partitions(translocations_revrev, parameters["trans_partition_max_distance"])
 
     logging.info("Compile translocation dict..")
-    translocation_partitions_dict = defaultdict(list)
-    for partition in translocation_partitions:
-        translocation_partitions_dict[partition[0].contig1].append(partition)
+    translocation_partitions_fwdfwd_dict = defaultdict(list)
+    translocation_partitions_revrev_dict = defaultdict(list)
+    for partition in translocation_partitions_fwdfwd:
+        translocation_partitions_fwdfwd_dict[partition[0].contig1].append(partition)
+    for partition in translocation_partitions_revrev:
+        translocation_partitions_revrev_dict[partition[0].contig1].append(partition)
 
     logging.info("Compute translocation means and std deviations..")
-    translocation_partition_means_dict = {}
-    translocation_partition_stds_dict = {}
-    for contig in translocation_partitions_dict.keys():
-        translocation_partition_means_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_dict[contig]]
-        translocation_partition_stds_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_dict[contig])]
+    translocation_partition_means_fwdfwd_dict = {}
+    translocation_partition_stds_fwdfwd_dict = {}
+    for contig in translocation_partitions_fwdfwd_dict.keys():
+        translocation_partition_means_fwdfwd_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_fwdfwd_dict[contig]]
+        translocation_partition_stds_fwdfwd_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_fwdfwd_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_fwdfwd_dict[contig])]
+    translocation_partition_means_revrev_dict = {}
+    translocation_partition_stds_revrev_dict = {}
+    for contig in translocation_partitions_revrev_dict.keys():
+        translocation_partition_means_revrev_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_revrev_dict[contig]]
+        translocation_partition_stds_revrev_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_revrev_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_revrev_dict[contig])]
+
 
     insertion_candidates = []
     int_duplication_candidates = []
 
     logging.info("Merge translocations at deletions..")
-    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, deletion_evidence_clusters, parameters)
+    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Merge translocations at insertions..")
-    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_dict, translocation_partition_means_dict, translocation_partition_stds_dict, insertion_evidence_clusters, parameters)
+    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_evidence_clusters, parameters)
     insertion_from_evidence_clusters.extend(new_insertion_from_clusters)
 
     ###################################

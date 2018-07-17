@@ -20,7 +20,7 @@ def complete_translocations(translocation_evidences):
 
     reversed_translocations = []
     for evidence in translocation_evidences:
-        reversed_translocations.append(EvidenceTranslocation(evidence.contig2, evidence.pos2, evidence.contig1, evidence.pos1, evidence.evidence, evidence.read))
+        reversed_translocations.append(EvidenceTranslocation(evidence.contig2, evidence.pos2, 'fwd' if evidence.direction2 == 'rev' else 'rev', evidence.contig1, evidence.pos1, 'fwd' if evidence.direction1 == 'rev' else 'rev', evidence.evidence, evidence.read))
     return translocation_evidences + reversed_translocations
 
 
