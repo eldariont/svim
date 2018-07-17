@@ -72,6 +72,7 @@ def read_parameters(options):
 
     parameters["max_segment_gap_tolerance"] = config.getint("split read", "max_segment_gap_tolerance")
     parameters["max_deletion_size"] = config.getint("split read", "max_deletion_size")
+    parameters["max_inversion_size"] = config.getint("split read", "max_inversion_size")
     parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")
 
     parameters["distance_metric"] = config.get("clustering", "distance_metric")
