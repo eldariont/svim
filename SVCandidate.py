@@ -37,7 +37,7 @@ class Candidate:
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
         # non-intersecting
-        if this_end <= other_start or other_end <= this_start:
+        if this_contig != other_contig or this_end <= other_start or other_end <= this_start:
             return float("inf")
         dist_pos = abs(this_start - other_start) / largest_indel_size
         span1 = abs(this_end - this_start)
@@ -52,6 +52,8 @@ class Candidate:
     def span_loc_distance(self, candidate2, distance_normalizer):
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
+        if this_contig != other_contig:
+            return float("inf")
         #Component 1: difference in spans
         this_span = this_end - this_start
         other_span = other_end - other_start
