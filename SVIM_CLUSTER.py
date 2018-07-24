@@ -1,8 +1,3 @@
-from __future__ import print_function
-
-__version__ = '0.1'
-__author__ = 'David Heller'
-
 import os
 import logging
 
@@ -11,7 +6,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal, form_partitions
+from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal
 from SVEvidence import EvidenceTranslocation
 
 
@@ -35,20 +30,12 @@ def cluster_sv_evidences(sv_evidences, parameters):
     translocation_evidences = [ev for ev in sv_evidences if ev.type == 'tra']
     insertion_from_evidences = [ev for ev in sv_evidences if ev.type == 'ins_dup']
 
-    logging.info("Found {0}/{1}/{2}/{3}/{4}/{5} evidences for deletions, insertions, inversions, tandem duplications, translocations, and insertion_from, respectively.".format(
-        len(deletion_evidences), len(insertion_evidences), len(inversion_evidences), len(tandem_duplication_evidences), len(translocation_evidences), len(insertion_from_evidences)))
-    
     # Cluster SV evidences
-    logging.info("Cluster deletion evidences:")
-    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences, parameters)
-    logging.info("Cluster insertion evidences:")
-    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences, parameters)
-    logging.info("Cluster inversion evidences:")
-    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences, parameters)
-    logging.info("Cluster tandem duplication evidences:")
-    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences, parameters)
-    logging.info("Cluster insertion evidences with source:")
-    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences, parameters)
+    deletion_evidence_clusters = partition_and_cluster_unilocal(deletion_evidences, parameters, "deleted regions")
+    insertion_evidence_clusters = partition_and_cluster_unilocal(insertion_evidences, parameters, "inserted regions")
+    inversion_evidence_clusters = partition_and_cluster_unilocal(inversion_evidences, parameters, "inverted regions")
+    tandem_duplication_evidence_clusters = partition_and_cluster_bilocal(tandem_duplication_evidences, parameters, "tandem duplicated regions")
+    insertion_from_evidence_clusters = partition_and_cluster_bilocal(insertion_from_evidences, parameters, "inserted regions with detected region of origin")
 
     return (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, complete_translocations(translocation_evidences))
 
@@ -94,7 +81,7 @@ def write_evidence_clusters_bed(working_dir, clusters):
     insertion_from_evidence_output.close()
 
 
-def write_evidence_clusters_vcf(working_dir, clusters):
+def write_evidence_clusters_vcf(working_dir, clusters, version):
     """Write evidence clusters into working directory in VCF format."""
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = clusters
 
@@ -104,7 +91,7 @@ def write_evidence_clusters_vcf(working_dir, clusters):
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=SVIMV{0}".format(__version__), file=vcf_output)
+    print("##source=SVIMV{0}".format(version), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
     print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)

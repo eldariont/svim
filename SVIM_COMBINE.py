@@ -1,55 +1,20 @@
-from __future__ import print_function
-
-__version__ = '0.2'
-__author__ = 'David Heller'
-
-import sys
-import argparse
 import os
-import pickle
-import gzip
 import logging
-import configparser
 
 from collections import defaultdict
-from time import strftime, localtime
 from math import pow, sqrt
 
 from SVIM_clustering import form_partitions, partition_and_cluster_candidates
 from SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion
 from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
-from SVIM_COLLECT import read_parameters
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It combines full alignment analysis and split-read mapping to 
-distinguish six classes of structural variants. SVIM discriminates between similar 
-SV classes such as interspersed duplications and cut&paste insertions and is unique 
-in its capability of extracting both the genomic origin and destination of insertions 
-and duplications.
-
-SVIM consists of two programs SVIM-COLLECT and SVIM-COMBINE. You are 
-running SVIM-COMBINE which combines different SV evidences and classifies them into 
-distinct SV types.""")
-    parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
-    parser.add_argument('working_dir', type=str, help='working directory')
-    parser.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser.add_argument('--obj_file', '-i', type=argparse.FileType('rb'), help='Path of .obj file to load (default: working_dir/sv_evidences.obj')
-    return parser.parse_args()
 
 
 def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
     (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
 
-    logging.info("Found {0}/{1} candidates for insertions and interspersed duplications.".format(
-        len(insertion_candidates), len(int_duplication_candidates)))
-
-    logging.info("Cluster insertion candidates:")
-    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters)
-    logging.info("Cluster interspersed duplication candidates:")
-    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters)
+    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters, "insertion candidates")
+    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters, "interspersed duplication candidates")
 
     return (final_insertion_candidates, final_int_duplication_candidates)
 
@@ -98,12 +63,12 @@ def write_candidates(working_dir, candidates):
     tandem_duplication_candidate_dest_output.close()
 
 
-def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates):
+def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
-    print("##source=SVIMV{0}".format(__version__), file=vcf_output)
+    print("##source=SVIMV{0}".format(version), file=vcf_output)
     #print("##reference={0}".format(genome), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
@@ -138,39 +103,8 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     vcf_output.close()
 
 
-def main():
-    # Fetch command-line options and configuration file values and set parameters accordingly
-    options = parse_arguments()
-    parameters = read_parameters(options)
-
-    # Set up logging
-    logFormatter = logging.Formatter("%(asctime)s [%(levelname)-7.7s]  %(message)s")
-    rootLogger = logging.getLogger()
-    rootLogger.setLevel(logging.INFO)
-
-    fileHandler = logging.FileHandler("{0}/SVIM-COMBINE_{1}.log".format(options.working_dir, strftime("%y%m%d_%H%M%S", localtime())), mode="w")
-    fileHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(fileHandler)
-
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
-
-    logging.info("****************** Start SVIM-COMBINE, version {0} ******************".format(__version__))
-    logging.info("CMD: python {0}".format(" ".join(sys.argv)))
-    logging.info("WORKING DIR: {0}".format(os.path.abspath(options.working_dir)))
-
-    if options.obj_file:
-        logging.info("INPUT: {0}".format(os.path.abspath(options.obj_file.name)))
-        evidences_file = options.obj_file
-    else:
-        logging.info("INPUT: {0}".format(os.path.abspath(options.working_dir + '/sv_evidences.obj')))
-        evidences_file = open(options.working_dir + '/sv_evidences.obj', 'rb')
-
-    logging.info("Loading object file created by SVIM-COLLECT or SVIM_CONFIRM.")
-    evidence_clusters = pickle.load(evidences_file)
+def combine_clusters(evidence_clusters, working_dir, parameters, version):
     deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
-    evidences_file.close()
 
     ###############################
     # Create inversion candidates #
@@ -194,13 +128,12 @@ def main():
     ###################################
 
     # Cluster translocations by contig and pos1
-    logging.info("Cluster translocations..")
+    logging.info("Cluster translocation breakpoints..")
     translocations_fwdfwd = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
     translocations_revrev = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "rev"]
     translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, parameters["trans_partition_max_distance"])
     translocation_partitions_revrev = form_partitions(translocations_revrev, parameters["trans_partition_max_distance"])
 
-    logging.info("Compile translocation dict..")
     translocation_partitions_fwdfwd_dict = defaultdict(list)
     translocation_partitions_revrev_dict = defaultdict(list)
     for partition in translocation_partitions_fwdfwd:
@@ -208,7 +141,6 @@ def main():
     for partition in translocation_partitions_revrev:
         translocation_partitions_revrev_dict[partition[0].contig1].append(partition)
 
-    logging.info("Compute translocation means and std deviations..")
     translocation_partition_means_fwdfwd_dict = {}
     translocation_partition_stds_fwdfwd_dict = {}
     for contig in translocation_partitions_fwdfwd_dict.keys():
@@ -224,11 +156,11 @@ def main():
     insertion_candidates = []
     int_duplication_candidates = []
 
-    logging.info("Merge translocations at deletions..")
+    logging.info("Combine deleted regions with translocations breakpoints..")
     new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
-    logging.info("Merge translocations at insertions..")
+    logging.info("Combine deleted regions with translocation breakpoints..")
     new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_evidence_clusters, parameters)
     insertion_from_evidence_clusters.extend(new_insertion_from_clusters)
 
@@ -236,7 +168,7 @@ def main():
     # Classify insertions with source #
     ###################################
 
-    logging.info("Classify insertion/duplication evidence clusters..")
+    logging.info("Classify inserted regions with detected region of origin..")
     new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
@@ -342,15 +274,18 @@ def main():
     ######################
     # Cluster candidates #
     ######################
-    logging.info("Cluster SV candidates..")
+    logging.info("Cluster SV candidates one more time..")
     final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters)
 
     ####################
     # Write candidates #
     ####################
     logging.info("Write SV candidates..")
-    write_candidates(options.working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
-    write_final_vcf(options.working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates)
-
-if __name__ == "__main__":
-    sys.exit(main())
+    logging.info("Final deletion candidates: {0}".format(len(deletion_candidates)))
+    logging.info("Final inversion candidates: {0}".format(len(inversion_candidates)))
+    logging.info("Final insertion candidates: {0}".format(len(final_insertion_candidates)))
+    logging.info("Final interspersed duplication candidates: {0}".format(len(final_int_duplication_candidates)))
+    logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
+    logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
+    write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
+    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version)
