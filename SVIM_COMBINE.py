@@ -11,7 +11,7 @@ from SVIM_merging import merge_insertions_from, merge_translocations_at_deletion
 
 def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
-    (deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocation_evidences)."""
+    (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocation_signatures)."""
 
     final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters, "insertion candidates")
     final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters, "interspersed duplication candidates")
@@ -103,21 +103,21 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     vcf_output.close()
 
 
-def combine_clusters(evidence_clusters, working_dir, parameters, version):
-    deletion_evidence_clusters, insertion_evidence_clusters, inversion_evidence_clusters, tandem_duplication_evidence_clusters, insertion_from_evidence_clusters, completed_translocations = evidence_clusters
+def combine_clusters(signature_clusters, working_dir, parameters, version):
+    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = signature_clusters
 
     ###############################
     # Create inversion candidates #
     ###############################
     inversion_candidates = []
-    for inv_cluster in inversion_evidence_clusters:
+    for inv_cluster in inversion_signature_clusters:
         inversion_candidates.append(CandidateInversion(inv_cluster.contig, inv_cluster.start, inv_cluster.end, inv_cluster.members, inv_cluster.score, inv_cluster.std_span, inv_cluster.std_pos))
 
     ########################################
     # Create tandem duplication candidates #
     ########################################
     tan_dup_candidates = []
-    for tan_dup_cluster in tandem_duplication_evidence_clusters:
+    for tan_dup_cluster in tandem_duplication_signature_clusters:
         source_contig, source_start, source_end = tan_dup_cluster.get_source()
         dest_contig, dest_start, dest_end = tan_dup_cluster.get_destination()
         num_copies = int(round((dest_end - dest_start) / (source_end - source_start)))
@@ -157,19 +157,19 @@ def combine_clusters(evidence_clusters, working_dir, parameters, version):
     int_duplication_candidates = []
 
     logging.info("Combine deleted regions with translocations breakpoints..")
-    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_evidence_clusters, parameters)
+    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Combine deleted regions with translocation breakpoints..")
-    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_evidence_clusters, parameters)
-    insertion_from_evidence_clusters.extend(new_insertion_from_clusters)
+    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, parameters)
+    insertion_from_signature_clusters.extend(new_insertion_from_clusters)
 
     ###################################
     # Classify insertions with source #
     ###################################
 
     logging.info("Classify inserted regions with detected region of origin..")
-    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters)
+    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, parameters)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
@@ -178,7 +178,7 @@ def combine_clusters(evidence_clusters, working_dir, parameters, version):
     ##################################
     all_deleted_regions_to_remove = sorted(list(set(deleted_regions_to_remove_1 + deleted_regions_to_remove_2)), reverse=True)
     for del_index in all_deleted_regions_to_remove:
-        del(deletion_evidence_clusters[del_index])
+        del(deletion_signature_clusters[del_index])
 
     ###################################
     # Remove inserted region clusters #
@@ -208,7 +208,7 @@ def combine_clusters(evidence_clusters, working_dir, parameters, version):
     except StopIteration:
         tan_duplications_end = True
 
-    for inserted_region_index, inserted_region in enumerate(insertion_evidence_clusters):
+    for inserted_region_index, inserted_region in enumerate(insertion_signature_clusters):
         contig1, start1, end1 = inserted_region.get_source()
         if not insertions_end:
             contig2, start2, end2 = current_insertion.get_destination()
@@ -253,13 +253,13 @@ def combine_clusters(evidence_clusters, working_dir, parameters, version):
     # remove found inserted regions
     all_inserted_regions_to_remove = sorted(list(set(inserted_regions_to_remove_1 + inserted_regions_to_remove_2)), reverse=True)
     for ins_index in all_inserted_regions_to_remove:
-        del(insertion_evidence_clusters[ins_index])
+        del(insertion_signature_clusters[ins_index])
 
     ##############################
     # Create deletion candidates #
     ##############################
     deletion_candidates = []
-    for del_cluster in deletion_evidence_clusters:
+    for del_cluster in deletion_signature_clusters:
         if del_cluster.score > 0:
             deletion_candidates.append(CandidateDeletion(del_cluster.contig, del_cluster.start, del_cluster.end, del_cluster.members, del_cluster.score, del_cluster.std_span, del_cluster.std_pos))
 
@@ -267,7 +267,7 @@ def combine_clusters(evidence_clusters, working_dir, parameters, version):
     # Create novel insertion candidates #
     #####################################
     novel_insertion_candidates = []
-    for ins_cluster in insertion_evidence_clusters:
+    for ins_cluster in insertion_signature_clusters:
         if ins_cluster.score > 0:
             novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
 

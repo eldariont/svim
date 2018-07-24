@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 from statistics import mean
 
-from SVEvidence import EvidenceDeletion, EvidenceInsertion, EvidenceInversion, EvidenceTranslocation, EvidenceDuplicationTandem, EvidenceInsertionFrom
+from SVSignature import SignatureDeletion, SignatureInsertion, SignatureInversion, SignatureTranslocation, SignatureDuplicationTandem, SignatureInsertionFrom
 from SVIM_clustering import consolidate_clusters_bilocal, clusters_from_partitions
 
 
@@ -47,7 +47,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
     sorted_alignment_list = sorted(alignment_list, key=lambda aln: (aln['q_start'], aln['q_end']))
     inferred_read_length = alignments[0].infer_read_length()
 
-    sv_evidences = []
+    sv_signatures = []
     tandem_duplications = []
     translocations = []
 
@@ -77,26 +77,26 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                             #No gap on reference
                             if distance_on_reference <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
-                                    sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name))
+                                    sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name))
                                 else:
-                                    sv_evidences.append(EvidenceInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name))
+                                    sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name))
                         #DEL candidate
                         elif -parameters["max_sv_size"] <= deviation <= -parameters["min_sv_size"]:
                             #No gap on read
                             if distance_on_read <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
-                                    sv_evidences.append(EvidenceDeletion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] - deviation, "suppl", read_name))
+                                    sv_signatures.append(SignatureDeletion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] - deviation, "suppl", read_name))
                                 else:
-                                    sv_evidences.append(EvidenceDeletion(ref_chr, alignment_next['ref_end'], alignment_next['ref_end'] - deviation, "suppl", read_name))
+                                    sv_signatures.append(SignatureDeletion(ref_chr, alignment_next['ref_end'], alignment_next['ref_end'] - deviation, "suppl", read_name))
                         #Either very large DEL or TRANS
                         elif deviation < -parameters["max_sv_size"]:
                             #No gap on read
                             if distance_on_read <= parameters["segment_gap_tolerance"]:
                                 if not alignment_current['is_reverse']:
-                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                     translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
                                 else:
-                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
                                     translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
                     #overlap on reference
                     else:
@@ -108,7 +108,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                                     tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
-                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                     translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
                             else:
                                 #Tandem Duplication
@@ -116,7 +116,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                                     tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
-                                    sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
                                     translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
             #Different orientations
             else:
@@ -126,20 +126,20 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 1
                             #INV candidate
                             if alignment_next['ref_end'] - alignment_current['ref_end'] <= parameters["max_sv_size"]:
-                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
+                                sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
                                 #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
                             #Either very large INV or TRANS
                             else:
-                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 3
                             #INV candidate
                             if alignment_current['ref_end'] - alignment_next['ref_end'] <= parameters["max_sv_size"]:
-                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
+                                sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
                                 #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
                             #Either very large INV or TRANS
                             else:
-                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
                     else:
                         pass
@@ -150,20 +150,20 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 2
                             #INV candidate
                             if alignment_next['ref_start'] - alignment_current['ref_start'] <= parameters["max_sv_size"]:
-                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
+                                sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
                                 #transitions.append(('inversion', 'right_fwd', ref_chr, alignment_current['ref_start'], alignment_next['ref_start']))
                             #Either very large INV or TRANS
                             else:
-                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 4
                             #INV candidate
                             if alignment_current['ref_start'] - alignment_next['ref_start'] <= parameters["max_sv_size"]:
-                                sv_evidences.append(EvidenceInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
+                                sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
                                 #transitions.append(('inversion', 'right_rev', ref_chr, alignment_next['ref_start'], alignment_current['ref_start']))
                             #Either very large INV or TRANS
                             else:
-                                sv_evidences.append(EvidenceTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
                     else:
                         pass
@@ -179,10 +179,10 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                     #No gap on read
                     if distance_on_read <= parameters["segment_gap_tolerance"]:
                         if not alignment_current['is_reverse']:
-                            sv_evidences.append(EvidenceTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                             translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'], ref_chr_next, alignment_next['ref_start']))
                         else:
-                            sv_evidences.append(EvidenceTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_end'], 'rev', "suppl", read_name))
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_end'], 'rev', "suppl", read_name))
                             translocations.append(('rev', 'rev', ref_chr_current, alignment_current['ref_start'], ref_chr_next, alignment_next['ref_end']))
                 #Overlap on read
                 else:
@@ -210,13 +210,13 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                 current_ends.append(tandem_duplication[2])
                 current_copy_number += 1
             else:
-                sv_evidences.append(EvidenceDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+                sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
                 current_chromosome = tandem_duplication[0]
                 current_starts.append(tandem_duplication[1])
                 current_ends.append(tandem_duplication[2])
                 current_copy_number = 1
     if current_chromosome != None:
-        sv_evidences.append(EvidenceDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+        sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
 
     #Handle insertions_from
     for this_index in range(len(translocations)):
@@ -238,12 +238,12 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         if before_dir2 == before_dir1:
                             if before_dir1 == 'fwd':
                                 if this_pos1 - before_pos2 <= parameters["max_sv_size"]:
-                                    sv_evidences.append(EvidenceInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                             elif before_dir1 == 'rev':
                                 if before_pos2 - this_pos1 <= parameters["max_sv_size"]:
-                                    sv_evidences.append(EvidenceInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                         #INV_INS_DUP candidate
                         else:
                             pass
 
-    return sv_evidences
+    return sv_signatures

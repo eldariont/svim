@@ -1,17 +1,17 @@
 import logging
 
-class Evidence:
-    """Evidence class for basic evidences of structural variants. An evidence is always detected from a single read.
+class Signature:
+    """Signature class for basic signatures of structural variants. An signature is always detected from a single read.
     """
-    def __init__(self, contig, start, end, evidence, read):
+    def __init__(self, contig, start, end, signature, read):
         self.contig = contig
         self.start = start
         self.end = end
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "unk"
         if self.end < self.start:
-            logging.warning("Evidence with invalid coordinates (end < start): " + self.as_string())
+            logging.warning("Signature with invalid coordinates (end < start): " + self.as_string())
 
 
     def get_source(self):
@@ -23,20 +23,20 @@ class Evidence:
         return (self.type, contig, (start + end) // 2)
 
 
-    def mean_distance_to(self, evidence2):
-        """Return distance between means of two evidences."""
+    def mean_distance_to(self, signature2):
+        """Return distance between means of two signatures."""
         this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = evidence2.get_source()
-        if self.type == evidence2.type and this_contig == other_contig:
+        other_contig, other_start, other_end = signature2.get_source()
+        if self.type == signature2.type and this_contig == other_contig:
             return abs(((this_start +this_end) // 2) - ((other_start + other_end) // 2))
         else:
             return float("inf")
 
 
-    def gowda_diday_distance(self, evidence2, largest_indel_size):
-        """Return Gowda-Diday distance between two evidences."""
+    def gowda_diday_distance(self, signature2, largest_indel_size):
+        """Return Gowda-Diday distance between two signatures."""
         this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = evidence2.get_source()
+        other_contig, other_start, other_end = signature2.get_source()
         # non-intersecting
         if this_contig != other_contig or this_end <= other_start or other_end <= this_start:
             return float("inf")
@@ -50,9 +50,9 @@ class Evidence:
         return dist_pos + dist_span + dist_content
 
 
-    def span_loc_distance(self, evidence2, distance_normalizer):
+    def span_loc_distance(self, signature2, distance_normalizer):
         this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = evidence2.get_source()
+        other_contig, other_start, other_end = signature2.get_source()
         if this_contig != other_contig:
             return float("inf")
         #Component 1: difference in spans
@@ -67,38 +67,38 @@ class Evidence:
 
     def as_string(self, sep="\t"):
         contig, start, end = self.get_source()
-        return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1}".format(self.type, self.evidence), self.read)
+        return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1}".format(self.type, self.signature), self.read)
 
 
-class EvidenceDeletion(Evidence):
-    """SV Evidence: a region (contig:start-end) has been deleted and is not present in sample"""
-    def __init__(self, contig, start, end, evidence, read):
+class SignatureDeletion(Signature):
+    """SV Signature: a region (contig:start-end) has been deleted and is not present in sample"""
+    def __init__(self, contig, start, end, signature, read):
         self.contig = contig
         self.start = start
         self.end = end
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "del"
 
 
-class EvidenceInsertion(Evidence):
-    """SV Evidence: a region of length end-start has been inserted at contig:start"""
-    def __init__(self, contig, start, end, evidence, read):
+class SignatureInsertion(Signature):
+    """SV Signature: a region of length end-start has been inserted at contig:start"""
+    def __init__(self, contig, start, end, signature, read):
         self.contig = contig
         self.start = start
         self.end = end
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "ins"
 
 
-class EvidenceInversion(Evidence):
-    """SV Evidence: a region (contig:start-end) has been inverted in the sample"""
-    def __init__(self, contig, start, end, evidence, read, direction):
+class SignatureInversion(Signature):
+    """SV Signature: a region (contig:start-end) has been inverted in the sample"""
+    def __init__(self, contig, start, end, signature, read, direction):
         self.contig = contig
         self.start = start
         self.end = end
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "inv"
         self.direction = direction
@@ -106,12 +106,12 @@ class EvidenceInversion(Evidence):
 
     def as_string(self, sep="\t"):
         contig, start, end = self.get_source()
-        return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1};{2}".format(self.type, self.direction, self.evidence), self.read)
+        return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1};{2}".format(self.type, self.direction, self.signature), self.read)
 
 
-class EvidenceInsertionFrom(Evidence):
-    """SV Evidence: a region (contig:start-end) has been inserted at contig2:pos in the sample"""
-    def __init__(self, contig1, start, end, contig2, pos, evidence, read):
+class SignatureInsertionFrom(Signature):
+    """SV Signature: a region (contig:start-end) has been inserted at contig2:pos in the sample"""
+    def __init__(self, contig1, start, end, contig2, pos, signature, read):
         self.contig1 = contig1
         self.start = start
         self.end = end
@@ -119,7 +119,7 @@ class EvidenceInsertionFrom(Evidence):
         self.contig2 = contig2
         self.pos = pos
 
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "ins_dup"
 
@@ -139,13 +139,13 @@ class EvidenceInsertionFrom(Evidence):
         return (self.type, source_contig, dest_contig, dest_start + (source_start + source_end) // 2)
 
 
-    def mean_distance_to(self, evidence2):
-        """Return distance between means of two evidences."""
+    def mean_distance_to(self, signature2):
+        """Return distance between means of two signatures."""
         this_source_contig, this_source_start, this_source_end = self.get_source()
         this_dest_contig, this_dest_start, this_dest_end = self.get_destination()
-        other_source_contig, other_source_start, other_source_end = evidence2.get_source()
-        other_dest_contig, other_dest_start, other_dest_end = evidence2.get_destination()
-        if self.type == evidence2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
+        other_source_contig, other_source_start, other_source_end = signature2.get_source()
+        other_dest_contig, other_dest_start, other_dest_end = signature2.get_destination()
+        if self.type == signature2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
             return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
                    abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
         else:
@@ -157,20 +157,20 @@ class EvidenceInsertionFrom(Evidence):
         dest_contig, dest_start, dest_end = self.get_destination()
         return sep.join(["{0}:{1}-{2}","{3}:{4}-{5}","{6}", "{7}"]).format(source_contig, source_start, source_end,
                                                                            dest_contig, dest_start, dest_end,
-                                                                           "{0};{1}".format(self.type, self.evidence), self.read)
+                                                                           "{0};{1}".format(self.type, self.signature), self.read)
 
 
-class EvidenceDuplicationTandem(Evidence):
-    """SV Evidence: a region (contig:start-end) has been tandemly duplicated"""
+class SignatureDuplicationTandem(Signature):
+    """SV Signature: a region (contig:start-end) has been tandemly duplicated"""
 
-    def __init__(self, contig, start, end, copies, evidence, read):
+    def __init__(self, contig, start, end, copies, signature, read):
         self.contig = contig
         self.start = start
         self.end = end
 
         self.copies = copies
 
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "dup"
 
@@ -185,19 +185,19 @@ class EvidenceDuplicationTandem(Evidence):
         dest_contig, dest_start, dest_end = self.get_destination()
         return sep.join(["{0}:{1}-{2}","{3}:{4}-{5}","{6}", "{7}"]).format(source_contig, source_start, source_end,
                                                                            dest_contig, dest_start, dest_end,
-                                                                           "{0};{1};{2}".format(self.type, self.evidence, self.copies), self.read)
+                                                                           "{0};{1};{2}".format(self.type, self.signature, self.copies), self.read)
 
 
-class EvidenceTranslocation(Evidence):
-    """SV Evidence: two positions (contig1:pos1 and contig2:pos2) are connected in the sample"""
-    def __init__(self, contig1, pos1, direction1, contig2, pos2, direction2, evidence, read):
+class SignatureTranslocation(Signature):
+    """SV Signature: two positions (contig1:pos1 and contig2:pos2) are connected in the sample"""
+    def __init__(self, contig1, pos1, direction1, contig2, pos2, direction2, signature, read):
         self.contig1 = contig1
         self.pos1 = pos1
         self.direction1 = direction1
         self.contig2 = contig2
         self.pos2 = pos2
         self.direction2 = direction2
-        self.evidence = evidence
+        self.signature = signature
         self.read = read
         self.type = "tra"
 
@@ -215,22 +215,22 @@ class EvidenceTranslocation(Evidence):
         dest_contig, dest_start, dest_end = self.get_destination()
         return sep.join(["{0}:{1}-{2}","{3}:{4}-{5}","{6}", "{7}"]).format(source_contig, source_start, source_end,
                                                                            dest_contig, dest_start, dest_end,
-                                                                           "{0};{1}".format(self.type, self.evidence), self.read)
+                                                                           "{0};{1}".format(self.type, self.signature), self.read)
 
 
     def get_key(self):
         return (self.type, self.contig1, self.pos1)
 
 
-    def mean_distance_to(self, evidence2):
-        """Return distance between means of two evidences."""
-        if self.type == evidence2.type and self.contig1 == evidence2.contig1:
-            return abs(self.pos1 - evidence2.pos1)
+    def mean_distance_to(self, signature2):
+        """Return distance between means of two signatures."""
+        if self.type == signature2.type and self.contig1 == signature2.contig1:
+            return abs(self.pos1 - signature2.pos1)
         else:
             return float("inf")
 
 
-class EvidenceClusterUniLocal(Evidence):
+class SignatureClusterUniLocal(Signature):
     def __init__(self, contig, start, end, score, size, members, type, std_span, std_pos):
         self.contig = contig
         self.start = start
@@ -263,7 +263,7 @@ class EvidenceClusterUniLocal(Evidence):
     def get_length(self):
         return self.end - self.start
 
-class EvidenceClusterBiLocal(Evidence):
+class SignatureClusterBiLocal(Signature):
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, score, size, members, type, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start

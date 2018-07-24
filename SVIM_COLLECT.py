@@ -165,7 +165,7 @@ def analyze_alignment(bam_path, parameters):
     full_bam = pysam.AlignmentFile(bam_path)
     full_it = bam_iterator(full_bam)
 
-    sv_evidences = []
+    sv_signatures = []
     read_nr = 0
 
     while True:
@@ -175,15 +175,15 @@ def analyze_alignment(bam_path, parameters):
             if read_nr % 10000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
             if not parameters["skip_indel"]:
-                sv_evidences.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
+                sv_signatures.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
             if not parameters["skip_segment"]:
-                sv_evidences.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+                sv_signatures.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
         except StopIteration:
             break
         except KeyboardInterrupt:
             logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
-    return sv_evidences
+    return sv_signatures
 
 
 def read_file_list(path):

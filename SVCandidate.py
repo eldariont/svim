@@ -1,5 +1,5 @@
 class Candidate:
-    """Candidate class for structural variant candidates. Candidates reflect the final SV types and can be merged from evidences of several reads.
+    """Candidate class for structural variant candidates. Candidates reflect the final SV types and can be merged from signatures of several reads.
     """
     def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
@@ -33,7 +33,7 @@ class Candidate:
 
 
     def gowda_diday_distance(self, candidate2, largest_indel_size):
-        """Return Gowda-Diday distance between two evidences."""
+        """Return Gowda-Diday distance between two signatures."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
         # non-intersecting
@@ -57,7 +57,13 @@ class Candidate:
         #Component 1: difference in spans
         this_span = this_end - this_start
         other_span = other_end - other_start
-        dist_span = abs(this_span - other_span) / max(this_span, other_span)
+        try:
+            dist_span = abs(this_span - other_span) / max(this_span, other_span)
+        except ZeroDivisionError:
+            print("ZeroDivisionError")
+            print("This:", self.get_bed_entry())
+            print("Other:", candidate2.get_bed_entry())
+
         #Component 2: difference in locations
         this_center = (this_start + this_end) // 2
         other_center = (other_start + other_end) // 2

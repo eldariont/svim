@@ -5,27 +5,27 @@ from bisect import bisect_left
 from collections import defaultdict
 from math import pow, sqrt
 
-from SVEvidence import EvidenceTranslocation, EvidenceInsertionFrom, EvidenceClusterBiLocal
+from SVSignature import SignatureTranslocation, SignatureInsertionFrom, SignatureClusterBiLocal
 from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
-def merge_insertions_from(insertion_from_evidence_clusters, deletion_evidence_clusters, parameters):
-    """Classify insertion/duplication evidence clusters as insertion or duplication"""
+def merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, parameters):
+    """Classify insertion/duplication signature clusters as insertion or duplication"""
     insertion_candidates = []
     int_duplication_candidates = []
     deleted_regions_to_remove = []
-    for ins_cluster in insertion_from_evidence_clusters:
+    for ins_cluster in insertion_from_signature_clusters:
         # Compute distances of every deletion cluster to the current insertion/duplication
         if parameters["distance_metric"] == "gd":
-            distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_evidence_clusters)]
+            distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
         elif parameters["distance_metric"] == "sl":
-            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, parameters["distance_normalizer"])) for del_index, del_cluster in enumerate(deletion_evidence_clusters)]
+            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, parameters["distance_normalizer"])) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
         closest_deletion_index, closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
         # If close deletion cluster found
         if closest_deletion <= parameters["del_ins_dup_max_distance"]:
             #Insertion
-            all_members = ins_cluster.members + deletion_evidence_clusters[closest_deletion_index].members
+            all_members = ins_cluster.members + deletion_signature_clusters[closest_deletion_index].members
             insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
             deleted_regions_to_remove.append(closest_deletion_index)
         else:
@@ -141,11 +141,11 @@ def calculate_score_insertion(main_score, translocation_distances, translocation
     return final_score
 
 
-def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_evidence_clusters, parameters):
-    """Analyze all deletion evidence clusters and look for flanking translocations that might indicate insertions."""
+def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, parameters):
+    """Analyze all deletion signature clusters and look for flanking translocations that might indicate insertions."""
     insertion_candidates = []
     deleted_regions_to_remove = []
-    for deletion_index, del_cluster in enumerate(deletion_evidence_clusters):
+    for deletion_index, del_cluster in enumerate(deletion_signature_clusters):
         del_contig, del_start, del_end = del_cluster.get_source()
 
         try:
@@ -160,8 +160,8 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
            abs(closest_to_end_mean - del_end) < abs(closest_to_end_mean - del_start) and \
            abs(closest_to_start_mean - del_start) <= parameters["trans_sv_max_distance"] and \
            abs(closest_to_end_mean - del_end) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
-            destinations_from_end = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
             # if translocations close to start and end point to only one destination each
             if len(destinations_from_start) == 1 and len(destinations_from_end) == 1:
                 destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / len(destinations_from_start[0]))))
@@ -182,7 +182,7 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
         elif abs(closest_to_start_mean - del_start) < abs(closest_to_start_mean - del_end) and \
              abs(closest_to_start_mean - del_start) <= abs(closest_to_end_mean - del_end) and \
              abs(closest_to_start_mean - del_start) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
             # if translocations close to start point to the same destination
             if len(destinations_from_start) == 1:
                 destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / len(destinations_from_start[0]))))
@@ -194,7 +194,7 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
         # if translocations found close to end of deletion
         elif abs(closest_to_end_mean - del_end) < abs(closest_to_end_mean - del_start) and \
              abs(closest_to_end_mean - del_end) <= parameters["trans_sv_max_distance"]:
-            destinations_from_end = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
             # if translocations close to end point to the same destination
             if len(destinations_from_end) == 1:
                 destination_from_end = (destinations_from_end[0][0][0], int(round(sum([pos for contig, pos in destinations_from_end[0]]) / len(destinations_from_end[0]))))
@@ -207,10 +207,10 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
     return insertion_candidates, deleted_regions_to_remove
 
 
-def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_evidence_clusters, parameters):
+def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, parameters):
     inserted_regions_to_remove = []
-    insertion_from_evidence_clusters = []
-    for insertion_index, ins_cluster in enumerate(insertion_evidence_clusters):
+    insertion_from_signature_clusters = []
+    for insertion_index, ins_cluster in enumerate(insertion_signature_clusters):
         ins_contig, ins_start, ins_end = ins_cluster.get_source()
         try:
             closest_to_start_fwdfwd_index = get_closest_index(translocation_partition_means_fwdfwd_dict[ins_contig], ins_start)
@@ -221,8 +221,8 @@ def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, tra
             continue
         # if translocations found close to start of insertion
         if abs(closest_to_start_fwdfwd_mean - ins_start) <= parameters["trans_sv_max_distance"] and abs(closest_to_start_revrev_mean - ins_start) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start_fwdfwd = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index]], parameters["trans_destination_partition_max_distance"])
-            destinations_from_start_revrev = cluster_positions_simple([(evidence.contig2, evidence.pos2) for evidence in translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_start_fwdfwd = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index]], parameters["trans_destination_partition_max_distance"])
+            destinations_from_start_revrev = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index]], parameters["trans_destination_partition_max_distance"])
             # if translocations point to only one destination each
             if len(destinations_from_start_fwdfwd) == 1 and len(destinations_from_start_revrev) == 1:
                 destination_from_start_fwdfwd = (destinations_from_start_fwdfwd[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start_fwdfwd[0]]) / len(destinations_from_start_fwdfwd[0]))))
@@ -237,7 +237,7 @@ def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, tra
                                                       [abs(closest_to_start_fwdfwd_mean - ins_start), abs(closest_to_start_revrev_mean - ins_start)], 
                                                       [translocation_partition_stds_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index], translocation_partition_stds_revrev_dict[ins_contig][closest_to_start_revrev_index]], 
                                                       [destination_from_start_fwdfwd_std, destination_from_start_revrev_std])
-                    insertion_from_evidence_clusters.append(EvidenceClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "ins_dup", ins_cluster.std_span, ins_cluster.std_pos))
+                    insertion_from_signature_clusters.append(SignatureClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "ins_dup", ins_cluster.std_span, ins_cluster.std_pos))
                     inserted_regions_to_remove.append(insertion_index)
 
-    return insertion_from_evidence_clusters, inserted_regions_to_remove
+    return insertion_from_signature_clusters, inserted_regions_to_remove
