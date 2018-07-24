@@ -14,13 +14,13 @@ def is_similar(chr1, start1, end1, chr2, start2, end2):
         return False
 
 
-def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
+def analyze_full_read_segments(full_iterator_object, full_bam, options):
     full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
 
-    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < parameters["min_mapq"]:
+    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < options.min_mapq:
         return []
 
-    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= parameters["min_mapq"]]
+    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
     if len(good_suppl_alns) > 3:
         return []
 
@@ -68,30 +68,30 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                 else:
                     distance_on_reference = alignment_next['ref_start'] - alignment_current['ref_end']
                 #No overlap on read
-                if distance_on_read >= -parameters["segment_overlap_tolerance"]:
+                if distance_on_read >= -options.segment_overlap_tolerance:
                     #No overlap on reference
-                    if distance_on_reference >= -parameters["segment_overlap_tolerance"]:
+                    if distance_on_reference >= -options.segment_overlap_tolerance:
                         deviation = distance_on_read - distance_on_reference
                         #INS candidate
-                        if deviation >= parameters["min_sv_size"]:
+                        if deviation >= options.min_sv_size:
                             #No gap on reference
-                            if distance_on_reference <= parameters["segment_gap_tolerance"]:
+                            if distance_on_reference <= options.segment_gap_tolerance:
                                 if not alignment_current['is_reverse']:
                                     sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name))
                                 else:
                                     sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name))
                         #DEL candidate
-                        elif -parameters["max_sv_size"] <= deviation <= -parameters["min_sv_size"]:
+                        elif -options.max_sv_size <= deviation <= -options.min_sv_size:
                             #No gap on read
-                            if distance_on_read <= parameters["segment_gap_tolerance"]:
+                            if distance_on_read <= options.segment_gap_tolerance:
                                 if not alignment_current['is_reverse']:
                                     sv_signatures.append(SignatureDeletion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] - deviation, "suppl", read_name))
                                 else:
                                     sv_signatures.append(SignatureDeletion(ref_chr, alignment_next['ref_end'], alignment_next['ref_end'] - deviation, "suppl", read_name))
                         #Either very large DEL or TRANS
-                        elif deviation < -parameters["max_sv_size"]:
+                        elif deviation < -options.max_sv_size:
                             #No gap on read
-                            if distance_on_read <= parameters["segment_gap_tolerance"]:
+                            if distance_on_read <= options.segment_gap_tolerance:
                                 if not alignment_current['is_reverse']:
                                     sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                     translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
@@ -101,7 +101,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                     #overlap on reference
                     else:
                         #Tandem Duplication
-                        if distance_on_reference < -parameters["min_sv_size"]:
+                        if distance_on_reference < -options.min_sv_size:
                             if not alignment_current['is_reverse']:
                                 #Tandem Duplication
                                 if alignment_next['ref_end'] > alignment_current['ref_start']:
@@ -122,19 +122,19 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
             else:
                 #Normal to reverse
                 if not alignment_current['is_reverse'] and alignment_next['is_reverse']:
-                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["segment_gap_tolerance"]:
-                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 1
+                    if -options.segment_overlap_tolerance <= distance_on_read <= options.segment_gap_tolerance:
+                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -options.segment_overlap_tolerance: # Case 1
                             #INV candidate
-                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= parameters["max_sv_size"]:
+                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
                                 #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
                             #Either very large INV or TRANS
                             else:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
-                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 3
+                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -options.segment_overlap_tolerance: # Case 3
                             #INV candidate
-                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= parameters["max_sv_size"]:
+                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
                                 #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
                             #Either very large INV or TRANS
@@ -146,19 +146,19 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         #print("Overlapping read segments in read", read_name)
                 #Reverse to normal
                 if alignment_current['is_reverse'] and not alignment_next['is_reverse']:
-                    if -parameters["segment_overlap_tolerance"] <= distance_on_read <= parameters["segment_gap_tolerance"]:
-                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 2
+                    if -options.segment_overlap_tolerance <= distance_on_read <= options.segment_gap_tolerance:
+                        if alignment_next['ref_start'] - alignment_current['ref_end'] >= -options.segment_overlap_tolerance: # Case 2
                             #INV candidate
-                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= parameters["max_sv_size"]:
+                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
                                 #transitions.append(('inversion', 'right_fwd', ref_chr, alignment_current['ref_start'], alignment_next['ref_start']))
                             #Either very large INV or TRANS
                             else:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
-                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -parameters["segment_overlap_tolerance"]: # Case 4
+                        elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -options.segment_overlap_tolerance: # Case 4
                             #INV candidate
-                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= parameters["max_sv_size"]:
+                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
                                 #transitions.append(('inversion', 'right_rev', ref_chr, alignment_next['ref_start'], alignment_current['ref_start']))
                             #Either very large INV or TRANS
@@ -175,9 +175,9 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
             #Same orientation
             if alignment_current['is_reverse'] == alignment_next['is_reverse']:
                 #No overlap on read
-                if distance_on_read >= -parameters["segment_overlap_tolerance"]:
+                if distance_on_read >= -options.segment_overlap_tolerance:
                     #No gap on read
-                    if distance_on_read <= parameters["segment_gap_tolerance"]:
+                    if distance_on_read <= options.segment_gap_tolerance:
                         if not alignment_current['is_reverse']:
                             sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                             translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'], ref_chr_next, alignment_next['ref_start']))
@@ -237,10 +237,10 @@ def analyze_full_read_segments(full_iterator_object, full_bam, parameters):
                         #INS_DUP candidate
                         if before_dir2 == before_dir1:
                             if before_dir1 == 'fwd':
-                                if this_pos1 - before_pos2 <= parameters["max_sv_size"]:
+                                if this_pos1 - before_pos2 <= options.max_sv_size:
                                     sv_signatures.append(SignatureInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                             elif before_dir1 == 'rev':
-                                if before_pos2 - this_pos1 <= parameters["max_sv_size"]:
+                                if before_pos2 - this_pos1 <= options.max_sv_size:
                                     sv_signatures.append(SignatureInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                         #INV_INS_DUP candidate
                         else:

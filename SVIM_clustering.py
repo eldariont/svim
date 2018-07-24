@@ -26,7 +26,7 @@ def form_partitions(sv_signatures, max_delta):
     return partitions
 
 
-def clusters_from_partitions(partitions, parameters):
+def clusters_from_partitions(partitions, options):
     """Form clusters in partitions using Gowda-Diday distance and clique finding in a distance graph."""
     clusters_full = []
     # Find clusters in each partition individually.
@@ -42,12 +42,12 @@ def clusters_from_partitions(partitions, parameters):
         for i1 in range(len(partition_sample)):
             for i2 in range(len(partition_sample)):
                 if i1 != i2:
-                    if parameters["distance_metric"] == "gd":
-                        if partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) <= parameters["cluster_max_distance"]:
+                    if options.distance_metric == "gd":
+                        if partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) <= options.cluster_max_distance:
                             # Add edge in graph only if two indels are close to each other (distance <= max_delta)
                             connection_graph.add_edge(i1, i2)
                     else:
-                        if partition_sample[i1].span_loc_distance(partition_sample[i2], parameters["distance_normalizer"]) <= parameters["cluster_max_distance"]:
+                        if partition_sample[i1].span_loc_distance(partition_sample[i2], options.distance_normalizer) <= options.cluster_max_distance:
                             # Add edge in graph only if two indels are close to each other (distance <= max_delta)
                             connection_graph.add_edge(i1, i2)
         clusters_indices = nx.find_cliques(connection_graph)
@@ -103,7 +103,7 @@ def calculate_score_inversion(inv_cluster, std_span, std_pos, span):
     return min(70, valid_suppl_signatures) + span_deviation_score * 20 + pos_deviation_score * 10
 
 
-def consolidate_clusters_unilocal(clusters, parameters):
+def consolidate_clusters_unilocal(clusters, options):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
@@ -175,9 +175,9 @@ def consolidate_clusters_bilocal(clusters):
     return consolidated_clusters
 
 
-def partition_and_cluster_candidates(candidates, parameters, type):
-    partitions = form_partitions(candidates, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters)
+def partition_and_cluster_candidates(candidates, options, type):
+    partitions = form_partitions(candidates, options.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
 
     final_candidates = []
@@ -210,15 +210,15 @@ def partition_and_cluster_candidates(candidates, parameters, type):
     return final_candidates
 
 
-def partition_and_cluster_unilocal(signatures, parameters, type):
-    partitions = form_partitions(signatures, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters)
+def partition_and_cluster_unilocal(signatures, options, type):
+    partitions = form_partitions(signatures, options.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
-    return sorted(consolidate_clusters_unilocal(clusters, parameters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
+    return sorted(consolidate_clusters_unilocal(clusters, options), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
-def partition_and_cluster_bilocal(signatures, parameters, type):
-    partitions = form_partitions(signatures, parameters["partition_max_distance"])
-    clusters = clusters_from_partitions(partitions, parameters)
+def partition_and_cluster_bilocal(signatures, options, type):
+    partitions = form_partitions(signatures, options.partition_max_distance)
+    clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
     return consolidate_clusters_bilocal(clusters)

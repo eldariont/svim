@@ -19,7 +19,7 @@ def complete_translocations(translocation_signatures):
     return translocation_signatures + reversed_translocations
 
 
-def cluster_sv_signatures(sv_signatures, parameters):
+def cluster_sv_signatures(sv_signatures, options):
     """Takes a list of SVSignatures and splits them up by type. The SVSignatures of each type are clustered and returned as a tuple of
     (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocation_signatures)."""
 
@@ -31,11 +31,11 @@ def cluster_sv_signatures(sv_signatures, parameters):
     insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'ins_dup']
 
     # Cluster SV signatures
-    deletion_signature_clusters = partition_and_cluster_unilocal(deletion_signatures, parameters, "deleted regions")
-    insertion_signature_clusters = partition_and_cluster_unilocal(insertion_signatures, parameters, "inserted regions")
-    inversion_signature_clusters = partition_and_cluster_unilocal(inversion_signatures, parameters, "inverted regions")
-    tandem_duplication_signature_clusters = partition_and_cluster_bilocal(tandem_duplication_signatures, parameters, "tandem duplicated regions")
-    insertion_from_signature_clusters = partition_and_cluster_bilocal(insertion_from_signatures, parameters, "inserted regions with detected region of origin")
+    deletion_signature_clusters = partition_and_cluster_unilocal(deletion_signatures, options, "deleted regions")
+    insertion_signature_clusters = partition_and_cluster_unilocal(insertion_signatures, options, "inserted regions")
+    inversion_signature_clusters = partition_and_cluster_unilocal(inversion_signatures, options, "inverted regions")
+    tandem_duplication_signature_clusters = partition_and_cluster_bilocal(tandem_duplication_signatures, options, "tandem duplicated regions")
+    insertion_from_signature_clusters = partition_and_cluster_bilocal(insertion_from_signatures, options, "inserted regions with detected region of origin")
 
     return (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, complete_translocations(translocation_signatures))
 

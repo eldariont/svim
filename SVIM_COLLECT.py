@@ -161,7 +161,7 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_alignment(bam_path, parameters):
+def analyze_alignment(bam_path, options):
     full_bam = pysam.AlignmentFile(bam_path)
     full_it = bam_iterator(full_bam)
 
@@ -174,10 +174,10 @@ def analyze_alignment(bam_path, parameters):
             read_nr += 1
             if read_nr % 10000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
-            if not parameters["skip_indel"]:
-                sv_signatures.extend(analyze_full_read_indel(full_iterator_object, full_bam, parameters))
-            if not parameters["skip_segment"]:
-                sv_signatures.extend(analyze_full_read_segments(full_iterator_object, full_bam, parameters))
+            if not options.skip_indel:
+                sv_signatures.extend(analyze_full_read_indel(full_iterator_object, full_bam, options))
+            if not options.skip_segment:
+                sv_signatures.extend(analyze_full_read_segments(full_iterator_object, full_bam, options))
         except StopIteration:
             break
         except KeyboardInterrupt:

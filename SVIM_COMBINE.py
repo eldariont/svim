@@ -9,12 +9,12 @@ from SVCandidate import CandidateInversion, CandidateDuplicationTandem, Candidat
 from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 
 
-def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters):
+def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, options):
     """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
     (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocation_signatures)."""
 
-    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, parameters, "insertion candidates")
-    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, parameters, "interspersed duplication candidates")
+    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, options, "insertion candidates")
+    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, options, "interspersed duplication candidates")
 
     return (final_insertion_candidates, final_int_duplication_candidates)
 
@@ -103,7 +103,7 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     vcf_output.close()
 
 
-def combine_clusters(signature_clusters, working_dir, parameters, version):
+def combine_clusters(signature_clusters, working_dir, options, version):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = signature_clusters
 
     ###############################
@@ -131,8 +131,8 @@ def combine_clusters(signature_clusters, working_dir, parameters, version):
     logging.info("Cluster translocation breakpoints..")
     translocations_fwdfwd = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
     translocations_revrev = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "rev"]
-    translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, parameters["trans_partition_max_distance"])
-    translocation_partitions_revrev = form_partitions(translocations_revrev, parameters["trans_partition_max_distance"])
+    translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, options.trans_partition_max_distance)
+    translocation_partitions_revrev = form_partitions(translocations_revrev, options.trans_partition_max_distance)
 
     translocation_partitions_fwdfwd_dict = defaultdict(list)
     translocation_partitions_revrev_dict = defaultdict(list)
@@ -157,11 +157,11 @@ def combine_clusters(signature_clusters, working_dir, parameters, version):
     int_duplication_candidates = []
 
     logging.info("Combine deleted regions with translocations breakpoints..")
-    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, parameters)
+    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, options)
     insertion_candidates.extend(new_insertion_candidates)
 
     logging.info("Combine deleted regions with translocation breakpoints..")
-    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, parameters)
+    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, options)
     insertion_from_signature_clusters.extend(new_insertion_from_clusters)
 
     ###################################
@@ -169,7 +169,7 @@ def combine_clusters(signature_clusters, working_dir, parameters, version):
     ###################################
 
     logging.info("Classify inserted regions with detected region of origin..")
-    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, parameters)
+    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, options)
     insertion_candidates.extend(new_insertion_candidates)
     int_duplication_candidates.extend(new_int_duplication_candidates)
 
@@ -275,7 +275,7 @@ def combine_clusters(signature_clusters, working_dir, parameters, version):
     # Cluster candidates #
     ######################
     logging.info("Cluster SV candidates one more time..")
-    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, parameters)
+    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, options)
 
     ####################
     # Write candidates #

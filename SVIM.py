@@ -20,87 +20,76 @@ from SVIM_COMBINE import combine_clusters
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It combines full alignment analysis and split-read mapping to 
-distinguish six classes of structural variants. SVIM discriminates between similar 
-SV classes such as interspersed duplications and cut&paste insertions and is unique 
-in its capability of extracting both the genomic origin and destination of insertions 
-and duplications.
+It discriminates six different variant classes: deletions, cut&paste insertions, tandem and interspersed duplications, 
+inversions and novel element insertions. SVIM is unique in its capability of extracting both the genomic origin and 
+destination of insertions and duplications.
 
 SVIM consists of three major steps:
 - COLLECT detects signatures for SVs in long read alignments
 - CLUSTER merges signatures that come from the same SV
 - COMBINE combines clusters from different genomic regions and classifies them into distinct SV types
 
-
-SVIM-COLLECT performs three steps to detect SVs: 
-1) Alignment, 
-2) SV detection,
-3) Clustering""")
+SVIM can process two types of input. Firstly, it can detect SVs from raw reads by aligning them to a given reference genome first ("SVIM.py reads [options] working_dir reads genome").
+Alternatively, it can detect SVs from existing reads alignments in SAM/BAM format ("SVIM.py alignment [options] working_dir bam_file").
+""")
     subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
-    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads. Perform steps 1-3.')
+    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
     parser_fasta.add_argument('reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_fasta.add_argument('genome', type=str, help='Reference genome file (FASTA)')
-    parser_fasta.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser_fasta.add_argument('--skip_indel', action='store_true', help='disable indel part')
-    parser_fasta.add_argument('--skip_segment', action='store_true', help='disable segment part')
-    parser_fasta.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment')
+    group_fasta_collect = parser_fasta.add_argument_group('COLLECT')
+    group_fasta_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
+    group_fasta_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
+    group_fasta_collect.add_argument('--max_sv_size', type=int, default=100000, help='Maximum SV size to detect')
+    group_fasta_collect.add_argument('--skip_indel', action='store_true', help='disable indel part')
+    group_fasta_collect.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    group_fasta_collect.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment')
+    group_fasta_collect.add_argument('--segment_gap_tolerance', type=int, default=10, help='Maximum tolerated gap between adjacent alignment segments')
+    group_fasta_collect.add_argument('--segment_overlap_tolerance', type=int, default=5, help='Maximum tolerated overlap between adjacent alignment segments')
+    group_fasta_cluster = parser_fasta.add_argument_group('CLUSTER')
+    group_fasta_cluster.add_argument('--partition_max_distance', type=int, default=5000, help='Maximum distance in bp between SVs in a partition')
+    group_fasta_cluster.add_argument('--distance_normalizer', type=int, default=900, help='Distance normalizer used for span-position distance')
+    group_fasta_cluster.add_argument('--cluster_max_distance', type=float, default=0.7, help='Maximum span-position distance between SVs in a cluster')
+    group_fasta_combine = parser_fasta.add_argument_group('COMBINE')
+    group_fasta_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='')
+    group_fasta_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='')
+    group_fasta_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='')
+    group_fasta_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='')
 
-    parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment. Perform steps 2-3.')
+    parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
     parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (must be query-sorted)')
-    parser_bam.add_argument('--config', type=str, default="{0}/default_config.cfg".format(os.path.dirname(os.path.realpath(__file__))), help='configuration file, default: {0}/default_config.cfg'.format(os.path.dirname(os.path.realpath(__file__))))
-    parser_bam.add_argument('--skip_indel', action='store_true', help='disable indel part')
-    parser_bam.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    group_bam_collect = parser_bam.add_argument_group('COLLECT')
+    group_bam_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
+    group_bam_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
+    group_bam_collect.add_argument('--max_sv_size', type=int, default=100000, help='Maximum SV size to detect')
+    group_bam_collect.add_argument('--skip_indel', action='store_true', help='disable indel part')
+    group_bam_collect.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    group_bam_collect.add_argument('--segment_gap_tolerance', type=int, default=10, help='Maximum tolerated gap between adjacent alignment segments')
+    group_bam_collect.add_argument('--segment_overlap_tolerance', type=int, default=5, help='Maximum tolerated overlap between adjacent alignment segments')
+    group_bam_cluster = parser_bam.add_argument_group('CLUSTER')
+    group_bam_cluster.add_argument('--partition_max_distance', type=int, default=5000, help='Maximum distance in bp between SVs in a partition')
+    group_bam_cluster.add_argument('--distance_normalizer', type=int, default=900, help='Distance normalizer used for span-position distance')
+    group_bam_cluster.add_argument('--cluster_max_distance', type=float, default=0.7, help='Maximum span-position distance between SVs in a cluster')
+    group_bam_combine = parser_bam.add_argument_group('COMBINE')
+    group_bam_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='')
+    group_bam_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='')
+    group_bam_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='')
+    group_bam_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='')
 
     return parser.parse_args()
 
 
-def read_parameters(options):
-    config = configparser.RawConfigParser(inline_comment_prefixes=';')
-    config.read(options.config)
-
-    parameters = dict()
-    parameters["min_mapq"] = config.getint("detection", "min_mapq")
-    parameters["max_sv_size"] = config.getint("detection", "max_sv_size")
-    parameters["min_sv_size"] = config.getint("detection", "min_sv_size")
-
-    parameters["segment_gap_tolerance"] = config.getint("split read", "segment_gap_tolerance")
-    parameters["segment_overlap_tolerance"] = config.getint("split read", "segment_overlap_tolerance")
-
-    parameters["distance_metric"] = config.get("clustering", "distance_metric")
-    parameters["distance_normalizer"] = config.getint("clustering", "distance_normalizer")
-    parameters["partition_max_distance"] = config.getint("clustering", "partition_max_distance")
-    parameters["cluster_max_distance"] = config.getfloat("clustering", "cluster_max_distance")
-
-    parameters["del_ins_dup_max_distance"] = config.getfloat("merging", "del_ins_dup_max_distance")
-    parameters["trans_destination_partition_max_distance"] = config.getint("merging", "trans_destination_partition_max_distance")
-    parameters["trans_partition_max_distance"] = config.getint("merging", "trans_partition_max_distance")
-    parameters["trans_sv_max_distance"] = config.getint("merging", "trans_sv_max_distance")
-
-    try:
-        parameters["skip_indel"] =  options.skip_indel
-    except AttributeError:
-        parameters["skip_indel"] =  False
-    try:
-        parameters["skip_segment"] =  options.skip_segment
-    except AttributeError:
-        parameters["skip_segment"] =  False
-
-    return parameters
-
-
 def main():
-    # Fetch command-line options and configuration file values and set parameters accordingly
+    # Fetch command-line options
     options = parse_arguments()
+    options.distance_metric = "sl" 
 
     if not options.sub:
         print("Please choose one of the two modes ('reads' or 'alignment'). See --help for more information.")
         return
-
-    parameters = read_parameters(options)
 
     # Set up logging
     logFormatter = logging.Formatter("%(asctime)s [%(levelname)-7.7s]  %(message)s")
@@ -142,18 +131,18 @@ def main():
                 run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-                sv_signatures.extend(analyze_alignment(full_aln, parameters))
+                sv_signatures.extend(analyze_alignment(full_aln, options))
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
             run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-            sv_signatures = analyze_alignment(full_aln, parameters)
+            sv_signatures = analyze_alignment(full_aln, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
-        sv_signatures = analyze_alignment(options.bam_file.name, parameters)
+        sv_signatures = analyze_alignment(options.bam_file.name, options)
 
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
     insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
@@ -171,7 +160,7 @@ def main():
     
     # Cluster SV signatures
     logging.info("****************** STEP 2: CLUSTER ******************")
-    signature_clusters = cluster_sv_signatures(sv_signatures, parameters)
+    signature_clusters = cluster_sv_signatures(sv_signatures, options)
 
     # Write SV signature clusters
     logging.info("Finished clustering. Writing signature clusters..")
@@ -188,7 +177,7 @@ def main():
     # signatures_file.close()
 
     logging.info("****************** STEP 3: COMBINE ******************")
-    combine_clusters(signature_clusters, options.working_dir, parameters, __version__)
+    combine_clusters(signature_clusters, options.working_dir, options, __version__)
 
 if __name__ == "__main__":
     sys.exit(main())

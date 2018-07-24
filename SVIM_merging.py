@@ -8,22 +8,22 @@ from math import pow, sqrt
 from SVSignature import SignatureTranslocation, SignatureInsertionFrom, SignatureClusterBiLocal
 from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
-def merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, parameters):
+def merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, options):
     """Classify insertion/duplication signature clusters as insertion or duplication"""
     insertion_candidates = []
     int_duplication_candidates = []
     deleted_regions_to_remove = []
     for ins_cluster in insertion_from_signature_clusters:
         # Compute distances of every deletion cluster to the current insertion/duplication
-        if parameters["distance_metric"] == "gd":
+        if options.distance_metric == "gd":
             distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
-        elif parameters["distance_metric"] == "sl":
-            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, parameters["distance_normalizer"])) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
+        elif options.distance_metric == "sl":
+            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, options.distance_normalizer)) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
         closest_deletion_index, closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
         # If close deletion cluster found
-        if closest_deletion <= parameters["del_ins_dup_max_distance"]:
+        if closest_deletion <= options.del_ins_dup_max_distance:
             #Insertion
             all_members = ins_cluster.members + deletion_signature_clusters[closest_deletion_index].members
             insertion_candidates.append(CandidateInsertion(source_contig, source_start, source_end, dest_contig, dest_start, dest_end, all_members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
@@ -112,7 +112,6 @@ def calculate_score_deletion(main_score, translocation_distances, translocation_
         #calculate final score as product of components (half score)
         product = (main_score / 100) * td0 * td0 * ts0 * ts0 * tv
         final_score = pow(product, 1/6) * 50
-    # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distances, translocation_stds, translocation_deviation))
     return final_score
 
 
@@ -137,11 +136,10 @@ def calculate_score_insertion(main_score, translocation_distances, translocation
     #calculate final score as product of components
     product = (main_score / 100) *  td0 * td1 * ts0 * ts1 * ds0 * ds1
     final_score = pow(product, 1/7) * 100
-    # print("Score {0} from parameters: {1}, {2}, {3}, {4}".format(max(0, final_score), main_score, translocation_distance, translocation_std, destination_stds))
     return final_score
 
 
-def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, parameters):
+def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, options):
     """Analyze all deletion signature clusters and look for flanking translocations that might indicate insertions."""
     insertion_candidates = []
     deleted_regions_to_remove = []
@@ -158,16 +156,16 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
         # if translocations found close to start and end of deletion
         if abs(closest_to_start_mean - del_start) < abs(closest_to_start_mean - del_end) and \
            abs(closest_to_end_mean - del_end) < abs(closest_to_end_mean - del_start) and \
-           abs(closest_to_start_mean - del_start) <= parameters["trans_sv_max_distance"] and \
-           abs(closest_to_end_mean - del_end) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
-            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
+           abs(closest_to_start_mean - del_start) <= options.trans_sv_max_distance and \
+           abs(closest_to_end_mean - del_end) <= options.trans_sv_max_distance:
+            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], options.trans_destination_partition_max_distance)
+            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], options.trans_destination_partition_max_distance)
             # if translocations close to start and end point to only one destination each
             if len(destinations_from_start) == 1 and len(destinations_from_end) == 1:
                 destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / len(destinations_from_start[0]))))
                 destination_from_end = (destinations_from_end[0][0][0], int(round(sum([pos for contig, pos in destinations_from_end[0]]) / len(destinations_from_end[0]))))
                 # if translocations close to start and end point to the same destination
-                if destination_from_start[0] == destination_from_end[0] and abs(destination_from_start[1] - destination_from_end[1]) < parameters["trans_sv_max_distance"]:
+                if destination_from_start[0] == destination_from_end[0] and abs(destination_from_start[1] - destination_from_end[1]) < options.trans_sv_max_distance:
                     mean_destination = int(round((destination_from_start[1] + destination_from_end[1]) / 2))
                     all_members = del_cluster.members + translocation_partitions_revrev_dict[del_contig][closest_to_start_index] + translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]
                     score = calculate_score_deletion(del_cluster.score, 
@@ -181,8 +179,8 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
         # if translocations found close to start of deletion
         elif abs(closest_to_start_mean - del_start) < abs(closest_to_start_mean - del_end) and \
              abs(closest_to_start_mean - del_start) <= abs(closest_to_end_mean - del_end) and \
-             abs(closest_to_start_mean - del_start) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], parameters["trans_destination_partition_max_distance"])
+             abs(closest_to_start_mean - del_start) <= options.trans_sv_max_distance:
+            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], options.trans_destination_partition_max_distance)
             # if translocations close to start point to the same destination
             if len(destinations_from_start) == 1:
                 destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / len(destinations_from_start[0]))))
@@ -193,8 +191,8 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
                 deleted_regions_to_remove.append(deletion_index)
         # if translocations found close to end of deletion
         elif abs(closest_to_end_mean - del_end) < abs(closest_to_end_mean - del_start) and \
-             abs(closest_to_end_mean - del_end) <= parameters["trans_sv_max_distance"]:
-            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], parameters["trans_destination_partition_max_distance"])
+             abs(closest_to_end_mean - del_end) <= options.trans_sv_max_distance:
+            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], options.trans_destination_partition_max_distance)
             # if translocations close to end point to the same destination
             if len(destinations_from_end) == 1:
                 destination_from_end = (destinations_from_end[0][0][0], int(round(sum([pos for contig, pos in destinations_from_end[0]]) / len(destinations_from_end[0]))))
@@ -207,7 +205,7 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
     return insertion_candidates, deleted_regions_to_remove
 
 
-def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, parameters):
+def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, options):
     inserted_regions_to_remove = []
     insertion_from_signature_clusters = []
     for insertion_index, ins_cluster in enumerate(insertion_signature_clusters):
@@ -220,9 +218,9 @@ def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, tra
         except KeyError:
             continue
         # if translocations found close to start of insertion
-        if abs(closest_to_start_fwdfwd_mean - ins_start) <= parameters["trans_sv_max_distance"] and abs(closest_to_start_revrev_mean - ins_start) <= parameters["trans_sv_max_distance"]:
-            destinations_from_start_fwdfwd = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index]], parameters["trans_destination_partition_max_distance"])
-            destinations_from_start_revrev = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index]], parameters["trans_destination_partition_max_distance"])
+        if abs(closest_to_start_fwdfwd_mean - ins_start) <= options.trans_sv_max_distance and abs(closest_to_start_revrev_mean - ins_start) <= options.trans_sv_max_distance:
+            destinations_from_start_fwdfwd = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index]], options.trans_destination_partition_max_distance)
+            destinations_from_start_revrev = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index]], options.trans_destination_partition_max_distance)
             # if translocations point to only one destination each
             if len(destinations_from_start_fwdfwd) == 1 and len(destinations_from_start_revrev) == 1:
                 destination_from_start_fwdfwd = (destinations_from_start_fwdfwd[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start_fwdfwd[0]]) / len(destinations_from_start_fwdfwd[0]))))
