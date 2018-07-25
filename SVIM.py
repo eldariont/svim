@@ -9,6 +9,7 @@ import pickle
 import gzip
 import logging
 import configparser
+import pysam
 
 from time import strftime, localtime
 
@@ -130,19 +131,22 @@ def main():
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
                 run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-                full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-                sv_signatures.extend(analyze_alignment(full_aln, options))
+                full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
+                full_aln_file = pysam.AlignmentFile(full_bam_path)
+                sv_signatures.extend(analyze_alignment(full_aln_file, options))
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
             run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-            full_aln = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-            sv_signatures = analyze_alignment(full_aln, options)
+            full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
+            full_aln_file = pysam.AlignmentFile(full_bam_path)
+            sv_signatures = analyze_alignment(full_aln_file, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
-        sv_signatures = analyze_alignment(options.bam_file.name, options)
+        full_aln_file = pysam.AlignmentFile(options.bam_file.name)
+        sv_signatures = analyze_alignment(full_aln_file, options)
 
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
     insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
@@ -177,7 +181,7 @@ def main():
     # signatures_file.close()
 
     logging.info("****************** STEP 3: COMBINE ******************")
-    combine_clusters(signature_clusters, options.working_dir, options, __version__)
+    combine_clusters(signature_clusters, options.working_dir, options, __version__, full_aln_file.references, full_aln_file.lengths)
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -95,7 +95,7 @@ class CandidateDeletion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "DEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateInversion(Candidate):
@@ -114,7 +114,7 @@ class CandidateInversion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "INV"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q20" if self.score < 20 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateNovelInsertion(Candidate):
@@ -138,7 +138,7 @@ class CandidateNovelInsertion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS:NOVEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateInsertion(Candidate):
@@ -188,7 +188,7 @@ class CandidateInsertion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateDuplicationTandem(Candidate):
@@ -250,7 +250,7 @@ class CandidateDuplicationTandem(Candidate):
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
         svtype = "DUP:TANDEM"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
 class CandidateDuplicationInterspersed(Candidate):
@@ -311,4 +311,4 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))

@@ -1,4 +1,3 @@
-import pysam
 import logging
 
 from subprocess import Popen, PIPE
@@ -161,8 +160,7 @@ def bam_iterator(bam):
     yield (current_read_name, current_prim, current_suppl, current_sec)
 
 
-def analyze_alignment(bam_path, options):
-    full_bam = pysam.AlignmentFile(bam_path)
+def analyze_alignment(full_bam, options):
     full_it = bam_iterator(full_bam)
 
     sv_signatures = []

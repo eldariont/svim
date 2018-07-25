@@ -63,13 +63,15 @@ def write_candidates(working_dir, candidates):
     tandem_duplication_candidate_dest_output.close()
 
 
-def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version):
+def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
     print("##fileformat=VCFv4.3", file=vcf_output)
     print("##source=SVIMV{0}".format(version), file=vcf_output)
     #print("##reference={0}".format(genome), file=vcf_output)
+    for contig_name, contig_length in zip(contig_names, contig_lengths):
+        print("##contig=<ID={0},length={1}>".format(contig_name, contig_length), file=vcf_output)
     print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
     print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
@@ -80,6 +82,8 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
     print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
     print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
+    print("##FILTER=<ID=q20,Description=\"Quality below 20\">", file=vcf_output)
+    print("##FILTER=<ID=q30,Description=\"Quality below 30\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO", file=vcf_output)
 
     vcf_entries = []
@@ -103,7 +107,7 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     vcf_output.close()
 
 
-def combine_clusters(signature_clusters, working_dir, options, version):
+def combine_clusters(signature_clusters, working_dir, options, version, contig_names, contig_lengths):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = signature_clusters
 
     ###############################
@@ -288,4 +292,4 @@ def combine_clusters(signature_clusters, working_dir, options, version):
     logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
     logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
     write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
-    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version)
+    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths)
