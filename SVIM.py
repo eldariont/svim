@@ -113,6 +113,8 @@ def main():
     logging.info("****************** Start SVIM, version {0} ******************".format(__version__))
     logging.info("CMD: python3 {0}".format(" ".join(sys.argv)))
     logging.info("WORKING DIR: {0}".format(os.path.abspath(options.working_dir)))
+    for arg in vars(options):
+        logging.info("PARAMETER: {0}, VALUE: {1}".format(arg, getattr(options, arg)))
     logging.info("****************** STEP 1: COLLECT ******************")
 
     # Search for SV signatures
