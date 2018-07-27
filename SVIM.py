@@ -46,7 +46,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_collect.add_argument('--max_sv_size', type=int, default=100000, help='Maximum SV size to detect')
     group_fasta_collect.add_argument('--skip_indel', action='store_true', help='disable indel part')
     group_fasta_collect.add_argument('--skip_segment', action='store_true', help='disable segment part')
-    group_fasta_collect.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment')
+    group_fasta_collect.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment with ngmlr')
+    group_fasta_collect.add_argument('--nanopore', action='store_true', help='use Nanopore settings for ngmlr alignment (default: off)')
     group_fasta_collect.add_argument('--segment_gap_tolerance', type=int, default=10, help='Maximum tolerated gap between adjacent alignment segments')
     group_fasta_collect.add_argument('--segment_overlap_tolerance', type=int, default=5, help='Maximum tolerated overlap between adjacent alignment segments')
     group_fasta_cluster = parser_fasta.add_argument_group('CLUSTER')
@@ -131,7 +132,7 @@ def main():
             for file_path in read_file_list(options.reads):
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
-                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
+                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.nanopore)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 full_aln_file = pysam.AlignmentFile(full_bam_path)
@@ -139,7 +140,7 @@ def main():
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
-            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores)
+            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.nanopore)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             full_aln_file = pysam.AlignmentFile(full_bam_path)

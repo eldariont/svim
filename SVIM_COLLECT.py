@@ -91,13 +91,17 @@ def create_full_file(working_dir, reads_path, reads_type):
     return full_reads_path
 
 
-def run_full_alignment(working_dir, genome, reads_path, cores):
+def run_full_alignment(working_dir, genome, reads_path, cores, nanopore):
     """Align full reads with NGM-LR."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(full_aln):
-        ngmlr = Popen(['ngmlr',
+        if nanopore:
+            ngmlr = Popen(['ngmlr',
+                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), '-x', 'ont'], stdout=PIPE)
+        else:
+            ngmlr = Popen(['ngmlr',
                        '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
         view = Popen(['samtools',
                       'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
