@@ -237,10 +237,10 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                         #INS_DUP candidate
                         if before_dir2 == before_dir1:
                             if before_dir1 == 'fwd':
-                                if this_pos1 - before_pos2 <= options.max_sv_size:
+                                if options.min_sv_size <= this_pos1 - before_pos2 <= options.max_sv_size:
                                     sv_signatures.append(SignatureInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                             elif before_dir1 == 'rev':
-                                if before_pos2 - this_pos1 <= options.max_sv_size:
+                                if options.min_sv_size <= before_pos2 - this_pos1 <= options.max_sv_size:
                                     sv_signatures.append(SignatureInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
                         #INV_INS_DUP candidate
                         else:
