@@ -216,14 +216,14 @@ class CandidateDuplicationTandem(Candidate):
         dest_contig, dest_start, dest_end = self.get_destination()
         source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(source_contig, source_start,
                                                                                      source_end,
-                                                                                     "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
+                                                                                     "tan_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
                                                                                          dest_end, self.std_span, self.std_pos), self.score,
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(dest_contig, dest_start, dest_end,
-                                                                                   "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
+                                                                                   "tan_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
                                                                                        source_end, self.std_span, self.std_pos), self.score,
                                                                                    "[" + "][".join(
