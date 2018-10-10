@@ -176,31 +176,6 @@ def merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, tran
                     insertion_candidates.append(CandidateInsertion(del_contig, closest_to_start_mean, closest_to_end_mean, destination_from_start[0], mean_destination, mean_destination + (del_end - del_start), all_members, score, del_cluster.std_span, del_cluster.std_pos))
                     # print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
                     deleted_regions_to_remove.append(deletion_index)
-        # if translocations found close to start of deletion
-        elif abs(closest_to_start_mean - del_start) < abs(closest_to_start_mean - del_end) and \
-             abs(closest_to_start_mean - del_start) <= abs(closest_to_end_mean - del_end) and \
-             abs(closest_to_start_mean - del_start) <= options.trans_sv_max_distance:
-            destinations_from_start = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_revrev_dict[del_contig][closest_to_start_index]], options.trans_destination_partition_max_distance)
-            # if translocations close to start point to the same destination
-            if len(destinations_from_start) == 1:
-                destination_from_start = (destinations_from_start[0][0][0], int(round(sum([pos for contig, pos in destinations_from_start[0]]) / len(destinations_from_start[0]))))
-                all_members = del_cluster.members + translocation_partitions_revrev_dict[del_contig][closest_to_start_index]
-                score = calculate_score_deletion(del_cluster.score, [abs(closest_to_start_mean - del_start)], [translocation_partition_stds_revrev_dict[del_contig][closest_to_start_index]], 0)
-                insertion_candidates.append(CandidateInsertion(del_contig, closest_to_start_mean, del_end, destination_from_start[0], destination_from_start[1], destination_from_start[1] + (del_end - del_start), all_members, score, del_cluster.std_span, del_cluster.std_pos))
-                # print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
-                deleted_regions_to_remove.append(deletion_index)
-        # if translocations found close to end of deletion
-        elif abs(closest_to_end_mean - del_end) < abs(closest_to_end_mean - del_start) and \
-             abs(closest_to_end_mean - del_end) <= options.trans_sv_max_distance:
-            destinations_from_end = cluster_positions_simple([(signature.contig2, signature.pos2) for signature in translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]], options.trans_destination_partition_max_distance)
-            # if translocations close to end point to the same destination
-            if len(destinations_from_end) == 1:
-                destination_from_end = (destinations_from_end[0][0][0], int(round(sum([pos for contig, pos in destinations_from_end[0]]) / len(destinations_from_end[0]))))
-                all_members = del_cluster.members + translocation_partitions_fwdfwd_dict[del_contig][closest_to_end_index]
-                score = calculate_score_deletion(del_cluster.score, [abs(closest_to_end_mean - del_end)], [translocation_partition_stds_fwdfwd_dict[del_contig][closest_to_end_index]], 0)
-                insertion_candidates.append(CandidateInsertion(del_contig, del_start, closest_to_end_mean, destination_from_end[0], destination_from_end[1], destination_from_end[1] + (del_end - del_start), all_members, score, del_cluster.std_span, del_cluster.std_pos))
-                # print("Found Insertion thanks to translocations at {0}:{1}-{2}".format(del_contig, del_start, del_end), file=sys.stderr)
-                deleted_regions_to_remove.append(deletion_index)
 
     return insertion_candidates, deleted_regions_to_remove
 
