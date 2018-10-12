@@ -36,7 +36,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     subparsers = parser.add_subparsers(help='modes', dest='sub')
     parser.add_argument('--version', '-v', action='version', version='%(prog)s {version}'.format(version=__version__))
 
-    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads')
+    parser_fasta = subparsers.add_parser('reads', help='Detect SVs from raw reads. Align reads to given reference genome first.')
     parser_fasta.add_argument('working_dir', type=str, help='working directory')
     parser_fasta.add_argument('reads', type=str, help='Read file (FASTA, FASTQ, gzipped FASTA and FASTQ)')
     parser_fasta.add_argument('genome', type=str, help='Reference genome file (FASTA)')
@@ -44,10 +44,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
     group_fasta_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
     group_fasta_collect.add_argument('--max_sv_size', type=int, default=100000, help='Maximum SV size to detect')
-    group_fasta_collect.add_argument('--skip_indel', action='store_true', help='disable indel part')
-    group_fasta_collect.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    group_fasta_collect.add_argument('--skip_indel', action='store_true', help='disable signature collection from within read alignments')
+    group_fasta_collect.add_argument('--skip_segment', action='store_true', help='disable signature collection from between read alignments')
     group_fasta_collect.add_argument('--cores', type=int, default=1, help='CPU cores to use for alignment with ngmlr')
-    group_fasta_collect.add_argument('--nanopore', action='store_true', help='use Nanopore settings for ngmlr alignment (default: off)')
+    group_fasta_collect.add_argument('--aligner', type=str, default="ngmlr", choices=["ngmlr", "minimap2"], help='tool for read alignment: ngmlr or minimap2 (default: ngmlr)')
+    group_fasta_collect.add_argument('--nanopore', action='store_true', help='use Nanopore settings for read alignment (default: off)')
     group_fasta_collect.add_argument('--segment_gap_tolerance', type=int, default=10, help='Maximum tolerated gap between adjacent alignment segments')
     group_fasta_collect.add_argument('--segment_overlap_tolerance', type=int, default=5, help='Maximum tolerated overlap between adjacent alignment segments')
     group_fasta_cluster = parser_fasta.add_argument_group('CLUSTER')
@@ -67,8 +68,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
     group_bam_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
     group_bam_collect.add_argument('--max_sv_size', type=int, default=100000, help='Maximum SV size to detect')
-    group_bam_collect.add_argument('--skip_indel', action='store_true', help='disable indel part')
-    group_bam_collect.add_argument('--skip_segment', action='store_true', help='disable segment part')
+    group_bam_collect.add_argument('--skip_indel', action='store_true', help='disable signature collection from within read alignments')
+    group_bam_collect.add_argument('--skip_segment', action='store_true', help='disable signature collection from between read alignments')
     group_bam_collect.add_argument('--segment_gap_tolerance', type=int, default=10, help='Maximum tolerated gap between adjacent alignment segments')
     group_bam_collect.add_argument('--segment_overlap_tolerance', type=int, default=5, help='Maximum tolerated overlap between adjacent alignment segments')
     group_bam_cluster = parser_bam.add_argument_group('CLUSTER')
@@ -132,7 +133,7 @@ def main():
             for file_path in read_file_list(options.reads):
                 reads_type = guess_file_type(file_path)
                 full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
-                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.nanopore)
+                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.aligner, options.nanopore)
                 reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
                 full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
                 full_aln_file = pysam.AlignmentFile(full_bam_path)
@@ -140,7 +141,7 @@ def main():
         else:
             # Single read file
             full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
-            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.nanopore)
+            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.aligner, options.nanopore)
             reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
             full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
             full_aln_file = pysam.AlignmentFile(full_bam_path)

@@ -91,20 +91,28 @@ def create_full_file(working_dir, reads_path, reads_type):
     return full_reads_path
 
 
-def run_full_alignment(working_dir, genome, reads_path, cores, nanopore):
+def run_full_alignment(working_dir, genome, reads_path, cores, aligner, nanopore):
     """Align full reads with NGM-LR."""
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
     full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
 
     if not os.path.exists(full_aln):
-        if nanopore:
-            ngmlr = Popen(['ngmlr',
-                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), '-x', 'ont'], stdout=PIPE)
-        else:
-            ngmlr = Popen(['ngmlr',
-                       '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
+        if aligner == "ngmlr":
+            if nanopore:
+                alignment = Popen(['ngmlr',
+                           '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), '-x', 'ont'], stdout=PIPE)
+            else:
+                alignment = Popen(['ngmlr',
+                           '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
+        elif aligner == "minimap2":
+            if nanopore:
+                alignment = Popen(['minimap2',
+                           '-t', str(cores), '-x', 'map-ont', '-a', genome, os.path.realpath(reads_path)], stdout=PIPE)
+            else:
+                alignment = Popen(['minimap2',
+                           '-t', str(cores), '-x', 'map-pb', '-a', genome, os.path.realpath(reads_path)], stdout=PIPE)
         view = Popen(['samtools',
-                      'view', '-b', '-@', str(cores)], stdin=ngmlr.stdout, stdout=PIPE)
+                      'view', '-b', '-@', str(cores)], stdin=alignment.stdout, stdout=PIPE)
         sort = Popen(['samtools',
                       'sort', '-n', '-@', str(cores), '-o', full_aln],
                      stdin=view.stdout)
