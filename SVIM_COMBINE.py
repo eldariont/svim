@@ -6,27 +6,23 @@ from math import pow, sqrt
 
 from SVIM_clustering import form_partitions, partition_and_cluster_candidates
 from SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion
-from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
+from SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions
 
 
-def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, options):
-    """Takes a list of SVCandidates and splits them up by type. The SVCandidates of each type are clustered and returned as a tuple of
-    (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocation_signatures)."""
+def cluster_sv_candidates(int_duplication_candidates, options):
+    """Cluster SVCandidates to remove redundancy"""
 
-    final_insertion_candidates = partition_and_cluster_candidates(insertion_candidates, options, "insertion candidates")
     final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, options, "interspersed duplication candidates")
 
-    return (final_insertion_candidates, final_int_duplication_candidates)
+    return final_int_duplication_candidates
 
 
 def write_candidates(working_dir, candidates):
-    insertion_candidates, int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates, novel_insertion_candidates = candidates
+    int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates, novel_insertion_candidates = candidates
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')
     deletion_candidate_output = open(working_dir + '/candidates/candidates_deletions.bed', 'w')
-    insertion_candidate_source_output = open(working_dir + '/candidates/candidates_insertions_source.bed', 'w')
-    insertion_candidate_dest_output = open(working_dir + '/candidates/candidates_insertions_dest.bed', 'w')
     inversion_candidate_output = open(working_dir + '/candidates/candidates_inversions.bed', 'w')
     tandem_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_tan_duplications_source.bed', 'w')
     tandem_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_tan_duplications_dest.bed', 'w')
@@ -36,10 +32,6 @@ def write_candidates(working_dir, candidates):
 
     for candidate in deletion_candidates:
         print(candidate.get_bed_entry(), file=deletion_candidate_output)
-    for candidate in insertion_candidates:
-        bed_entries = candidate.get_bed_entries()
-        print(bed_entries[0], file=insertion_candidate_source_output)
-        print(bed_entries[1], file=insertion_candidate_dest_output)
     for candidate in int_duplication_candidates:
         bed_entries = candidate.get_bed_entries()
         print(bed_entries[0], file=interspersed_duplication_candidate_source_output)
@@ -54,8 +46,6 @@ def write_candidates(working_dir, candidates):
         print(candidate.get_bed_entry(), file=novel_insertion_candidate_output)
 
     deletion_candidate_output.close()
-    insertion_candidate_source_output.close()
-    insertion_candidate_dest_output.close()
     inversion_candidate_output.close()
     interspersed_duplication_candidate_source_output.close()
     interspersed_duplication_candidate_dest_output.close()
@@ -63,7 +53,7 @@ def write_candidates(working_dir, candidates):
     tandem_duplication_candidate_dest_output.close()
 
 
-def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths):
+def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
@@ -79,8 +69,9 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
     print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
     print("##ALT=<ID=INS:NOVEL,Description=\"Novel Insertion\">", file=vcf_output)
-    print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
     print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
+    print("##INFO=<ID=CUTPASTE,Number=0,Type=Flag,Description=\"Genomic origin of interspersed duplication seems to be deleted\">", file=vcf_output)
+    print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
     print("##INFO=<ID=SVLEN,Number=.,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
     print("##FILTER=<ID=q20,Description=\"Quality below 20\">", file=vcf_output)
     print("##FILTER=<ID=q30,Description=\"Quality below 30\">", file=vcf_output)
@@ -92,8 +83,6 @@ def write_final_vcf(working_dir, insertion_candidates, int_duplication_candidate
     for candidate in inversion_candidates:
         vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
     for candidate in tandem_duplication_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in insertion_candidates:
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
     for candidate in int_duplication_candidates:
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
@@ -157,50 +146,27 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
         translocation_partition_stds_revrev_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_revrev_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_revrev_dict[contig])]
 
 
-    insertion_candidates = []
-    int_duplication_candidates = []
-
-    logging.info("Combine deleted regions with translocations breakpoints..")
-    new_insertion_candidates, deleted_regions_to_remove_1 = merge_translocations_at_deletions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, deletion_signature_clusters, options)
-    insertion_candidates.extend(new_insertion_candidates)
-
-    logging.info("Combine deleted regions with translocation breakpoints..")
+    logging.info("Combine inserted regions with translocation breakpoints..")
     new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, options)
     insertion_from_signature_clusters.extend(new_insertion_from_clusters)
 
-    ###################################
-    # Classify insertions with source #
-    ###################################
+    ############################################################################
+    # Create interspersed duplication candidates and flag cut&paste insertions #
+    ############################################################################
 
-    logging.info("Classify inserted regions with detected region of origin..")
-    new_insertion_candidates, new_int_duplication_candidates, deleted_regions_to_remove_2 = merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, options)
-    insertion_candidates.extend(new_insertion_candidates)
-    int_duplication_candidates.extend(new_int_duplication_candidates)
-
-    ##################################
-    # Remove deleted region clusters #
-    ##################################
-    all_deleted_regions_to_remove = sorted(list(set(deleted_regions_to_remove_1 + deleted_regions_to_remove_2)), reverse=True)
-    for del_index in all_deleted_regions_to_remove:
-        del(deletion_signature_clusters[del_index])
+    logging.info("Create interspersed duplication candidates and flag cut&paste insertions..")
+    int_duplication_candidates = flag_cutpaste_candidates(insertion_from_signature_clusters, deletion_signature_clusters, options)
 
     ###################################
     # Remove inserted region clusters #
     ###################################
 
-    #find all inserted regions overlapping insertion, interspersed duplication or tandem duplication candidates
-    insertion_iterator = iter(sorted(insertion_candidates, key=lambda cand: cand.get_destination()))
+    #find all inserted regions overlapping interspersed duplication or tandem duplication candidates
     int_duplication_iterator = iter(sorted(int_duplication_candidates, key=lambda cand: cand.get_destination()))
     tan_duplication_iterator = iter(sorted(tan_dup_candidates, key=lambda cand: cand.get_destination()))
-    insertions_end = False
     int_duplications_end = False
     tan_duplications_end = False
     inserted_regions_to_remove_2 = []
-
-    try:
-        current_insertion = next(insertion_iterator)
-    except StopIteration:
-        insertions_end = True
 
     try:
         current_int_duplication = next(int_duplication_iterator)
@@ -214,45 +180,31 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
 
     for inserted_region_index, inserted_region in enumerate(insertion_signature_clusters):
         contig1, start1, end1 = inserted_region.get_source()
-        if not insertions_end:
-            contig2, start2, end2 = current_insertion.get_destination()
+        if not int_duplications_end:
+            contig2, start2, end2 = current_int_duplication.get_destination()
             while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
                 try:
-                    current_insertion = next(insertion_iterator)
-                    contig2, start2, end2 = current_insertion.get_destination()
+                    current_int_duplication = next(int_duplication_iterator)
+                    contig2, start2, end2 = current_int_duplication.get_destination()
                 except StopIteration:
-                    insertions_end = True
+                    int_duplications_end = True
                     break
-
-        #if overlapping insertion
-        if not insertions_end and contig2 == contig1 and start2 < end1:
+        #if overlapping interspersed duplication
+        if not int_duplications_end and contig2 == contig1 and start2 < end1:
             inserted_regions_to_remove_2.append(inserted_region_index)
         else:
-            if not int_duplications_end:
-                contig2, start2, end2 = current_int_duplication.get_destination()
+            if not tan_duplications_end:
+                contig2, start2, end2 = current_tan_duplication.get_destination()
                 while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
                     try:
-                        current_int_duplication = next(int_duplication_iterator)
-                        contig2, start2, end2 = current_int_duplication.get_destination()
+                        current_tan_duplication = next(tan_duplication_iterator)
+                        contig2, start2, end2 = current_tan_duplication.get_destination()
                     except StopIteration:
-                        int_duplications_end = True
+                        tan_duplications_end = True
                         break
-            #if overlapping interspersed duplication
-            if not int_duplications_end and contig2 == contig1 and start2 < end1:
+            #if overlapping tandem duplication
+            if not tan_duplications_end and contig2 == contig1 and start2 < end1:
                 inserted_regions_to_remove_2.append(inserted_region_index)
-            else:
-                if not tan_duplications_end:
-                    contig2, start2, end2 = current_tan_duplication.get_destination()
-                    while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
-                        try:
-                            current_tan_duplication = next(tan_duplication_iterator)
-                            contig2, start2, end2 = current_tan_duplication.get_destination()
-                        except StopIteration:
-                            tan_duplications_end = True
-                            break
-                #if overlapping tandem duplication
-                if not tan_duplications_end and contig2 == contig1 and start2 < end1:
-                    inserted_regions_to_remove_2.append(inserted_region_index)
 
     # remove found inserted regions
     all_inserted_regions_to_remove = sorted(list(set(inserted_regions_to_remove_1 + inserted_regions_to_remove_2)), reverse=True)
@@ -278,8 +230,8 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
     ######################
     # Cluster candidates #
     ######################
-    logging.info("Cluster SV candidates one more time..")
-    final_insertion_candidates, final_int_duplication_candidates = cluster_sv_candidates(insertion_candidates, int_duplication_candidates, options)
+    logging.info("Cluster interspersed duplication candidates one more time..")
+    final_int_duplication_candidates = cluster_sv_candidates(int_duplication_candidates, options)
 
     ####################
     # Write candidates #
@@ -287,9 +239,8 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
     logging.info("Write SV candidates..")
     logging.info("Final deletion candidates: {0}".format(len(deletion_candidates)))
     logging.info("Final inversion candidates: {0}".format(len(inversion_candidates)))
-    logging.info("Final insertion candidates: {0}".format(len(final_insertion_candidates)))
     logging.info("Final interspersed duplication candidates: {0}".format(len(final_int_duplication_candidates)))
     logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
     logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
-    write_candidates(working_dir, (final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
-    write_final_vcf(working_dir, final_insertion_candidates, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths)
+    write_candidates(working_dir, (final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
+    write_final_vcf(working_dir, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths)

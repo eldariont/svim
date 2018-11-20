@@ -1,4 +1,4 @@
-__version__ = '0.3'
+__version__ = '0.4'
 __author__ = 'David Heller'
 
 import sys
@@ -21,9 +21,9 @@ from SVIM_COMBINE import combine_clusters
 def parse_arguments():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It discriminates six different variant classes: deletions, cut&paste insertions, tandem and interspersed duplications, 
+It discriminates five different variant classes: deletions, tandem and interspersed duplications, 
 inversions and novel element insertions. SVIM is unique in its capability of extracting both the genomic origin and 
-destination of insertions and duplications.
+destination of duplications.
 
 SVIM consists of three major steps:
 - COLLECT detects signatures for SVs in long read alignments
@@ -56,7 +56,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_cluster.add_argument('--distance_normalizer', type=int, default=900, help='Distance normalizer used for span-position distance')
     group_fasta_cluster.add_argument('--cluster_max_distance', type=float, default=0.7, help='Maximum span-position distance between SVs in a cluster')
     group_fasta_combine = parser_fasta.add_argument_group('COMBINE')
-    group_fasta_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='Maximum span-position distance between the origin of an insertion and a deletion to be combined into a cut&paste insertion')
+    group_fasta_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='Maximum span-position distance between the origin of an insertion and a deletion to be flagged as a potential cut&paste insertion')
     group_fasta_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='Maximum distance in bp between translocation breakpoint destinations in a partition')
     group_fasta_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition')
     group_fasta_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined')
@@ -77,7 +77,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_cluster.add_argument('--distance_normalizer', type=int, default=900, help='Distance normalizer used for span-position distance')
     group_bam_cluster.add_argument('--cluster_max_distance', type=float, default=0.7, help='Maximum span-position distance between SVs in a cluster')
     group_bam_combine = parser_bam.add_argument_group('COMBINE')
-    group_bam_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='Maximum span-position distance between the origin of an insertion and a deletion to be combined into a cut&paste insertion')
+    group_bam_combine.add_argument('--del_ins_dup_max_distance', type=float, default=1.0, help='Maximum span-position distance between the origin of an insertion and a deletion to be flagged as a potential cut&paste insertion')
     group_bam_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='Maximum distance in bp between translocation breakpoint destinations in a partition')
     group_bam_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition')
     group_bam_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined')

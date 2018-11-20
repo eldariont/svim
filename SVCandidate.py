@@ -141,56 +141,6 @@ class CandidateNovelInsertion(Candidate):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
 
 
-class CandidateInsertion(Candidate):
-    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
-        self.source_contig = source_contig
-        self.source_start = source_start
-        self.source_end = source_end
-
-        self.dest_contig = dest_contig
-        self.dest_start = dest_start
-        self.dest_end = dest_end
-
-        self.members = members
-        self.score = score
-        self.std_span = std_span
-        self.std_pos = std_pos
-        self.type = "ins"
-
-
-    def get_destination(self):
-        return (self.dest_contig, self.dest_start, self.dest_end)
-
-    
-    def get_bed_entries(self, sep="\t"):
-        source_contig, source_start, source_end = self.get_source()
-        dest_contig, dest_start, dest_end = self.get_destination()
-        source_entry = sep.join(["{0}","{1}","{2}","{3}","{4}","{5}",]).format(source_contig, source_start, source_end,
-                                                                       "ins_source;>{0}:{1}-{2};{3};{4}".format(dest_contig, dest_start, dest_end, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
-        dest_entry = sep.join(["{0}","{1}","{2}","{3}","{4}","{5}",]).format(dest_contig, dest_start, dest_end,
-                                                                             "ins_dest;<{0}:{1}-{2};{3};{4}".format(source_contig, source_start, source_end, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
-        return (source_entry, dest_entry)
-
-
-    def mean_distance_to(self, candidate2):
-        """Return distance between means of two candidates."""
-        this_source_contig, this_source_start, this_source_end = self.get_source()
-        this_dest_contig, this_dest_start, this_dest_end = self.get_destination()
-        other_source_contig, other_source_start, other_source_end = candidate2.get_source()
-        other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
-        if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
-                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
-        else:
-            return float("inf")
-
-
-    def get_vcf_entry(self):
-        contig, start, end = self.get_destination()
-        svtype = "INS"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
-
-
 class CandidateDuplicationTandem(Candidate):
     def __init__(self, source_contig, source_start, source_end, copies, members, score, std_span, std_pos):
         self.source_contig = source_contig
@@ -254,7 +204,7 @@ class CandidateDuplicationTandem(Candidate):
 
 
 class CandidateDuplicationInterspersed(Candidate):
-    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
+    def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos, cutpaste=False):
         self.source_contig = source_contig
         self.source_start = source_start
         self.source_end = source_end
@@ -267,6 +217,7 @@ class CandidateDuplicationInterspersed(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
+        self.cutpaste= cutpaste
         self.type = "dup_int"
 
 
@@ -277,18 +228,18 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_bed_entries(self, sep="\t"):
         source_contig, source_start, source_end = self.get_source()
         dest_contig, dest_start, dest_end = self.get_destination()
-        source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(source_contig, source_start,
+        source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(source_contig, source_start,
                                                                                      source_end,
                                                                                      "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end, self.std_span, self.std_pos), self.score,
+                                                                                         dest_end, self.std_span, self.std_pos), "origin potentially deleted" if self.cutpaste else ".", self.score,
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
-        dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(dest_contig, dest_start, dest_end,
+        dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(dest_contig, dest_start, dest_end,
                                                                                    "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end, self.std_span, self.std_pos), self.score,
+                                                                                       source_end, self.std_span, self.std_pos), "origin potentially deleted" if self.cutpaste else ".", self.score,
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -311,4 +262,4 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos))
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", end, end - start, self.std_span, self.std_pos))
