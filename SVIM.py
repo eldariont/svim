@@ -150,6 +150,13 @@ def main():
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
         full_aln_file = pysam.AlignmentFile(options.bam_file.name)
+
+        try:
+            if full_aln_file.header["HD"]["SO"] != "queryname":
+                logging.error("Input BAM file needs to be query-sorted. The given file, however, is not query-sorted according to its header line.")
+                return
+        except KeyError:
+            logging.warning("Is the given input BAM file query-sorted? It does not contain a sorting order in its header line.")
         sv_signatures = analyze_alignment(full_aln_file, options)
 
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
