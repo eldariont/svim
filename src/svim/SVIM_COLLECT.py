@@ -3,8 +3,8 @@ import os
 
 from subprocess import Popen, PIPE
 
-from SVIM_fullread import analyze_full_read_indel
-from SVIM_splitread import analyze_full_read_segments
+from svim.SVIM_fullread import analyze_full_read_indel
+from svim.SVIM_splitread import analyze_full_read_segments
 
 def guess_file_type(reads_path):
     if reads_path.endswith(".fa") or reads_path.endswith(".fasta") or reads_path.endswith(".FA"):

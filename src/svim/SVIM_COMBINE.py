@@ -4,9 +4,9 @@ import logging
 from collections import defaultdict
 from math import pow, sqrt
 
-from SVIM_clustering import form_partitions, partition_and_cluster_candidates
-from SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion
-from SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
+from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates
+from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion
+from svim.SVIM_merging import merge_insertions_from, merge_translocations_at_deletions, merge_translocations_at_insertions
 
 
 def cluster_sv_candidates(insertion_candidates, int_duplication_candidates, options):

@@ -5,8 +5,8 @@ from bisect import bisect_left
 from collections import defaultdict
 from math import pow, sqrt
 
-from SVSignature import SignatureTranslocation, SignatureInsertionFrom, SignatureClusterBiLocal
-from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
+from svim.SVSignature import SignatureTranslocation, SignatureInsertionFrom, SignatureClusterBiLocal
+from svim.SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
 def merge_insertions_from(insertion_from_signature_clusters, deletion_signature_clusters, options):
     """Classify insertion/duplication signature clusters as insertion or duplication"""

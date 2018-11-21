@@ -7,8 +7,8 @@ import networkx as nx
 from random import sample
 from statistics import mean, stdev
 
-from SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
-from SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
+from svim.SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
+from svim.SVCandidate import CandidateInsertion, CandidateDuplicationInterspersed
 
 
 def form_partitions(sv_signatures, max_delta):
