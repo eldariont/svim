@@ -3,8 +3,8 @@ from __future__ import print_function
 import sys
 from statistics import mean
 
-from SVSignature import SignatureDeletion, SignatureInsertion, SignatureInversion, SignatureTranslocation, SignatureDuplicationTandem, SignatureInsertionFrom
-from SVIM_clustering import consolidate_clusters_bilocal, clusters_from_partitions
+from svim.SVSignature import SignatureDeletion, SignatureInsertion, SignatureInversion, SignatureTranslocation, SignatureDuplicationTandem, SignatureInsertionFrom
+from svim.SVIM_clustering import consolidate_clusters_bilocal, clusters_from_partitions
 
 
 def is_similar(chr1, start1, end1, chr2, start2, end2):

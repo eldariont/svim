@@ -6,8 +6,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal
-from SVSignature import SignatureTranslocation
+from svim.SVIM_clustering import partition_and_cluster_unilocal, partition_and_cluster_bilocal
+from svim.SVSignature import SignatureTranslocation
 
 
 def complete_translocations(translocation_signatures):
