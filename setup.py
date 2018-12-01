@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 here = os.path.abspath(os.path.dirname(__file__))
 
 # Get the long description from the relevant file
-with open(os.path.join(here, 'README.md')) as f:
+with open(os.path.join(here, 'README.rst')) as f:
       long_description = f.read()
 
 def get_version(string):
@@ -34,6 +34,7 @@ setup(name='svim',
       keywords='svim SV PacBio structural variation caller',
       packages = find_packages("src"),
       package_dir = {"": "src"},
+      data_files = [("", ["LICENSE"])],
       zip_safe=False,
       install_requires=['pysam', 'numpy', 'scipy', 'biopython', 'networkx', 'matplotlib'],
       scripts=['src/svim/svim'])
