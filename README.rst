@@ -13,8 +13,7 @@ Background on Structural Variants and Long Reads
 ------------------------------------------------
 
 .. image:: https://raw.githubusercontent.com/eldariont/svim/master/docs/SVclasses.png
-    :width: 400px
-    :align: right
+    :align: center
 
 Structural variants (SVs) are typically defined as genomic variants larger than 50bps (e.g. deletions, duplications, inversions). Studies have shown that they affect more bases in any given genome than SNPs and small Indels taken together. Consequently, they have a large impact on genes and regulatory regions. This is reflected in the large number of genetic diseases that are caused by SVs.
 
@@ -35,12 +34,12 @@ Installation
 Input
 -----
 
-SVIM analyzes long reads contained in a FASTA file. Alternatively, it can analyze an alignment file in BAM format. SVIM was tested on both PacBio and Nanopore data. It works best for alignment files produces by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster `minimap2 <https://github.com/lh3/minimap2>`_.
+SVIM analyzes long reads contained in a FASTA file. Alternatively, it can analyze an alignment file in BAM format. SVIM was tested on both PacBio and Nanopore data. It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
 
 Output
 ------
 
-SVIM distinguishes five different SV classes (see above schema): deletions, tandem and interspersed duplications, inversions and novel insertions. Additionally, SVIM indicates for detected interspersed duplications whether the genomic origin location seems to be deleted in at least one haplotype (indicating a cut&paste insertion) or not (indicating a canonic interspersed duplication). For each of these SV classes, SVIM produces a BED file with the SV coordinates. Additionally, a VCF file is produced containing all found SVs.
+SVIM distinguishes five different SV classes (see above schema): deletions, inversions, tandem and interspersed duplications and novel insertions. Additionally, SVIM indicates for detected interspersed duplications whether the genomic origin location seems to be deleted in at least one haplotype (indicating a cut&paste insertion) or not (indicating a canonic interspersed duplication). For each of these SV classes, SVIM produces a BED file with the SV coordinates. Additionally, a VCF file is produced containing all found SVs.
 
 Installation and Usage
 ----------------------
