@@ -201,9 +201,15 @@ def partition_and_cluster_candidates(candidates, options, type):
         destination_average_start = (sum([candidate.get_destination()[1] for candidate in cluster]) / len(cluster))
         destination_average_end = (sum([candidate.get_destination()[2] for candidate in cluster]) / len(cluster))
 
+        #Origin deleted?
+        cutpaste = False
+        for member in cluster:
+            if member.cutpaste:
+                cutpaste = True
+
         if cluster[0].type == "dup_int":
             final_candidates.append(CandidateDuplicationInterspersed(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
-                                                       cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), combined_members, combined_score, combined_std_span, combined_std_pos))
+                                                       cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), combined_members, combined_score, combined_std_span, combined_std_pos, cutpaste))
     return final_candidates
 
 
