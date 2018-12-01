@@ -72,7 +72,7 @@ class Candidate:
 
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
     def get_vcf_entry(self):
@@ -133,7 +133,7 @@ class CandidateNovelInsertion(Candidate):
         return (self.dest_contig, self.dest_start, self.dest_end)
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
@@ -164,18 +164,18 @@ class CandidateDuplicationTandem(Candidate):
     def get_bed_entries(self, sep="\t"):
         source_contig, source_start, source_end = self.get_source()
         dest_contig, dest_start, dest_end = self.get_destination()
-        source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(source_contig, source_start,
+        source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(source_contig, source_start,
                                                                                      source_end,
                                                                                      "tan_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end, self.std_span, self.std_pos), self.score,
+                                                                                         dest_end, self.std_span, self.std_pos), self.score, ".",
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
-        dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", ]).format(dest_contig, dest_start, dest_end,
+        dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(dest_contig, dest_start, dest_end,
                                                                                    "tan_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end, self.std_span, self.std_pos), self.score,
+                                                                                       source_end, self.std_span, self.std_pos), self.score, ".",
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -232,14 +232,14 @@ class CandidateDuplicationInterspersed(Candidate):
                                                                                      source_end,
                                                                                      "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end, self.std_span, self.std_pos), "origin potentially deleted" if self.cutpaste else ".", self.score,
+                                                                                         dest_end, self.std_span, self.std_pos), self.score, "origin potentially deleted" if self.cutpaste else ".",
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(dest_contig, dest_start, dest_end,
                                                                                    "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end, self.std_span, self.std_pos), "origin potentially deleted" if self.cutpaste else ".", self.score,
+                                                                                       source_end, self.std_span, self.std_pos), self.score, "origin potentially deleted" if self.cutpaste else ".",
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
