@@ -19,11 +19,11 @@ def guess_file_type(reads_path):
     elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip"):
         logging.info("Recognized reads file as gzipped FASTQ format.")
         return "fastq_gzip"
-    elif reads_path.endswith(".fa.fn"):
-        logging.info("Recognized reads file as FASTA file list format.")
-        return "list" 
+    elif reads_path.endswith(".fa.fn") or reads_path.endswith(".fq.fn"):
+        logging.info("Recognized reads file as file list format.")
+        return "list"
     else:
-        logging.error("Unknown file ending of file {0}. Exiting.".format(reads_path))
+        logging.error("Unknown file ending of file {0}. See github.com/eldariont/svim/wiki/ for supported file endings. Exiting.".format(reads_path))
         return "unknown"
 
 
