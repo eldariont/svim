@@ -231,6 +231,8 @@ class SignatureTranslocation(Signature):
 
 
 class SignatureClusterUniLocal(Signature):
+    """Signature cluster class for clusters of signatures with only one genomic location.
+    """
     def __init__(self, contig, start, end, score, size, members, type, std_span, std_pos):
         self.contig = contig
         self.start = start
@@ -264,6 +266,8 @@ class SignatureClusterUniLocal(Signature):
         return self.end - self.start
 
 class SignatureClusterBiLocal(Signature):
+    """Signature cluster class for clusters of signatures with two genomic locations (source and destination).
+    """
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, score, size, members, type, std_span, std_pos):
         self.source_contig = source_contig
         self.source_start = source_start

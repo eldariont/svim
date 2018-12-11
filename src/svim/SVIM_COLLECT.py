@@ -1,10 +1,15 @@
 import logging
 import os
 
-from subprocess import Popen, PIPE
+from subprocess import run, CalledProcessError
 
 from svim.SVIM_fullread import analyze_full_read_indel
 from svim.SVIM_splitread import analyze_full_read_segments
+
+
+class ToolMissingError(Exception): pass
+
+class AlignmentPipelineError(Exception): pass
 
 def guess_file_type(reads_path):
     if reads_path.endswith(".fa") or reads_path.endswith(".fasta") or reads_path.endswith(".FA"):
@@ -27,114 +32,53 @@ def guess_file_type(reads_path):
         return "unknown"
 
 
-def create_full_file(working_dir, reads_path, reads_type):
-    """Create FASTA file with full reads if it does not exist."""
-    if not os.path.exists(working_dir):
-        logging.error("Given working directory does not exist")
-        sys.exit()
+def check_prereqisites(aligner):
+    devnull = open(os.devnull, 'w')
+    try:
+        run(['gunzip', '--help'], stdout=devnull, stderr=devnull, check=True)
+        run([aligner, '--help'], stdout=devnull, stderr=devnull, check=True)
+        run(['samtools', '--help'], stdout=devnull, stderr=devnull, check=True)
+    except FileNotFoundError as e:
+        raise ToolMissingError('The alignment pipeline cannot be started because {0} was not found. Is it installed and in the PATH?'.format(e.filename)) from e
+    except CalledProcessError as e:
+        raise ToolMissingError('The alignment pipeline cannot be started because {0} failed.'.format(" ".join(e.cmd))) from e
 
+
+def run_alignment(working_dir, genome, reads_path, reads_type, cores, aligner, nanopore):
+    """Align full reads with NGMLR or minimap2."""
+    check_prereqisites(aligner)
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-
-    if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-        full_reads_path = "{0}/{1}.fa".format(working_dir, reads_file_prefix)
-        if not os.path.exists(full_reads_path):
-            full_file = open(full_reads_path, 'w')
-            write_full = True
-        else:
-            write_full = False
-            logging.warning("FASTA file for full reads exists. Skip")
-    else:
-        full_reads_path = reads_path
-        write_full = False
-
-    if write_full:
-        if reads_type == "fasta" or reads_type == "fastq":
-            reads_file = open(reads_path, "r")
-        elif reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-            reads_file = gzip.open(reads_path, "rt")
-
-        if reads_type == "fasta" or reads_type == "fasta_gzip":
-            sequence = ""
-            for line in reads_file:
-                if line.startswith('>'):
-                    if sequence != "":
-                        if write_full:
-                            print(">" + read_name, file=full_file)
-                            print(sequence, file=full_file)
-                    read_name = line.strip()[1:]
-                    sequence = ""
-                else:
-                    sequence += line.strip()
-            if sequence != "":
-                if write_full:
-                    print(">" + read_name, file=full_file)
-                    print(sequence, file=full_file)
-            reads_file.close()
-        elif reads_type == "fastq" or reads_type == "fastq_gzip":
-            sequence_line_is_next = False
-            for line in reads_file:
-                if line.startswith('@'):
-                    read_name = line.strip()[1:]
-                    sequence_line_is_next = True
-                elif sequence_line_is_next:
-                    sequence_line_is_next = False
-                    sequence = line.strip()
-                    if write_full:
-                        print(">" + read_name, file=full_file)
-                        print(sequence, file=full_file)
-            reads_file.close()
-
-    if write_full:
-        full_file.close()
-
-    logging.info("Full read files written")
-    return full_reads_path
-
-
-def run_full_alignment(working_dir, genome, reads_path, cores, aligner, nanopore):
-    """Align full reads with NGM-LR."""
-    reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    full_aln = "{0}/{1}_aln.querysorted.bam".format(working_dir, reads_file_prefix)
-
+    full_aln = "{0}/{1}.{2}.querysorted.bam".format(working_dir, reads_file_prefix, aligner)
     if not os.path.exists(full_aln):
-        if aligner == "ngmlr":
-            if nanopore:
-                alignment = Popen(['ngmlr',
-                           '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path), '-x', 'ont'], stdout=PIPE)
-            else:
-                alignment = Popen(['ngmlr',
-                           '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)], stdout=PIPE)
-        elif aligner == "minimap2":
-            if nanopore:
-                alignment = Popen(['minimap2',
-                           '-t', str(cores), '-x', 'map-ont', '-a', genome, os.path.realpath(reads_path)], stdout=PIPE)
-            else:
-                alignment = Popen(['minimap2',
-                           '-t', str(cores), '-x', 'map-pb', '-a', genome, os.path.realpath(reads_path)], stdout=PIPE)
-        view = Popen(['samtools',
-                      'view', '-b', '-@', str(cores)], stdin=alignment.stdout, stdout=PIPE)
-        sort = Popen(['samtools',
-                      'sort', '-n', '-@', str(cores), '-o', full_aln],
-                     stdin=view.stdout)
-        sort.wait()
-        logging.info("Alignment finished")
+        try:
+            command = ['set', '-o', 'pipefail', '&&']
+            if aligner == "ngmlr":
+                # We need to uncompress gzipped files for NGMLR first
+                if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
+                    command += ['gunzip', '-c', os.path.realpath(reads_path)]
+                    command += ['|', 'ngmlr', '-t', str(cores), '-r', genome]
+                    if nanopore:
+                        command += ['-x', 'ont']
+                else:
+                    command += ['ngmlr', '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)]
+                    if nanopore:
+                        command += ['-x', 'ont']
+            elif aligner == "minimap2":
+                if nanopore:
+                    command += ['minimap2', '-t', str(cores), '-x', 'map-ont', '-a', genome, os.path.realpath(reads_path)]
+                else:
+                    command += ['minimap2', '-t', str(cores), '-x', 'map-pb', '-a', genome, os.path.realpath(reads_path)]
+            command += ['|', 'samtools', 'view', '-b', '-@', str(cores)]
+            command += ['|', 'samtools', 'sort', '-n', '-@', str(cores), '-o', full_aln]
+            logging.info("Starting alignment pipeline..")
+            run(" ".join(command), shell=True, check=True)
+        except CalledProcessError as e:
+            raise AlignmentPipelineError('The alignment pipeline failed with exit code {0}. Command was: {1}'.format(e.returncode, e.cmd)) from e
+        logging.info("Alignment pipeline finished")
+        return full_aln
     else:
-        logging.warning("Alignment for full sequences exists. Skip")
-
-
-# def parse_sam_file(sam, contig):
-#     """Parses a SAM file and returns a dict of reads (list of alignments for each read) for a given reference contig"""
-#     alns = sam.fetch(reference=contig)
-#     aln_dict = defaultdict(list)
-#     for aln in alns:
-#         aln_dict[aln.query_name].append(aln)
-#     return aln_dict
-
-
-# def natural_representation(qname): 
-#     """Splits a read name into a tuple of strings and numbers. This facilitates the sort order applied by samtools -n
-#        See https://www.biostars.org/p/102735/"""
-#     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', qname)]
+        logging.warning("Alignment output file {0} already exists. Skip alignment and use the existing file.".format(full_aln))
+        return full_aln
 
 
 def bam_iterator(bam):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 __author__ = 'David Heller'
 
 import sys
@@ -15,7 +15,7 @@ import pysam
 
 from time import strftime, localtime
 
-from svim.SVIM_COLLECT import guess_file_type, read_file_list, create_full_file, run_full_alignment, analyze_alignment
+from svim.SVIM_COLLECT import guess_file_type, read_file_list, run_alignment, analyze_alignment
 from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf, plot_histograms
 from svim.SVIM_COMBINE import combine_clusters
 
@@ -119,9 +119,8 @@ def main():
     logging.info("WORKING DIR: {0}".format(os.path.abspath(options.working_dir)))
     for arg in vars(options):
         logging.info("PARAMETER: {0}, VALUE: {1}".format(arg, getattr(options, arg)))
-    logging.info("****************** STEP 1: COLLECT ******************")
 
-    # Search for SV signatures
+    logging.info("****************** STEP 1: COLLECT ******************")
     if options.sub == 'reads':
         logging.info("MODE: reads")
         logging.info("INPUT: {0}".format(os.path.abspath(options.reads)))
@@ -132,34 +131,30 @@ def main():
         elif reads_type == "list":
             # List of read files
             sv_signatures = []
-            for file_path in read_file_list(options.reads):
+            for index, file_path in enumerate(read_file_list(options.reads)):
+                logging.info("Starting processing of file {0} from the list..".format(index))
                 reads_type = guess_file_type(file_path)
-                full_reads_path = create_full_file(options.working_dir, file_path, reads_type)
-                run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.aligner, options.nanopore)
-                reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-                full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-                full_aln_file = pysam.AlignmentFile(full_bam_path)
-                sv_signatures.extend(analyze_alignment(full_aln_file, options))
+                if reads_type == "unknown" or reads_type == "list":
+                    return
+                bam_path = run_alignment(options.working_dir, options.genome, file_path, reads_type, options.cores, options.aligner, options.nanopore)
+                aln_file = pysam.AlignmentFile(bam_path)
+                sv_signatures.extend(analyze_alignment(aln_file, options))
         else:
             # Single read file
-            full_reads_path = create_full_file(options.working_dir, options.reads, reads_type)
-            run_full_alignment(options.working_dir, options.genome, full_reads_path, options.cores, options.aligner, options.nanopore)
-            reads_file_prefix = os.path.splitext(os.path.basename(full_reads_path))[0]
-            full_bam_path = "{0}/{1}_aln.querysorted.bam".format(options.working_dir, reads_file_prefix)
-            full_aln_file = pysam.AlignmentFile(full_bam_path)
-            sv_signatures = analyze_alignment(full_aln_file, options)
+            bam_path = run_alignment(options.working_dir, options.genome, options.reads, reads_type, options.cores, options.aligner, options.nanopore)
+            aln_file = pysam.AlignmentFile(bam_path)
+            sv_signatures = analyze_alignment(aln_file, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
-        full_aln_file = pysam.AlignmentFile(options.bam_file.name)
-
+        aln_file = pysam.AlignmentFile(options.bam_file.name)
         try:
-            if full_aln_file.header["HD"]["SO"] != "queryname":
+            if aln_file.header["HD"]["SO"] != "queryname":
                 logging.error("Input BAM file needs to be query-sorted. The given file, however, is not query-sorted according to its header line.")
                 return
         except KeyError:
             logging.warning("Is the given input BAM file query-sorted? It does not contain a sorting order in its header line.")
-        sv_signatures = analyze_alignment(full_aln_file, options)
+        sv_signatures = analyze_alignment(aln_file, options)
 
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
     insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
@@ -175,7 +170,6 @@ def main():
     logging.info("Found {0} signatures for translocation breakpoints.".format(len(translocation_signatures)))
     logging.info("Found {0} signatures for inserted regions with detected region of origin.".format(len(insertion_from_signatures)))
     
-    # Cluster SV signatures
     logging.info("****************** STEP 2: CLUSTER ******************")
     signature_clusters = cluster_sv_signatures(sv_signatures, options)
 
@@ -187,14 +181,8 @@ def main():
     # Create result plots
     plot_histograms(options.working_dir, signature_clusters)
 
-    # Dump obj file
-    # signatures_file = open(options.working_dir + '/sv_signatures.obj', 'wb')
-    # logging.info("Storing collected signature clusters into sv_signatures.obj..")
-    # pickle.dump(signature_clusters, signatures_file)
-    # signatures_file.close()
-
     logging.info("****************** STEP 3: COMBINE ******************")
-    combine_clusters(signature_clusters, options.working_dir, options, __version__, full_aln_file.references, full_aln_file.lengths)
+    combine_clusters(signature_clusters, options.working_dir, options, __version__, aln_file.references, aln_file.lengths)
 
 if __name__ == "__main__":
     sys.exit(main())
