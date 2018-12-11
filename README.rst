@@ -24,24 +24,29 @@ Installation
 
 .. code-block:: bash
 
-    #Install via conda: easiest option, installs all dependencies + read aligners NGMLR and minimap2
+    #Install via conda: easiest option, installs all dependencies including read alignment dependencies
     conda install --channel bioconda svim
 
-    #Install via pip: installs all dependencies but no read aligners
+    #Install via pip (requires Python 3.6.*): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
     pip3 install svim
+
+    #Install from github (requires Python 3.6.*): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
+    git clone https://github.com/eldariont/svim.git
+    cd svim
+    pip3 install .
 
 
 Input
 -----
 
-SVIM analyzes long reads contained in a FASTA file. Alternatively, it can analyze an alignment file in BAM format. SVIM was tested on both PacBio and Nanopore data. It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
+SVIM analyzes long reads given as a FASTA/FASTQ file (uncompressed or gzipped) or a file list. Alternatively, it can analyze an alignment file in BAM format. SVIM was tested on both PacBio and Nanopore data. It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
 
 Output
 ------
 
 SVIM distinguishes five different SV classes (see above schema): deletions, inversions, tandem and interspersed duplications and novel insertions. Additionally, SVIM indicates for detected interspersed duplications whether the genomic origin location seems to be deleted in at least one haplotype (indicating a cut&paste insertion) or not (indicating a canonic interspersed duplication). For each of these SV classes, SVIM produces a BED file with the SV coordinates. Additionally, a VCF file is produced containing all found SVs.
 
-Installation and Usage
+Usage
 ----------------------
 
 Please see our `wiki <https://github.com/eldariont/svim/wiki>`_.
