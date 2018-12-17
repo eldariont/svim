@@ -62,6 +62,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='Maximum distance in bp between translocation breakpoint destinations in a partition')
     group_fasta_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition')
     group_fasta_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined')
+    group_fasta_combine.add_argument('--sample', type=str, default="Sample", help='Sample ID to include in output vcf (default: Sample)')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -83,6 +84,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_combine.add_argument('--trans_destination_partition_max_distance', type=int, default=1000, help='Maximum distance in bp between translocation breakpoint destinations in a partition')
     group_bam_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition')
     group_bam_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined')
+    group_bam_combine.add_argument('--sample', type=str, default="Sample", help='Sample ID to include in output vcf (default: Sample)')
 
     return parser.parse_args()
 
@@ -182,7 +184,7 @@ def main():
     plot_histograms(options.working_dir, signature_clusters)
 
     logging.info("****************** STEP 3: COMBINE ******************")
-    combine_clusters(signature_clusters, options.working_dir, options, __version__, aln_file.references, aln_file.lengths)
+    combine_clusters(signature_clusters, options.working_dir, options, __version__, aln_file.references, aln_file.lengths, options.sample)
 
 if __name__ == "__main__":
     sys.exit(main())
