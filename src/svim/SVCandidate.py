@@ -82,7 +82,9 @@ class Candidate:
 class CandidateDeletion(Candidate):
     def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
+        #0-based start of the deletion (first deleted base)
         self.source_start = source_start
+        #0-based end of the deletion (one past the last deleted base)
         self.source_end = source_end
 
         self.members = members
@@ -95,13 +97,15 @@ class CandidateDeletion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "DEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateInversion(Candidate):
     def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos):
         self.source_contig = source_contig
+        #0-based start of the inversion (first inverted base)
         self.source_start = source_start
+        #0-based end of the inversion (one past the last inverted base)
         self.source_end = source_end
 
         self.members = members
@@ -120,7 +124,9 @@ class CandidateInversion(Candidate):
 class CandidateNovelInsertion(Candidate):
     def __init__(self, dest_contig, dest_start, dest_end, members, score, std_span, std_pos):
         self.dest_contig = dest_contig
+        #0-based start of the insertion (base after the insertion)
         self.dest_start = dest_start
+        #0-based start of the insertion (base after the insertion) + length of the insertion
         self.dest_end = dest_end
 
         self.members = members
@@ -138,13 +144,15 @@ class CandidateNovelInsertion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS:NOVEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateDuplicationTandem(Candidate):
     def __init__(self, source_contig, source_start, source_end, copies, members, score, std_span, std_pos):
         self.source_contig = source_contig
+        #0-based start of the region (first copied base)
         self.source_start = source_start
+        #0-based end of the region (one past the last copied base)
         self.source_end = source_end
         
         self.copies = copies
@@ -200,17 +208,21 @@ class CandidateDuplicationTandem(Candidate):
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
         svtype = "DUP:TANDEM"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateDuplicationInterspersed(Candidate):
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos, cutpaste=False):
         self.source_contig = source_contig
+        #0-based start of the region (first copied base)
         self.source_start = source_start
+        #0-based end of the region (one past the last copied base)
         self.source_end = source_end
 
         self.dest_contig = dest_contig
+        #0-based start of the insertion (base after the insertion)
         self.dest_start = dest_start
+        #0-based end of the insertion (base after the insertion) + length of the insertion
         self.dest_end = dest_end
 
         self.members = members
@@ -262,4 +274,4 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", end, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.std_span, self.std_pos), "GT", "./.")

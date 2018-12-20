@@ -74,7 +74,9 @@ class SignatureDeletion(Signature):
     """SV Signature: a region (contig:start-end) has been deleted and is not present in sample"""
     def __init__(self, contig, start, end, signature, read):
         self.contig = contig
+        #0-based start of the deletion (first deleted base)
         self.start = start
+        #0-based end of the deletion (one past the last deleted base)
         self.end = end
         self.signature = signature
         self.read = read
@@ -85,7 +87,9 @@ class SignatureInsertion(Signature):
     """SV Signature: a region of length end-start has been inserted at contig:start"""
     def __init__(self, contig, start, end, signature, read):
         self.contig = contig
+        #0-based start of the insertion (base after the insertion)
         self.start = start
+        #0-based start of the insertion (base after the insertion) + length of the insertion
         self.end = end
         self.signature = signature
         self.read = read
@@ -96,7 +100,9 @@ class SignatureInversion(Signature):
     """SV Signature: a region (contig:start-end) has been inverted in the sample"""
     def __init__(self, contig, start, end, signature, read, direction):
         self.contig = contig
+        #0-based start of the inversion (first inverted base)
         self.start = start
+        #0-based end of the inversion (one past the last inverted base)
         self.end = end
         self.signature = signature
         self.read = read
@@ -113,10 +119,13 @@ class SignatureInsertionFrom(Signature):
     """SV Signature: a region (contig:start-end) has been inserted at contig2:pos in the sample"""
     def __init__(self, contig1, start, end, contig2, pos, signature, read):
         self.contig1 = contig1
+        #0-based start of the region (first copied base)
         self.start = start
+        #0-based end of the region (one past the last copied base)
         self.end = end
 
         self.contig2 = contig2
+        #0-based start of the insertion (base after the insertion)
         self.pos = pos
 
         self.signature = signature
@@ -165,7 +174,9 @@ class SignatureDuplicationTandem(Signature):
 
     def __init__(self, contig, start, end, copies, signature, read):
         self.contig = contig
+        #0-based start of the region (first copied base)
         self.start = start
+        #0-based end of the region (one past the last copied base)
         self.end = end
 
         self.copies = copies
@@ -192,9 +203,11 @@ class SignatureTranslocation(Signature):
     """SV Signature: two positions (contig1:pos1 and contig2:pos2) are connected in the sample"""
     def __init__(self, contig1, pos1, direction1, contig2, pos2, direction2, signature, read):
         self.contig1 = contig1
+        #0-based source of the translocation (first base before the translocation)
         self.pos1 = pos1
         self.direction1 = direction1
         self.contig2 = contig2
+        #0-based destination of the translocation (first base after the translocation)
         self.pos2 = pos2
         self.direction2 = direction2
         self.signature = signature

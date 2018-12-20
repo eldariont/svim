@@ -93,11 +93,11 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                             #No gap on read
                             if distance_on_read <= options.segment_gap_tolerance:
                                 if not alignment_current['is_reverse']:
-                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
-                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_start']))
                                 else:
-                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
-                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end'] - 1))
                     #overlap on reference
                     else:
                         #Tandem Duplication
@@ -108,16 +108,16 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                                     tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
-                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
-                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_start']))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                                    translocations.append(('fwd', 'fwd', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_start']))
                             else:
                                 #Tandem Duplication
                                 if alignment_next['ref_start'] < alignment_current['ref_end']:
                                     tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
-                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
-                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end']))
+                                    sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                                    translocations.append(('rev', 'rev', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_end'] - 1))
             #Different orientations
             else:
                 #Normal to reverse
@@ -130,8 +130,8 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                                 #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
                             #Either very large INV or TRANS
                             else:
-                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
-                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_end'] - 1))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -options.segment_overlap_tolerance: # Case 3
                             #INV candidate
                             if alignment_current['ref_end'] - alignment_next['ref_end'] <= options.max_sv_size:
@@ -139,8 +139,8 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                                 #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
                             #Either very large INV or TRANS
                             else:
-                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'], 'fwd', ref_chr, alignment_next['ref_end'], 'rev', "suppl", read_name))
-                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'], ref_chr, alignment_next['ref_end']))
+                                sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                                translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_end'] - 1))
                     else:
                         pass
                         #print("Overlapping read segments in read", read_name)
@@ -179,11 +179,11 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                     #No gap on read
                     if distance_on_read <= options.segment_gap_tolerance:
                         if not alignment_current['is_reverse']:
-                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_end'], 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
-                            translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'], ref_chr_next, alignment_next['ref_start']))
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_end'] - 1, 'fwd', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                            translocations.append(('fwd', 'fwd', ref_chr_current, alignment_current['ref_end'] - 1, ref_chr_next, alignment_next['ref_start']))
                         else:
-                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_end'], 'rev', "suppl", read_name))
-                            translocations.append(('rev', 'rev', ref_chr_current, alignment_current['ref_start'], ref_chr_next, alignment_next['ref_end']))
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                            translocations.append(('rev', 'rev', ref_chr_current, alignment_current['ref_start'], ref_chr_next, alignment_next['ref_end'] - 1))
                 #Overlap on read
                 else:
                     pass
@@ -237,11 +237,11 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                         #INS_DUP candidate
                         if before_dir2 == before_dir1:
                             if before_dir1 == 'fwd':
-                                if options.min_sv_size <= this_pos1 - before_pos2 <= options.max_sv_size:
-                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, before_pos2, this_pos1, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                                if options.min_sv_size <= this_pos1 - before_pos2 + 1 <= options.max_sv_size:
+                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, before_pos2, this_pos1 + 1, before_chr1, int(mean([before_pos1 + 1, this_pos2])), "suppl", read_name))
                             elif before_dir1 == 'rev':
                                 if options.min_sv_size <= before_pos2 - this_pos1 <= options.max_sv_size:
-                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, this_pos1, before_pos2, before_chr1, int(mean([before_pos1, this_pos2])), "suppl", read_name))
+                                    sv_signatures.append(SignatureInsertionFrom(before_chr2, this_pos1, before_pos2 + 1, before_chr1, int(mean([before_pos1, this_pos2 + 1])), "suppl", read_name))
                         #INV_INS_DUP candidate
                         else:
                             pass
