@@ -181,6 +181,7 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
 
     for inserted_region_index, inserted_region in enumerate(insertion_signature_clusters):
         contig1, start1, end1 = inserted_region.get_source()
+        length1 = end1 - start1
         if not int_duplications_end:
             contig2, start2, end2 = current_int_duplication.get_destination()
             while contig2 < contig1 or (contig2 == contig1 and end2 < start1):
@@ -190,8 +191,9 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
                 except StopIteration:
                     int_duplications_end = True
                     break
-        #if overlapping interspersed duplication
-        if not int_duplications_end and contig2 == contig1 and start2 < end1:
+        #if overlapping interspersed duplication of similar length
+        length2 = end2 - start2
+        if not int_duplications_end and contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
             inserted_regions_to_remove_2.append(inserted_region_index)
         else:
             if not tan_duplications_end:
@@ -203,8 +205,9 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
                     except StopIteration:
                         tan_duplications_end = True
                         break
-            #if overlapping tandem duplication
-            if not tan_duplications_end and contig2 == contig1 and start2 < end1:
+            #if overlapping tandem duplication of similar length
+            length2 = end2 - start2
+            if not tan_duplications_end and contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
                 inserted_regions_to_remove_2.append(inserted_region_index)
 
     # remove found inserted regions
