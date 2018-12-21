@@ -118,7 +118,7 @@ class CandidateInversion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "INV"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q20" if self.score < 20 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q20" if self.score < 20 else "PASS", "SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateNovelInsertion(Candidate):
