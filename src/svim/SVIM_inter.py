@@ -14,18 +14,12 @@ def is_similar(chr1, start1, end1, chr2, start2, end2):
         return False
 
 
-def analyze_full_read_segments(full_iterator_object, full_bam, options):
-    full_read_name, full_prim, full_suppl, full_sec = full_iterator_object
-
-    if len(full_prim) != 1 or full_prim[0].is_unmapped or full_prim[0].mapping_quality < options.min_mapq:
+def analyze_read_segments(primary, supplementaries, bam, options):
+    if len(supplementaries) > 3:
         return []
 
-    good_suppl_alns = [aln for aln in full_suppl if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
-    if len(good_suppl_alns) > 3:
-        return []
-
-    read_name = full_prim[0].query_name
-    alignments = [full_prim[0]] + good_suppl_alns
+    read_name = primary.query_name
+    alignments = [primary] + supplementaries
     alignment_list = []
     for alignment in alignments:
         #correct query coordinates for reversely mapped reads
@@ -45,7 +39,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
         alignment_list.append(new_alignment_dict)
 
     sorted_alignment_list = sorted(alignment_list, key=lambda aln: (aln['q_start'], aln['q_end']))
-    inferred_read_length = alignments[0].infer_read_length()
+    #inferred_read_length = alignments[0].infer_read_length()
 
     sv_signatures = []
     tandem_duplications = []
@@ -59,7 +53,7 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
 
         #Same chromosome
         if alignment_current['ref_id'] == alignment_next['ref_id']:
-            ref_chr = full_bam.getrname(alignment_current['ref_id'])
+            ref_chr = bam.getrname(alignment_current['ref_id'])
             #Same orientation
             if alignment_current['is_reverse'] == alignment_next['is_reverse']:
                 #Compute distance on reference depending on orientation
@@ -170,8 +164,8 @@ def analyze_full_read_segments(full_iterator_object, full_bam, options):
                         #print("Overlapping read segments in read", read_name)
         #Different chromosomes
         else:
-            ref_chr_current = full_bam.getrname(alignment_current['ref_id'])
-            ref_chr_next = full_bam.getrname(alignment_next['ref_id'])
+            ref_chr_current = bam.getrname(alignment_current['ref_id'])
+            ref_chr_next = bam.getrname(alignment_next['ref_id'])
             #Same orientation
             if alignment_current['is_reverse'] == alignment_next['is_reverse']:
                 #No overlap on read
