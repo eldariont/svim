@@ -56,6 +56,11 @@ Contact
 
 If you experience problems or have suggestions please create an issue or a pull request or contact heller_d@molgen.mpg.de.
 
+Citation
+---------
+
+Feel free to read and cite our paper in Bioinformatics: https://doi.org/10.1093/bioinformatics/btz041
+
 License
 -------
 
