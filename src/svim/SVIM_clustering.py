@@ -27,7 +27,7 @@ def form_partitions(sv_signatures, max_delta):
 
 
 def clusters_from_partitions(partitions, options):
-    """Form clusters in partitions using Gowda-Diday distance and clique finding in a distance graph."""
+    """Form clusters in partitions using span-log distance and clique finding in a distance graph."""
     clusters_full = []
     # Find clusters in each partition individually.
     for num, partition in enumerate(partitions):
@@ -42,14 +42,9 @@ def clusters_from_partitions(partitions, options):
         for i1 in range(len(partition_sample)):
             for i2 in range(len(partition_sample)):
                 if i1 != i2:
-                    if options.distance_metric == "gd":
-                        if partition_sample[i1].gowda_diday_distance(partition_sample[i2], largest_indel_size) <= options.cluster_max_distance:
-                            # Add edge in graph only if two indels are close to each other (distance <= max_delta)
-                            connection_graph.add_edge(i1, i2)
-                    else:
-                        if partition_sample[i1].span_loc_distance(partition_sample[i2], options.distance_normalizer) <= options.cluster_max_distance:
-                            # Add edge in graph only if two indels are close to each other (distance <= max_delta)
-                            connection_graph.add_edge(i1, i2)
+                    if partition_sample[i1].span_loc_distance(partition_sample[i2], options.distance_normalizer) <= options.cluster_max_distance:
+                        # Add edge in graph only if two indels are close to each other (distance <= max_delta)
+                        connection_graph.add_edge(i1, i2)
         clusters_indices = nx.find_cliques(connection_graph)
         for cluster in clusters_indices:
             clusters_full.append([partition_sample[index] for index in cluster])

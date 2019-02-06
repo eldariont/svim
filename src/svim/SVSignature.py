@@ -33,23 +33,6 @@ class Signature:
             return float("inf")
 
 
-    def gowda_diday_distance(self, signature2, largest_indel_size):
-        """Return Gowda-Diday distance between two signatures."""
-        this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = signature2.get_source()
-        # non-intersecting
-        if this_contig != other_contig or this_end <= other_start or other_end <= this_start:
-            return float("inf")
-        dist_pos = abs(this_start - other_start) / largest_indel_size
-        span1 = abs(this_end - this_start)
-        span2 = abs(other_end - other_start)
-        span_total = abs(max(this_end, other_end) - min(this_start, other_start))
-        dist_span = abs(span1 - span2) / span_total
-        inter = min(this_end, other_end) - max(this_start, other_start)
-        dist_content = (span1 + span2 - 2 * inter) / span_total
-        return dist_pos + dist_span + dist_content
-
-
     def span_loc_distance(self, signature2, distance_normalizer):
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = signature2.get_source()

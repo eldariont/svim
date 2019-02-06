@@ -13,10 +13,7 @@ def flag_cutpaste_candidates(insertion_from_signature_clusters, deletion_signatu
     int_duplication_candidates = []
     for ins_cluster in insertion_from_signature_clusters:
         # Compute distances of every deletion cluster to the current insertion/duplication
-        if options.distance_metric == "gd":
-            distances = [(del_index, del_cluster.gowda_diday_distance(ins_cluster, max(ins_cluster.get_source_length(), del_cluster.get_length()))) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
-        elif options.distance_metric == "sl":
-            distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, options.distance_normalizer)) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
+        distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, options.distance_normalizer)) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
         closest_deletion_index, closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
