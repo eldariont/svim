@@ -193,10 +193,11 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
                 except StopIteration:
                     int_duplications_end = True
                     break
-        #if overlapping interspersed duplication of similar length
-        length2 = end2 - start2
-        if not int_duplications_end and contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
-            inserted_regions_to_remove_2.append(inserted_region_index)
+        if not int_duplications_end:
+            length2 = end2 - start2
+            #if overlapping interspersed duplication of similar length
+            if contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
+                inserted_regions_to_remove_2.append(inserted_region_index)
         else:
             if not tan_duplications_end:
                 contig2, start2, end2 = current_tan_duplication.get_destination()
@@ -207,10 +208,11 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
                     except StopIteration:
                         tan_duplications_end = True
                         break
-            #if overlapping tandem duplication of similar length
-            length2 = end2 - start2
-            if not tan_duplications_end and contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
-                inserted_regions_to_remove_2.append(inserted_region_index)
+            if not tan_duplications_end:
+                length2 = end2 - start2
+                #if overlapping tandem duplication of similar length
+                if contig2 == contig1 and start2 < end1 and (length1 - length2) / max(length1, length2) < 0.2:
+                    inserted_regions_to_remove_2.append(inserted_region_index)
 
     # remove found inserted regions
     all_inserted_regions_to_remove = sorted(list(set(inserted_regions_to_remove_1 + inserted_regions_to_remove_2)), reverse=True)
