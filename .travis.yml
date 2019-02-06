@@ -1,7 +1,8 @@
 language: python
 python:
+  - "3.5"
   - "3.6"
-  - "pypy3.6"
+  - "pypy3.5"
 install:
   - pip install pysam numpy scipy biopython networkx matplotlib
 script:
