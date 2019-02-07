@@ -79,13 +79,13 @@ def guess_file_type(reads_path):
     elif reads_path.endswith(".fq") or reads_path.endswith(".fastq") or reads_path.endswith(".FQ"):
         logging.info("Recognized reads file as FASTQ format.")
         return "fastq"
-    elif reads_path.endswith(".fa.gz") or reads_path.endswith(".fasta.gz") or reads_path.endswith(".fa.gzip") or reads_path.endswith(".fasta.gzip"):
+    elif reads_path.endswith(".fa.gz") or reads_path.endswith(".fasta.gz") or reads_path.endswith(".FA.gz") or reads_path.endswith(".fa.gzip") or reads_path.endswith(".fasta.gzip") or reads_path.endswith(".FA.gzip"):
         logging.info("Recognized reads file as gzipped FASTA format.")
         return "fasta_gzip"
-    elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip"):
+    elif reads_path.endswith(".fq.gz") or reads_path.endswith(".fastq.gz") or reads_path.endswith(".FQ.gz") or reads_path.endswith(".fq.gzip") or reads_path.endswith(".fastq.gzip") or reads_path.endswith(".FQ.gzip"):
         logging.info("Recognized reads file as gzipped FASTQ format.")
         return "fastq_gzip"
-    elif reads_path.endswith(".fa.fn") or reads_path.endswith(".fq.fn"):
+    elif reads_path.endswith(".fa.fn") or reads_path.endswith(".fasta.fn") or reads_path.endswith(".FA.fn") or reads_path.endswith(".fq.fn") or reads_path.endswith(".fastq.fn") or reads_path.endswith(".FQ.fn"):
         logging.info("Recognized reads file as file list format.")
         return "list"
     else:
