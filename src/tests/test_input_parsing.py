@@ -1,8 +1,9 @@
 import unittest
+import tempfile
 
-from svim.SVIM_input_parsing import guess_file_type
+from svim.SVIM_input_parsing import guess_file_type, parse_arguments
 
-class TestSVSignature(unittest.TestCase):
+class TestInputParsing(unittest.TestCase):
 
     def test_guess_file_type(self):
         fasta_paths = ["/test/path/test.file.fa", "/test/path/test.file.fasta", "/test/path/test.file.FA"]
@@ -25,3 +26,24 @@ class TestSVSignature(unittest.TestCase):
             self.assertEqual(guess_file_type(zipped_path2), "fastq_gzip")
             list_path = p + ".fn"
             self.assertEqual(guess_file_type(list_path), "list")
+    
+    def test_parse_arguments(self):
+        arguments = ['alignment', 'myworkdir', 'mybamfile']
+        options = parse_arguments('0.4.3', arguments)
+        self.assertEqual(type(options.min_mapq), int)
+        self.assertEqual(type(options.min_sv_size), int)
+        self.assertEqual(type(options.max_sv_size), int)
+        self.assertEqual(type(options.skip_indel), bool)
+        self.assertEqual(type(options.skip_segment), bool)
+        self.assertEqual(type(options.segment_gap_tolerance), int)
+        self.assertEqual(type(options.segment_overlap_tolerance), int)
+        self.assertEqual(type(options.partition_max_distance), int)
+        self.assertEqual(type(options.distance_normalizer), int)
+        self.assertEqual(type(options.cluster_max_distance), float)
+        self.assertEqual(type(options.del_ins_dup_max_distance), float)
+        self.assertEqual(type(options.trans_destination_partition_max_distance), int)
+        self.assertEqual(type(options.trans_partition_max_distance), int)
+        self.assertEqual(type(options.trans_sv_max_distance), int)
+        self.assertEqual(type(options.sample), str)
+        self.assertEqual(type(options.trans_partition_max_distance), int)
+        self.assertEqual(type(options.trans_partition_max_distance), int)
