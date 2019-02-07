@@ -1,9 +1,10 @@
+import sys
 import os
 import logging
 import argparse
 
 
-def parse_arguments(program_version):
+def parse_arguments(program_version, arguments = sys.argv[1:]):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
 It discriminates five different variant classes: deletions, tandem and interspersed duplications, 
@@ -49,7 +50,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
-    parser_bam.add_argument('bam_file', type=argparse.FileType('r'), help='SAM/BAM file with aligned long reads (should be queryname-sorted with samtools sort -n)')
+    parser_bam.add_argument('bam_file', type=str, help='SAM/BAM file with aligned long reads (should be queryname-sorted with samtools sort -n)')
     group_bam_collect = parser_bam.add_argument_group('COLLECT')
     group_bam_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
     group_bam_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
@@ -69,7 +70,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined')
     group_bam_combine.add_argument('--sample', type=str, default="Sample", help='Sample ID to include in output vcf (default: Sample)')
 
-    return parser.parse_args()
+    return parser.parse_args(arguments)
 
 
 def guess_file_type(reads_path):

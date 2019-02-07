@@ -78,8 +78,8 @@ def main():
             sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
-        logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file.name)))
-        aln_file = pysam.AlignmentFile(options.bam_file.name)
+        logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file)))
+        aln_file = pysam.AlignmentFile(options.bam_file)
         try:
             if aln_file.header["HD"]["SO"] == "coordinate":
                 logging.warning("Input BAM file is coordinate-sorted. SVIM can process it but will be less accurate than for queryname-sorted input. It is highly recommended to sort the BAM file by queryname using samtools sort -n.")
