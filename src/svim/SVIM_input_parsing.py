@@ -50,7 +50,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
-    parser_bam.add_argument('bam_file', type=str, help='SAM/BAM file with aligned long reads (should be queryname-sorted with samtools sort -n)')
+    parser_bam.add_argument('bam_file', type=str, help='SAM/BAM file with aligned long reads (sorted, preferentially on queryname with \'samtools sort -n\')')
     group_bam_collect = parser_bam.add_argument_group('COLLECT')
     group_bam_collect.add_argument('--min_mapq', type=int, default=20, help='Minimum mapping quality of reads to consider')
     group_bam_collect.add_argument('--min_sv_size', type=int, default=40, help='Minimum SV size to detect')
