@@ -2,7 +2,7 @@ import unittest
 import pysam
 import tempfile
 
-from svim.SVIM_COLLECT import bam_iterator, analyze_alignment_file_querysorted
+from svim.SVIM_COLLECT import bam_iterator, analyze_alignment_file_querysorted, retrieve_supplementary_alignments
 from svim.SVIM_input_parsing import parse_arguments
 from random import choice, triangular, uniform
 
@@ -46,9 +46,29 @@ class TestCollect(unittest.TestCase):
         cigar = self.generate_random_cigar_string(length)
         seq = self.generate_random_sequence(length)
 
-        read_info = (qname, flag, rname, pos, mapq, cigar, "*", 0, 0, seq, "*")
+        read_info = (qname, flag, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", "")
 
         return read_info
+    
+    def generate_primary_read_with_sa_tag(self, qname, flag):
+        rname = "chr1"
+        pos = int(uniform(1,249250620))
+        mapq = int(triangular(0, 60, 50))
+        length = int(triangular(100, 20000, 15000))
+        cigar = self.generate_random_cigar_string(length)
+        seq = self.generate_random_sequence(length)
+
+        supplementary_read_info = (qname, flag + 2048, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", "")
+        sa_tag = "SA:Z:{rname},{pos},{strand},{cigar},{mapq},{nm};".format(rname=rname, pos=pos, strand=("-" if flag & 16 else "+"), cigar=cigar, mapq=mapq, nm=0)
+        
+        rname = "chr1"
+        pos = int(uniform(1,249250620))
+        mapq = int(triangular(0, 60, 50))
+        cigar = self.generate_random_cigar_string(length)
+
+        primary_read_info = (qname, flag, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", sa_tag)
+
+        return (primary_read_info, supplementary_read_info)
 
     def setUp(self):
         self.bam_file = tempfile.NamedTemporaryFile()
@@ -159,14 +179,15 @@ class TestCollect(unittest.TestCase):
 
         #10 reads with primary and supplementary alignment
         for index in range(10, 20):
-            read_info = self.generate_read("read{}".format(index+1), 0)
-            self.read_infos.append(read_info)
-            sam_entry = "\n" + "\t".join([str(el) for el in read_info])
+            primary_read_info, supplementary_read_info = self.generate_primary_read_with_sa_tag("read{}".format(index+1), 0)
+            #primary with SA tag
+            self.read_infos.append(primary_read_info)
+            sam_entry = "\n" + "\t".join([str(el) for el in primary_read_info])
             self.bam_file.write(sam_entry.encode('utf-8'))
-            read_info = self.generate_read("read{}".format(index+1), 2048)
-            self.read_infos.append(read_info)
-            sam_entry = "\n" + "\t".join([str(el) for el in read_info])
-            self.bam_file.write(sam_entry.encode('utf-8'))
+            #supplementary
+            self.read_infos.append(supplementary_read_info)
+            sam_entry = "\n" + "\t".join([str(el) for el in supplementary_read_info])
+            self.bam_file.write(sam_entry.encode('utf-8'))            
 
         self.bam_file.seek(0)
         self.alignment_file = pysam.AlignmentFile(self.bam_file.name, "rb")
@@ -194,3 +215,23 @@ class TestCollect(unittest.TestCase):
         signatures = analyze_alignment_file_querysorted(self.alignment_file, options)
 
         self.assertEqual(len(signatures), 0)
+    
+    def test_retrieve_supplementary_alignments(self):
+        alignment_it = self.alignment_file.fetch(until_eof=True)
+        alignments = list(alignment_it)
+        for i in range(10,30,2):
+            primary = alignments[i]
+            supplementary = alignments[i+1]
+            retrieved_supplementary_alns = retrieve_supplementary_alignments(primary, self.alignment_file)
+            self.assertEqual(len(retrieved_supplementary_alns), 1)
+            self.assertEqual(retrieved_supplementary_alns[0].cigarstring, supplementary.cigarstring)
+            self.assertEqual(retrieved_supplementary_alns[0].reference_id, supplementary.reference_id)
+            self.assertEqual(retrieved_supplementary_alns[0].reference_start, supplementary.reference_start)
+            self.assertEqual(retrieved_supplementary_alns[0].reference_end, supplementary.reference_end)
+            self.assertEqual(retrieved_supplementary_alns[0].flag, supplementary.flag)
+            self.assertEqual(retrieved_supplementary_alns[0].mapping_quality, supplementary.mapping_quality)
+            self.assertEqual(retrieved_supplementary_alns[0].query_sequence, supplementary.query_sequence)
+            self.assertEqual(retrieved_supplementary_alns[0].query_name, supplementary.query_name)
+            self.assertEqual(retrieved_supplementary_alns[0].query_alignment_start, supplementary.query_alignment_start)
+            self.assertEqual(retrieved_supplementary_alns[0].query_alignment_end, supplementary.query_alignment_end)
+

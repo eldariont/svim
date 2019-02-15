@@ -118,7 +118,7 @@ def analyze_alignment_file_querysorted(bam, options):
 
 
 def analyze_alignment_file_coordsorted(bam, options):
-    alignment_it = bam.fetch(until_eof=True, multiple_iterators=True)
+    alignment_it = bam.fetch(until_eof=True)
 
     sv_signatures = []
     read_nr = 0
