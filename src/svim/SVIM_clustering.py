@@ -12,13 +12,13 @@ from svim.SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
 from svim.SVCandidate import CandidateDuplicationInterspersed
 
 
-def form_partitions(sv_signatures, max_delta):
+def form_partitions(sv_signatures, max_distance):
     """Form partitions of signatures using mean distance."""
     sorted_signatures = sorted(sv_signatures, key=lambda evi: evi.get_key())
     partitions = []
     current_partition = []
     for signature in sorted_signatures:
-        if len(current_partition) > 0 and current_partition[0].mean_distance_to(signature) > max_delta:
+        if len(current_partition) > 0 and current_partition[-1].position_distance_to(signature) > max_distance:
             partitions.append(current_partition[:])
             current_partition = []
         current_partition.append(signature)
@@ -195,7 +195,7 @@ def consolidate_clusters_bilocal(clusters):
 
 
 def partition_and_cluster_candidates(candidates, options, type):
-    partitions = form_partitions(candidates, options.partition_max_distance)
+    partitions = form_partitions(candidates, options.distance_normalizer * options.cluster_max_distance)
     clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
 
@@ -233,14 +233,14 @@ def partition_and_cluster_candidates(candidates, options, type):
 
 
 def partition_and_cluster_unilocal(signatures, options, type):
-    partitions = form_partitions(signatures, options.partition_max_distance)
+    partitions = form_partitions(signatures, options.distance_normalizer * options.cluster_max_distance)
     clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
     return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(signatures, options, type):
-    partitions = form_partitions(signatures, options.partition_max_distance)
+    partitions = form_partitions(signatures, options.distance_normalizer * options.cluster_max_distance)
     clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
     return consolidate_clusters_bilocal(clusters)

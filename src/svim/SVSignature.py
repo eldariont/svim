@@ -23,12 +23,14 @@ class Signature:
         return (self.type, contig, (start + end) // 2)
 
 
-    def mean_distance_to(self, signature2):
-        """Return distance between means of two signatures."""
+    def position_distance_to(self, signature2):
+        """Return position distance between two signatures."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = signature2.get_source()
+        this_center = (this_start + this_end) // 2
+        other_center = (other_start + other_end) // 2
         if self.type == signature2.type and this_contig == other_contig:
-            return abs(((this_start +this_end) // 2) - ((other_start + other_end) // 2))
+            return min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center))
         else:
             return float("inf")
 
@@ -116,19 +118,6 @@ class SignatureInsertionFrom(Signature):
         return (self.type, source_contig, dest_contig, dest_start + (source_start + source_end) // 2)
 
 
-    def mean_distance_to(self, signature2):
-        """Return distance between means of two signatures."""
-        this_source_contig, this_source_start, this_source_end = self.get_source()
-        this_dest_contig, this_dest_start, this_dest_end = self.get_destination()
-        other_source_contig, other_source_start, other_source_end = signature2.get_source()
-        other_dest_contig, other_dest_start, other_dest_end = signature2.get_destination()
-        if self.type == signature2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
-                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
-        else:
-            return float("inf")
-
-
     def as_string(self, sep="\t"):
         source_contig, source_start, source_end = self.get_source()
         dest_contig, dest_start, dest_end = self.get_destination()
@@ -201,14 +190,6 @@ class SignatureTranslocation(Signature):
 
     def get_key(self):
         return (self.type, self.contig1, self.pos1)
-
-
-    def mean_distance_to(self, signature2):
-        """Return distance between means of two signatures."""
-        if self.type == signature2.type and self.contig1 == signature2.contig1:
-            return abs(self.pos1 - signature2.pos1)
-        else:
-            return float("inf")
 
 
 class SignatureClusterUniLocal(Signature):

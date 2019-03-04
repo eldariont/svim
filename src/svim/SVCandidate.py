@@ -22,12 +22,14 @@ class Candidate:
         return (self.type, contig, (start + end) // 2)
 
 
-    def mean_distance_to(self, candidate2):
-        """Return distance between means of two candidates."""
+    def position_distance_to(self, candidate2):
+        """Return position distance between two candidates."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
+        this_center = (this_start + this_end) // 2
+        other_center = (other_start + other_end) // 2
         if self.type == candidate2.type and this_contig == other_contig:
-            return abs(((this_start +this_end) // 2) - ((other_start + other_end) // 2))
+            return min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center))
         else:
             return float("inf")
 
@@ -151,19 +153,6 @@ class CandidateDuplicationTandem(Candidate):
         return (source_entry, dest_entry)
 
 
-    def mean_distance_to(self, candidate2):
-        """Return distance between means of two candidates."""
-        this_source_contig, this_source_start, this_source_end = self.get_source()
-        this_dest_contig, this_dest_start, this_dest_end = self.get_destination()
-        other_source_contig, other_source_start, other_source_end = candidate2.get_source()
-        other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
-        if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
-                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
-        else:
-            return float("inf")
-
-
     def get_vcf_entry(self):
         contig = self.source_contig
         start = self.source_end
@@ -217,19 +206,6 @@ class CandidateDuplicationInterspersed(Candidate):
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
         return (source_entry, dest_entry)
-
-
-    def mean_distance_to(self, candidate2):
-        """Return distance between means of two candidates."""
-        this_source_contig, this_source_start, this_source_end = self.get_source()
-        this_dest_contig, this_dest_start, this_dest_end = self.get_destination()
-        other_source_contig, other_source_start, other_source_end = candidate2.get_source()
-        other_dest_contig, other_dest_start, other_dest_end = candidate2.get_destination()
-        if self.type == candidate2.type and this_source_contig == other_source_contig and this_dest_contig == other_dest_contig:
-            return abs(((this_source_start + this_source_end) // 2) - ((other_source_start + other_source_end) // 2)) + \
-                   abs(((this_dest_start + this_dest_end) // 2) - ((other_dest_start + other_dest_end) // 2))
-        else:
-            return float("inf")
 
 
     def get_vcf_entry(self):

@@ -10,15 +10,15 @@ class TestSVSignature(unittest.TestCase):
         self.assertEqual(deletion.get_source(), ("chr1", 100, 300))
         self.assertEqual(deletion.get_key(), ("del", "chr1", 200))
     
-    def test_mean_distance_to(self):
+    def test_position_distance_to(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
         deletion2 = SignatureDeletion("chr1", 150, 200, "cigar", "read2")
         deletion3 = SignatureDeletion("chr2", 150, 200, "cigar", "read2")
         insertion = SignatureInsertion("chr1", 150, 200, "cigar", "read2")
 
-        self.assertEqual(deletion1.mean_distance_to(deletion2), 25)
-        self.assertEqual(deletion1.mean_distance_to(deletion3), float("Inf"))
-        self.assertEqual(deletion1.mean_distance_to(insertion), float("Inf"))
+        self.assertEqual(deletion1.position_distance_to(deletion2), 25)
+        self.assertEqual(deletion1.position_distance_to(deletion3), float("Inf"))
+        self.assertEqual(deletion1.position_distance_to(insertion), float("Inf"))
     
     def test_as_string(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
