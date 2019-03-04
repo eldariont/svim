@@ -82,7 +82,7 @@ def clusters_from_partitions(partitions, options):
     return clusters_final
 
 
-def calculate_score(cigar_signatures, suppl_signatures, std_span, std_pos, span):
+def calculate_score(cluster, std_span, std_pos, span, type):
     if std_span == None or std_pos == None:
         span_deviation_score = 0
         pos_deviation_score = 0
@@ -90,36 +90,27 @@ def calculate_score(cigar_signatures, suppl_signatures, std_span, std_pos, span)
         span_deviation_score = 1 - min(1, std_span / span)
         pos_deviation_score = 1 - min(1, std_pos / span)
 
-    num_signatures = min(80, cigar_signatures + suppl_signatures)
+    if type == "inv":
+        directions = [signature.direction for signature in cluster]
+        direction_counts = [0, 0, 0, 0, 0]
+        for direction in directions:
+            if direction == "left_fwd":
+                direction_counts[0] += 1
+            if direction == "left_rev":
+                direction_counts[1] += 1
+            if direction == "right_fwd":
+                direction_counts[2] += 1
+            if direction == "right_rev":
+                direction_counts[3] += 1
+            if direction == "all":
+                direction_counts[4] += 1
+        left_signatures = direction_counts[0] + direction_counts[1]
+        right_signatures = direction_counts[2] + direction_counts[3]
+        valid_signatures = min(left_signatures, right_signatures) + direction_counts[4]
+        num_signatures = min(80, valid_signatures)
+    else:
+        num_signatures = min(80, len(cluster))
     return num_signatures + span_deviation_score * (num_signatures / 8) + pos_deviation_score * (num_signatures / 8)
-
-
-def calculate_score_inversion(inv_cluster, std_span, std_pos, span):
-    if std_span == None or std_pos == None:
-        span_deviation_score = 0
-        pos_deviation_score = 0
-    else:
-        span_deviation_score = 1 - min(1, std_span / span)
-        pos_deviation_score = 1 - min(1, std_pos / span)
-
-    directions = [ev.direction for ev in inv_cluster]
-    direction_counts = [0, 0, 0, 0, 0]
-    for direction in directions:
-        if direction == "left_fwd":
-            direction_counts[0] += 1
-        if direction == "left_rev":
-            direction_counts[1] += 1
-        if direction == "right_fwd":
-            direction_counts[2] += 1
-        if direction == "right_rev":
-            direction_counts[3] += 1
-        if direction == "all":
-            direction_counts[4] += 1
-    left_signatures = direction_counts[0] + direction_counts[1]
-    right_signatures = direction_counts[2] + direction_counts[3]
-    valid_suppl_signatures = min(left_signatures, right_signatures) + direction_counts[4]
-
-    return min(70, valid_suppl_signatures) + span_deviation_score * 20 + pos_deviation_score * 10
 
 
 def consolidate_clusters_unilocal(clusters):
@@ -134,12 +125,7 @@ def consolidate_clusters_unilocal(clusters):
         else:
             std_span = None
             std_pos = None
-        if cluster[0].type == "inv":
-            score = calculate_score_inversion(cluster, std_span, std_pos, average_end - average_start)
-        else:
-            cigar_signatures = [member for member in cluster if member.signature == "cigar"]
-            suppl_signatures = [member for member in cluster if member.signature == "suppl"]
-            score = calculate_score(len(cigar_signatures), len(suppl_signatures), std_span, std_pos, average_end - average_start)
+        score = calculate_score(cluster, std_span, std_pos, average_end - average_start, cluster[0].type)
         consolidated_clusters.append(SignatureClusterUniLocal(cluster[0].get_source()[0], int(round(average_start)), int(round(average_end)), score, len(cluster), cluster, cluster[0].type, std_span, std_pos))
     return consolidated_clusters
 
@@ -148,9 +134,6 @@ def consolidate_clusters_bilocal(clusters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
-        cigar_signatures = [member for member in cluster if member.signature == "cigar"]
-        suppl_signatures = [member for member in cluster if member.signature == "suppl"]
-        
         #Source
         source_average_start = sum([member.get_source()[1] for member in cluster]) / len(cluster)
         source_average_end = sum([member.get_source()[2] for member in cluster]) / len(cluster)
@@ -163,7 +146,7 @@ def consolidate_clusters_bilocal(clusters):
 
         if cluster[0].type == "dup":
             max_copies = max([member.copies for member in cluster])
-            score = calculate_score(len(cigar_signatures), len(suppl_signatures), source_std_span, source_std_pos, source_average_end - source_average_start)
+            score = calculate_score(cluster, source_std_span, source_std_pos, source_average_end - source_average_start, cluster[0].type)
             consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0],
                                                                 int(round(source_average_start)),
                                                                 int(round(source_average_end)),
@@ -184,11 +167,11 @@ def consolidate_clusters_bilocal(clusters):
                 destination_std_span = None
                 destination_std_pos = None
             if source_std_span == None or source_std_pos == None or destination_std_span == None or destination_std_pos == None:
-                score = calculate_score(len(cigar_signatures), len(suppl_signatures), None, None, mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
+                score = calculate_score(cluster, None, None, mean([source_average_end - source_average_start, destination_average_end - destination_average_start]), cluster[0].type)
                 consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, None, None))
             else:
-                score = calculate_score(len(cigar_signatures), len(suppl_signatures), mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos]), mean([source_average_end - source_average_start, destination_average_end - destination_average_start]))
+                score = calculate_score(cluster, mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos]), mean([source_average_end - source_average_start, destination_average_end - destination_average_start]), cluster[0].type)
                 consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos])))
     return consolidated_clusters
