@@ -32,28 +32,6 @@ class Candidate:
             return float("inf")
 
 
-    def span_loc_distance(self, candidate2, distance_normalizer):
-        this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = candidate2.get_source()
-        if this_contig != other_contig:
-            return float("inf")
-        #Component 1: difference in spans
-        this_span = this_end - this_start
-        other_span = other_end - other_start
-        try:
-            dist_span = abs(this_span - other_span) / max(this_span, other_span)
-        except ZeroDivisionError:
-            print("ZeroDivisionError")
-            print("This:", self.get_bed_entry())
-            print("Other:", candidate2.get_bed_entry())
-
-        #Component 2: difference in locations
-        this_center = (this_start + this_end) // 2
-        other_center = (other_start + other_end) // 2
-        dist_loc = min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center)) / distance_normalizer
-        return dist_span + dist_loc
-
-
     def get_bed_entry(self):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 

@@ -33,21 +33,6 @@ class Signature:
             return float("inf")
 
 
-    def span_loc_distance(self, signature2, distance_normalizer):
-        this_contig, this_start, this_end = self.get_source()
-        other_contig, other_start, other_end = signature2.get_source()
-        if this_contig != other_contig:
-            return float("inf")
-        #Component 1: difference in spans
-        this_span = this_end - this_start
-        other_span = other_end - other_start
-        dist_span = abs(this_span - other_span) / max(this_span, other_span)
-        #Component 2: difference in locations
-        this_center = (this_start + this_end) // 2
-        other_center = (other_start + other_end) // 2
-        dist_loc = min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center)) / distance_normalizer
-        return dist_span + dist_loc
-
     def as_string(self, sep="\t"):
         contig, start, end = self.get_source()
         return sep.join(["{0}","{1}","{2}","{3}","{4}"]).format(contig, start, end, "{0};{1}".format(self.type, self.signature), self.read)

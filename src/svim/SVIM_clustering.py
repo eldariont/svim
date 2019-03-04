@@ -3,9 +3,10 @@ from __future__ import print_function
 import sys
 import logging
 
-import networkx as nx
 from random import sample
 from statistics import mean, stdev
+import numpy as np
+from scipy.cluster.hierarchy import linkage, fcluster
 
 from svim.SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
 from svim.SVCandidate import CandidateDuplicationInterspersed
@@ -26,29 +27,59 @@ def form_partitions(sv_signatures, max_delta):
     return partitions
 
 
+def span_position_distance(signature1, signature2):
+    distance_normalizer = signature1[2]
+    span1 = signature1[1] - signature1[0]
+    span2 = signature2[1] - signature2[0]
+    center1 = (signature1[0] + signature1[1]) // 2
+    center2 = (signature2[0] + signature2[1]) // 2
+    position_distance = min(abs(signature1[0] - signature2[0]), abs(signature1[1] - signature2[1]), abs(center1 - center2)) / distance_normalizer
+    span_distance = abs(span1 - span2) / max(span1, span2)
+    return position_distance + span_distance
+
+
+def span_position_distance_bilocal(signature1, signature2):
+    "Special span position distance function for intersepersed duplication signatures"
+    distance_normalizer = signature1[3]
+    span1 = signature1[1] - signature1[0]
+    span2 = signature2[1] - signature2[0]
+    source_center1 = (signature1[0] + signature1[1]) // 2
+    source_center2 = (signature2[0] + signature2[1]) // 2
+    position_distanc_source = min(abs(signature1[0] - signature2[0]), abs(signature1[1] - signature2[1]), abs(source_center1 - source_center2)) / distance_normalizer
+    position_distanc_destination = abs(signature1[2] - signature2[2]) / distance_normalizer
+    span_distance = abs(span1 - span2) / max(span1, span2)
+    return position_distanc_source + position_distanc_destination + span_distance
+
+
 def clusters_from_partitions(partitions, options):
-    """Form clusters in partitions using span-log distance and clique finding in a distance graph."""
-    clusters_full = []
+    """Finds clusters in partitions using span-position distance and hierarchical clustering. 
+    Assumes that all signatures in the given partition are of the same type and on the same contig"""
+    clusters_final = []
     # Find clusters in each partition individually.
-    for num, partition in enumerate(partitions):
-        if len(partition) > 100:
+    for partition in partitions:
+        if len(partition) == 1:
+            clusters_final.append([partition[0]])
+            continue
+        elif len(partition) > 100:
             partition_sample = sample(partition, 100)
         else:
             partition_sample = partition
-        largest_signature = sorted(partition_sample, key=lambda evi: (evi.get_source()[2] - evi.get_source()[1]))[-1]
-        largest_indel_size = largest_signature.get_source()[2] - largest_signature.get_source()[1]
-        connection_graph = nx.Graph()
-        connection_graph.add_nodes_from(range(len(partition_sample)))
-        for i1 in range(len(partition_sample)):
-            for i2 in range(len(partition_sample)):
-                if i1 != i2:
-                    if partition_sample[i1].span_loc_distance(partition_sample[i2], options.distance_normalizer) <= options.cluster_max_distance:
-                        # Add edge in graph only if two indels are close to each other (distance <= max_delta)
-                        connection_graph.add_edge(i1, i2)
-        clusters_indices = nx.find_cliques(connection_graph)
-        for cluster in clusters_indices:
-            clusters_full.append([partition_sample[index] for index in cluster])
-    return clusters_full
+        element_type = partition_sample[0].type
+        #Uni-local clustering
+        if element_type == "del" or element_type == "ins" or element_type == "inv" or element_type == "dup":
+            data = np.array( [[signature.get_source()[1], signature.get_source()[2], options.distance_normalizer] for signature in partition_sample])
+            Z = linkage(data, method = "average", metric = span_position_distance)
+        #Bi-local clustering
+        elif element_type == "ins_dup" or element_type == "dup_int":
+            data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
+            Z = linkage(data, method = "average", metric = span_position_distance_bilocal)
+
+        cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
+        new_clusters = [[] for i in range(max(cluster_indices))]
+        for signature_index, cluster_index in enumerate(cluster_indices):
+            new_clusters[cluster_index-1].append(partition_sample[signature_index])
+        clusters_final.extend(new_clusters)
+    return clusters_final
 
 
 def calculate_score(cigar_signatures, suppl_signatures, std_span, std_pos, span):
@@ -59,15 +90,8 @@ def calculate_score(cigar_signatures, suppl_signatures, std_span, std_pos, span)
         span_deviation_score = 1 - min(1, std_span / span)
         pos_deviation_score = 1 - min(1, std_pos / span)
 
-    num_signatures = min(20, cigar_signatures) + min(20, suppl_signatures)
-    signature_boost = 0
-    if cigar_signatures > 0:
-        signature_boost += 10
-    if suppl_signatures > 0:
-        signature_boost += 20
-    #return min(50, num_signatures) + span_deviation_score * 25 + pos_deviation_score * 25
-    #return 2 * min(40, num_signatures) + span_deviation_score * 15 + pos_deviation_score * 5
-    return num_signatures + signature_boost + span_deviation_score * 20 + pos_deviation_score * 10
+    num_signatures = min(80, cigar_signatures + suppl_signatures)
+    return num_signatures + span_deviation_score * (num_signatures / 8) + pos_deviation_score * (num_signatures / 8)
 
 
 def calculate_score_inversion(inv_cluster, std_span, std_pos, span):
@@ -98,7 +122,7 @@ def calculate_score_inversion(inv_cluster, std_span, std_pos, span):
     return min(70, valid_suppl_signatures) + span_deviation_score * 20 + pos_deviation_score * 10
 
 
-def consolidate_clusters_unilocal(clusters, options):
+def consolidate_clusters_unilocal(clusters):
     """Consolidate clusters to a list of (type, contig, mean start, mean end, cluster size, members) tuples."""
     consolidated_clusters = []
     for cluster in clusters:
@@ -212,7 +236,7 @@ def partition_and_cluster_unilocal(signatures, options, type):
     partitions = form_partitions(signatures, options.partition_max_distance)
     clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
-    return sorted(consolidate_clusters_unilocal(clusters, options), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
+    return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
 
 
 def partition_and_cluster_bilocal(signatures, options, type):

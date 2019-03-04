@@ -7,13 +7,16 @@ from math import pow, sqrt
 
 from svim.SVSignature import SignatureTranslocation, SignatureInsertionFrom, SignatureClusterBiLocal
 from svim.SVCandidate import CandidateDuplicationInterspersed
+from svim.SVIM_clustering import span_position_distance
 
 def flag_cutpaste_candidates(insertion_from_signature_clusters, deletion_signature_clusters, options):
     """Flag duplication signature clusters if they overlap a deletion"""
     int_duplication_candidates = []
     for ins_cluster in insertion_from_signature_clusters:
         # Compute distances of every deletion cluster to the current insertion/duplication
-        distances = [(del_index, del_cluster.span_loc_distance(ins_cluster, options.distance_normalizer)) for del_index, del_cluster in enumerate(deletion_signature_clusters)]
+        distances = [(del_index, span_position_distance((del_cluster.get_source()[1], del_cluster.get_source()[2], options.distance_normalizer), \
+                                                        (ins_cluster.get_source()[1], ins_cluster.get_source()[2], options.distance_normalizer))) \
+                                                        for del_index, del_cluster in enumerate(deletion_signature_clusters)]
         closest_deletion_index, closest_deletion = sorted(distances, key=lambda obj: obj[1])[0]
         source_contig, source_start, source_end = ins_cluster.get_source()
         dest_contig, dest_start, dest_end = ins_cluster.get_destination()
