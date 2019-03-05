@@ -82,12 +82,11 @@ def main():
         aln_file = pysam.AlignmentFile(options.bam_file)
         try:
             if aln_file.header["HD"]["SO"] == "coordinate":
-                logging.warning("Input BAM file is coordinate-sorted. SVIM can process it but will be less accurate than for queryname-sorted input. It is highly recommended to sort the BAM file by queryname using samtools sort -n.")
                 sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
             elif aln_file.header["HD"]["SO"] == "queryname":
                 sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
             else:
-                logging.error("Input BAM file needs to be queryname-sorted (highly recommended) or coordinate-sorted. The given file, however, is unsorted according to its header line.")
+                logging.error("Input BAM file needs to be coordinate-sorted or queryname-sorted. The given file, however, is unsorted according to its header line.")
                 return
         except KeyError:
             logging.error("Is the given input BAM file sorted? It does not contain a sorting order in its header line.")

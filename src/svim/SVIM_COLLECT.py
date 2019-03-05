@@ -126,20 +126,22 @@ def analyze_alignment_file_coordsorted(bam, options):
     while True:
         try:
             current_alignment = next(alignment_it)
-            if current_alignment.is_unmapped or current_alignment.is_supplementary or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
+            if current_alignment.is_unmapped or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
                 continue
-            read_nr += 1
-            if read_nr % 10000 == 0:
-                logging.info("Processed read {0}".format(read_nr))
-            supplementary_alignments = retrieve_supplementary_alignments(current_alignment, bam)
-            good_suppl_alns = [aln for aln in supplementary_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
+            if current_alignment.is_supplementary:
+                if not options.skip_indel:
+                    sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
+            else:
+                read_nr += 1
+                if read_nr % 10000 == 0:
+                    logging.info("Processed read {0}".format(read_nr))
+                supplementary_alignments = retrieve_supplementary_alignments(current_alignment, bam)
+                good_suppl_alns = [aln for aln in supplementary_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
 
-            if not options.skip_indel:
-                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                for alignment in good_suppl_alns:
-                    sv_signatures.extend(analyze_alignment_indel(alignment, bam, alignment.query_name, options))
-            if not options.skip_segment:
-                sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
+                if not options.skip_indel:
+                    sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
+                if not options.skip_segment:
+                    sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
         except StopIteration:
             break
         except KeyboardInterrupt:
