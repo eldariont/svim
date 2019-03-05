@@ -3,6 +3,6 @@ python:
   - "3.5"
   - "3.6"
 install:
-  - pip install pysam numpy scipy biopython networkx matplotlib
+  - pip install pysam numpy scipy biopython matplotlib
 script:
   - python3 -m unittest discover -s src/
