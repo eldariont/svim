@@ -215,15 +215,13 @@ def partition_and_cluster_candidates(candidates, options, type):
     return final_candidates
 
 
-def partition_and_cluster_unilocal(signatures, options, type):
+def partition_and_cluster(signatures, options, type):
     partitions = form_partitions(signatures, options.distance_normalizer * options.cluster_max_distance)
     clusters = clusters_from_partitions(partitions, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
-    return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
-
-
-def partition_and_cluster_bilocal(signatures, options, type):
-    partitions = form_partitions(signatures, options.distance_normalizer * options.cluster_max_distance)
-    clusters = clusters_from_partitions(partitions, options)
-    logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
-    return consolidate_clusters_bilocal(clusters)
+    if type == "deleted regions" or type == "inserted regions" or type == "inverted regions":
+        return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
+    elif type == "tandem duplicated regions" or type == "inserted regions with detected region of origin":
+        return consolidate_clusters_bilocal(clusters)
+    else:
+        logging.error("Unknown parameter type={0} to function partition_and_cluster.")
