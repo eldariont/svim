@@ -60,7 +60,7 @@ class CandidateDeletion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "DEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q5" if self.score < 5 else "PASS", "SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, end, start - end, len(self.members), self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateInversion(Candidate):
@@ -81,7 +81,7 @@ class CandidateInversion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
         svtype = "INV"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q20" if self.score < 20 else "PASS", "SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start+1, ".", "N", "<" + svtype + ">", int(self.score), "q5" if self.score < 5 else "PASS", "SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, len(self.members), self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateNovelInsertion(Candidate):
@@ -107,7 +107,7 @@ class CandidateNovelInsertion(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "INS:NOVEL"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q5" if self.score < 5 else "PASS", "SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(self.members), self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateDuplicationTandem(Candidate):
@@ -158,7 +158,7 @@ class CandidateDuplicationTandem(Candidate):
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
         svtype = "DUP:TANDEM"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q5" if self.score < 5 else "PASS", "SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(self.members), self.std_span, self.std_pos), "GT", "./.")
 
 
 class CandidateDuplicationInterspersed(Candidate):
@@ -211,4 +211,4 @@ class CandidateDuplicationInterspersed(Candidate):
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
         svtype = "DUP:INT"
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q30" if self.score < 30 else "PASS", "SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.std_span, self.std_pos), "GT", "./.")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\t{9}".format(contig, start, ".", "N", "<" + svtype + ">", int(self.score), "q5" if self.score < 5 else "PASS", "SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, len(self.members), self.std_span, self.std_pos), "GT", "./.")

@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 
 from collections import defaultdict
 from math import pow, sqrt
@@ -53,6 +54,16 @@ def write_candidates(working_dir, candidates):
     tandem_duplication_candidate_dest_output.close()
 
 
+def sorted_nicely(vcf_entries):
+    """ Sort the given vcf entries (in the form ((contig, start, end), vcf_string)) in the way that humans expect.
+        e.g. chr10 comes after chr2
+        Algorithm adapted from https://blog.codinghorror.com/sorting-for-humans-natural-sort-order/"""
+    convert = lambda text: int(text) if text.isdigit() else text
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
+    tuple_key = lambda entry: [ alphanum_key(element) for element in entry[0] ]
+    return sorted(vcf_entries, key = tuple_key)
+
+
 def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths, sample):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
@@ -73,10 +84,10 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
     print("##INFO=<ID=CUTPASTE,Number=0,Type=Flag,Description=\"Genomic origin of interspersed duplication seems to be deleted\">", file=vcf_output)
     print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
     print("##INFO=<ID=SVLEN,Number=1,Type=Integer,Description=\"Difference in length between REF and ALT alleles\">", file=vcf_output)
+    print("##INFO=<ID=SUPPORT,Number=1,Type=Integer,Description=\"Number of reads supporting this variant\">", file=vcf_output)
     print("##INFO=<ID=STD_SPAN,Number=1,Type=Float,Description=\"Standard deviation in span of merged SV signatures\">", file=vcf_output)
     print("##INFO=<ID=STD_POS,Number=1,Type=Float,Description=\"Standard deviation in position of merged SV signatures\">", file=vcf_output)
-    print("##FILTER=<ID=q20,Description=\"Quality below 20\">", file=vcf_output)
-    print("##FILTER=<ID=q30,Description=\"Quality below 30\">", file=vcf_output)
+    print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample, file=vcf_output)
 
@@ -93,7 +104,7 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
 
     # Sort and write entries to VCF
-    for source, entry in sorted(vcf_entries, key=lambda pair: pair[0]):
+    for source, entry in sorted_nicely(vcf_entries):
         print(entry, file=vcf_output)
 
     vcf_output.close()
