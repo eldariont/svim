@@ -35,7 +35,12 @@ Installation
     cd svim
     pip3 install .
 
-
+Changelog
+---------
+- **v0.5.0**: replaces graph-based clustering with hierarchical clustering, modifies scoring function, improves partitioning prior to clustering, improves calling from coordinate-sorted SAM/BAM files, improves VCF output
+- **v0.4.4**: includes exception message into log files, bug fixes, adds tests and sets up Travis
+- **v0.4.3**: adds support for coordinate-sorted SAM/BAM files, improves VCF output and increases compatibility with IGV and truvari, bug fixes
+    
 Input
 -----
 
