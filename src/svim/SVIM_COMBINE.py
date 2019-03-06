@@ -60,7 +60,7 @@ def sorted_nicely(vcf_entries):
         Algorithm adapted from https://blog.codinghorror.com/sorting-for-humans-natural-sort-order/"""
     convert = lambda text: int(text) if text.isdigit() else text
     alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ]
-    tuple_key = lambda entry: [ alphanum_key(element) for element in entry[0] ]
+    tuple_key = lambda entry: ( alphanum_key(str(entry[0][0])), entry[0][1], entry[0][2] )
     return sorted(vcf_entries, key = tuple_key)
 
 
