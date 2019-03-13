@@ -5,7 +5,7 @@ from random import uniform
 
 from svim.SVIM_input_parsing import parse_arguments
 from svim.SVSignature import SignatureDeletion
-from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf, plot_histograms
+from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf
 from svim.SVIM_COMBINE import combine_clusters
 
 class TestSVIMClustering(unittest.TestCase):
@@ -36,7 +36,7 @@ class TestSVIMClustering(unittest.TestCase):
             write_signature_clusters_bed(options.working_dir, signature_clusters)
             write_signature_clusters_vcf(options.working_dir, signature_clusters, '0.5.0')
 
-            combine_clusters(signature_clusters, options.working_dir, options, '0.5.0', ["chr1"], [300000], options.sample)
+            combine_clusters(signature_clusters, options)
 
 if __name__ == '__main__':
     unittest.main()

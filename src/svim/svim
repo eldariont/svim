@@ -16,8 +16,8 @@ from time import strftime, localtime
 from svim.SVIM_input_parsing import parse_arguments, guess_file_type, read_file_list
 from svim.SVIM_alignment import run_alignment
 from svim.SVIM_COLLECT import analyze_alignment_file_coordsorted, analyze_alignment_file_querysorted
-from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf, plot_histograms
-from svim.SVIM_COMBINE import combine_clusters
+from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf
+from svim.SVIM_COMBINE import combine_clusters, write_candidates, write_final_vcf
 
 
 def main():
@@ -115,7 +115,17 @@ def main():
     write_signature_clusters_vcf(options.working_dir, signature_clusters, __version__)
 
     logging.info("****************** STEP 3: COMBINE ******************")
-    combine_clusters(signature_clusters, options.working_dir, options, __version__, aln_file.references, aln_file.lengths, options.sample)
+    deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates = combine_clusters(signature_clusters, options)
+
+    # Write SV candidates
+    logging.info("Write SV candidates..")
+    logging.info("Final deletion candidates: {0}".format(len(deletion_candidates)))
+    logging.info("Final inversion candidates: {0}".format(len(inversion_candidates)))
+    logging.info("Final interspersed duplication candidates: {0}".format(len(int_duplication_candidates)))
+    logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
+    logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
+    write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
+    write_final_vcf(options.working_dir, int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, __version__, aln_file.references, aln_file.lengths, options.sample)
 
 if __name__ == "__main__":
     try:

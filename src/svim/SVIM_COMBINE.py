@@ -110,7 +110,7 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
     vcf_output.close()
 
 
-def combine_clusters(signature_clusters, working_dir, options, version, contig_names, contig_lengths, sample):
+def combine_clusters(signature_clusters, options):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = signature_clusters
 
     ###############################
@@ -252,14 +252,4 @@ def combine_clusters(signature_clusters, working_dir, options, version, contig_n
     logging.info("Cluster interspersed duplication candidates one more time..")
     final_int_duplication_candidates = cluster_sv_candidates(int_duplication_candidates, options)
 
-    ####################
-    # Write candidates #
-    ####################
-    logging.info("Write SV candidates..")
-    logging.info("Final deletion candidates: {0}".format(len(deletion_candidates)))
-    logging.info("Final inversion candidates: {0}".format(len(inversion_candidates)))
-    logging.info("Final interspersed duplication candidates: {0}".format(len(final_int_duplication_candidates)))
-    logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
-    logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
-    write_candidates(working_dir, (final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
-    write_final_vcf(working_dir, final_int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths, sample)
+    return (deletion_candidates, inversion_candidates, final_int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates)
