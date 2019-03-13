@@ -114,9 +114,6 @@ def main():
     write_signature_clusters_bed(options.working_dir, signature_clusters)
     write_signature_clusters_vcf(options.working_dir, signature_clusters, __version__)
 
-    # Create result plots
-    plot_histograms(options.working_dir, signature_clusters)
-
     logging.info("****************** STEP 3: COMBINE ******************")
     combine_clusters(signature_clusters, options.working_dir, options, __version__, aln_file.references, aln_file.lengths, options.sample)
 
