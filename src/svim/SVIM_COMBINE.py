@@ -89,6 +89,8 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
     print("##INFO=<ID=STD_POS,Number=1,Type=Float,Description=\"Standard deviation in position of merged SV signatures\">", file=vcf_output)
     print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)
+    print("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">", file=vcf_output)
+    print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample, file=vcf_output)
 
     vcf_entries = []

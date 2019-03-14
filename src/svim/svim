@@ -18,6 +18,7 @@ from svim.SVIM_alignment import run_alignment
 from svim.SVIM_COLLECT import analyze_alignment_file_coordsorted, analyze_alignment_file_querysorted
 from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf
 from svim.SVIM_COMBINE import combine_clusters, write_candidates, write_final_vcf
+from svim.SVIM_genotyping import genotype
 
 
 def main():
@@ -116,6 +117,15 @@ def main():
 
     logging.info("****************** STEP 3: COMBINE ******************")
     deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates = combine_clusters(signature_clusters, options)
+
+    if aln_file.header["HD"]["SO"] == "coordinate":
+        logging.info("Genotyping found SVs..")
+        genotype(deletion_candidates, aln_file, "del", options)
+        genotype(inversion_candidates, aln_file, "inv", options)
+        genotype(novel_insertion_candidates, aln_file, "ins", options)
+        genotype(int_duplication_candidates, aln_file, "dup_int", options)
+    elif aln_file.header["HD"]["SO"] == "queryname":
+        logging.warning("Skipping genotyping because it requires a coordinate-sorted input BAM file. The given file, however, is queryname-sorted according to its header line.")
 
     # Write SV candidates
     logging.info("Write SV candidates..")
