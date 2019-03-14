@@ -96,7 +96,7 @@ class CandidateNovelInsertion(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "nov_ins"
+        self.type = "ins"
 
     def get_destination(self):
         return (self.dest_contig, self.dest_start, self.dest_end)

@@ -165,7 +165,7 @@ def merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, tra
                                                       [abs(closest_to_start_fwdfwd_mean - ins_start), abs(closest_to_start_revrev_mean - ins_start)], 
                                                       [translocation_partition_stds_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index], translocation_partition_stds_revrev_dict[ins_contig][closest_to_start_revrev_index]], 
                                                       [destination_from_start_fwdfwd_std, destination_from_start_revrev_std])
-                    insertion_from_signature_clusters.append(SignatureClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "ins_dup", ins_cluster.std_span, ins_cluster.std_pos))
+                    insertion_from_signature_clusters.append(SignatureClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "dup_int", ins_cluster.std_span, ins_cluster.std_pos))
                     inserted_regions_to_remove.append(insertion_index)
 
     return insertion_from_signature_clusters, inserted_regions_to_remove

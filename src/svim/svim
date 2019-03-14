@@ -95,9 +95,9 @@ def main():
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
     insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
     inversion_signatures = [ev for ev in sv_signatures if ev.type == 'inv']
-    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == 'dup']
+    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == 'dup_tan']
     translocation_signatures = [ev for ev in sv_signatures if ev.type == 'tra']
-    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'ins_dup']
+    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'dup_int']
 
     logging.info("Found {0} signatures for deleted regions.".format(len(deletion_signatures)))
     logging.info("Found {0} signatures for inserted regions.".format(len(insertion_signatures)))

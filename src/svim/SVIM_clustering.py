@@ -66,11 +66,11 @@ def clusters_from_partitions(partitions, options):
             partition_sample = partition
         element_type = partition_sample[0].type
         #Uni-local clustering
-        if element_type == "del" or element_type == "ins" or element_type == "inv" or element_type == "dup":
+        if element_type == "del" or element_type == "ins" or element_type == "inv" or element_type == "dup_tan":
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance)
         #Bi-local clustering
-        elif element_type == "ins_dup" or element_type == "dup_int":
+        elif element_type == "dup_int":
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance_bilocal)
 
@@ -144,7 +144,7 @@ def consolidate_clusters_bilocal(clusters):
             source_std_span = None
             source_std_pos = None
 
-        if cluster[0].type == "dup":
+        if cluster[0].type == "dup_tan":
             max_copies = max([member.copies for member in cluster])
             score = calculate_score(cluster, source_std_span, source_std_pos, source_average_end - source_average_start, cluster[0].type)
             consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0],

@@ -26,9 +26,9 @@ def cluster_sv_signatures(sv_signatures, options):
     deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
     insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
     inversion_signatures = [ev for ev in sv_signatures if ev.type == 'inv']
-    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == 'dup']
+    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == 'dup_tan']
     translocation_signatures = [ev for ev in sv_signatures if ev.type == 'tra']
-    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'ins_dup']
+    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'dup_int']
 
     # Cluster SV signatures
     deletion_signature_clusters = partition_and_cluster(deletion_signatures, options, "deleted regions")
@@ -53,7 +53,7 @@ def write_signature_clusters_bed(working_dir, clusters):
     tandem_duplication_signature_source_output = open(working_dir + '/signatures/dup_tan_source.bed', 'w')
     tandem_duplication_signature_dest_output = open(working_dir + '/signatures/dup_tan_dest.bed', 'w')
     translocation_signature_output = open(working_dir + '/signatures/trans.bed', 'w')
-    insertion_from_signature_output = open(working_dir + '/signatures/ins_dup.bed', 'w')
+    insertion_from_signature_output = open(working_dir + '/signatures/dup_int.bed', 'w')
 
     for cluster in deletion_signature_clusters:
         print(cluster.get_bed_entry(), file=deletion_signature_output)

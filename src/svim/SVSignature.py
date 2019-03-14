@@ -100,7 +100,7 @@ class SignatureInsertionFrom(Signature):
 
         self.signature = signature
         self.read = read
-        self.type = "ins_dup"
+        self.type = "dup_int"
 
 
     def get_source(self):
@@ -140,7 +140,7 @@ class SignatureDuplicationTandem(Signature):
 
         self.signature = signature
         self.read = read
-        self.type = "dup"
+        self.type = "dup_tan"
 
 
     def get_destination(self):
@@ -261,7 +261,7 @@ class SignatureClusterBiLocal(Signature):
 
 
     def get_vcf_entry(self):
-        if self.type == "dup":
+        if self.type == "dup_tan":
             svtype = "DUP:TANDEM"
         else:
             return
