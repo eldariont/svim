@@ -74,43 +74,6 @@ def cluster_positions_simple(positions, max_delta):
     return partitions
 
 
-def calculate_score_deletion(main_score, translocation_distances, translocation_stds, translocation_deviation):
-    """Calculate the score of a merged insertion detected from a deletion.
-       Parameters: - main_score - score of the underlying main deletion
-                   - translocation_distances - mean distance of the translocation clusters flanking the main deletion (left, right or both sides)
-                   - translocation_stds - standard deviation of the translocation clusters flanking the main deletion (left, right or both sides)
-                   - translocation_deviation - distance between left and right translocation destinations"""
-    if len(translocation_distances) == 2:
-        #scale translocation distances to [0, 1] range
-        td0 = max(0, 100 - translocation_distances[0]) / 100
-        td1 = max(0, 100 - translocation_distances[1]) / 100
-
-        #scale translocation stds to [0, 1] range
-        ts0 = max(0, 100 - translocation_stds[0]) / 100
-        ts1 = max(0, 100 - translocation_stds[1]) / 100
-
-        #scale translocation deviation to [0, 1] range
-        tv = max(0, 100 - translocation_deviation) / 100
-
-        #calculate final score as product of components
-        product = (main_score / 100) * td0 * td1 * ts0 * ts1 * tv
-        final_score = pow(product, 1/6) * 100
-    if len(translocation_distances) == 1:
-        #scale translocation distance to [0, 1] range
-        td0 = max(0, 100 - translocation_distances[0]) / 100
-
-        #scale translocation std to [0, 1] range
-        ts0 = max(0, 100 - translocation_stds[0]) / 100
-
-        #scale translocation deviation to [0, 1] range
-        tv = max(0, 100 - translocation_deviation) / 100
-
-        #calculate final score as product of components (half score)
-        product = (main_score / 100) * td0 * td0 * ts0 * ts0 * tv
-        final_score = pow(product, 1/6) * 50
-    return final_score
-
-
 def calculate_score_insertion(main_score, translocation_distances, translocation_stds, destination_stds):
     """Calculate the score of a merged insertion or duplication detected from an insertion.
        Parameters: - main_score - score of the underlying main insertion
