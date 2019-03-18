@@ -41,14 +41,14 @@ def bam_iterator(bam):
     yield (current_prim, current_suppl, current_sec)
 
 
-def retrieve_supplementary_alignments(primary_alignment, bam):
-    """Reconstruct supplementary alignments for a given primary alignment from the SA tag"""
+def retrieve_other_alignments(main_alignment, bam):
+    """Reconstruct other alignments of the same read for a given alignment from the SA tag"""
     try:
-        sa_tag = primary_alignment.get_tag("SA").split(";")           
+        sa_tag = main_alignment.get_tag("SA").split(";")
     except KeyError:
         return []
-    supplementary_alignments = []
-    # For each supplementary alignment encoded in the SA tag
+    other_alignments = []
+    # For each other alignment encoded in the SA tag
     for element in sa_tag:
         # Read information from the tag
         fields = element.split(",")
@@ -64,8 +64,8 @@ def retrieve_supplementary_alignments(primary_alignment, bam):
 
         # Generate an aligned segment from the information
         a = pysam.AlignedSegment()
-        a.query_name = primary_alignment.query_name
-        a.query_sequence= primary_alignment.query_sequence
+        a.query_name = main_alignment.query_name
+        a.query_sequence= main_alignment.query_sequence
         if strand == "+":
             a.flag = 2048
         else:
@@ -80,11 +80,11 @@ def retrieve_supplementary_alignments(primary_alignment, bam):
         a.next_reference_id = -1
         a.next_reference_start = -1
         a.template_length = 0
-        a.query_qualities = primary_alignment.query_qualities
+        a.query_qualities = main_alignment.query_qualities
         a.set_tags([("NM", nm, "i")])
 
-        supplementary_alignments.append(a)
-    return supplementary_alignments
+        other_alignments.append(a)
+    return other_alignments
 
 
 def analyze_alignment_file_querysorted(bam, options):
@@ -135,7 +135,7 @@ def analyze_alignment_file_coordsorted(bam, options):
                 read_nr += 1
                 if read_nr % 10000 == 0:
                     logging.info("Processed read {0}".format(read_nr))
-                supplementary_alignments = retrieve_supplementary_alignments(current_alignment, bam)
+                supplementary_alignments = retrieve_other_alignments(current_alignment, bam)
                 good_suppl_alns = [aln for aln in supplementary_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
 
                 if not options.skip_indel:

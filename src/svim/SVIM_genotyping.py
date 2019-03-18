@@ -1,6 +1,6 @@
 from svim.SVIM_intra import analyze_alignment_indel
 from svim.SVIM_inter import analyze_read_segments
-from svim.SVIM_COLLECT import retrieve_supplementary_alignments
+from svim.SVIM_COLLECT import retrieve_other_alignments
 
 
 def span_position_distance(candidate, signature, distance_normalizer):
@@ -30,57 +30,33 @@ def span_position_distance(candidate, signature, distance_normalizer):
 
 def genotype(candidates, bam, type, options):
     for candidate in candidates:
+        #Fetch alignments around variant locus
         if type == "ins" or type == "dup_int":
             contig, start, end = candidate.get_destination()
-            alignment_it = bam.fetch(contig=contig, start=start-1000, stop=start+1000)
+            #We need the insertion locus on the reference for which end is equal to start
+            end = start
         else:
             contig, start, end = candidate.get_source()
-            alignment_it = bam.fetch(contig=contig, start=start-1000, stop=end+1000)
+        alignment_it = bam.fetch(contig=contig, start=start-1000, stop=end+1000)
 
         sv_signatures = []
         reads_covering_variant = set()
+        #Loop through fetched alignments
         while True:
             try:
                 current_alignment = next(alignment_it)
                 if current_alignment.is_unmapped or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
                     continue
-                if current_alignment.is_supplementary:
-                    if type == "ins" or type == "dup_int":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > start + 100:
-                            if not options.skip_indel:
-                                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                            reads_covering_variant.add(current_alignment.query_name)
-                    if type == "del":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
-                            if not options.skip_indel:
-                                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                            reads_covering_variant.add(current_alignment.query_name)
-                    if type == "inv":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
-                            reads_covering_variant.add(current_alignment.query_name)
-                else:
-                    supplementary_alignments = retrieve_supplementary_alignments(current_alignment, bam)
-                    good_suppl_alns = [aln for aln in supplementary_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
+                other_alignments = retrieve_other_alignments(current_alignment, bam)
+                good_other_alns = [aln for aln in other_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
 
-                    if type == "ins" or type == "dup_int":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > start + 100:
-                            if not options.skip_indel:
-                                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                            reads_covering_variant.add(current_alignment.query_name)
-                        if not options.skip_segment:
-                            sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
-                    if type == "del":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
-                            if not options.skip_indel:
-                                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                            reads_covering_variant.add(current_alignment.query_name)
-                        if not options.skip_segment:
-                            sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
-                    if type == "inv":
-                        if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
-                            reads_covering_variant.add(current_alignment.query_name)
-                        if not options.skip_segment:
-                            sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
+                if type == "del" or type == "inv" or type == "ins" or type == "dup_int":
+                    if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
+                        if not type == "inv" and not options.skip_indel:
+                            sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
+                        reads_covering_variant.add(current_alignment.query_name)
+                    if not options.skip_segment:
+                        sv_signatures.extend(analyze_read_segments(current_alignment, good_other_alns, bam, options))
             except StopIteration:
                 break
         reads_supporting_variant = set([sig.read for sig in sv_signatures if span_position_distance(candidate, sig, options.distance_normalizer) < options.cluster_max_distance])

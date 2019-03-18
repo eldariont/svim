@@ -2,7 +2,7 @@ import unittest
 import pysam
 import os
 
-from svim.SVIM_COLLECT import retrieve_supplementary_alignments
+from svim.SVIM_COLLECT import retrieve_other_alignments
 
 class TestSAExtraction(unittest.TestCase):
     def setUp(self):
@@ -15,12 +15,12 @@ class TestSAExtraction(unittest.TestCase):
     
     def test_satag_length(self):
         primary = self.alignments[0]
-        supplementary_alns = retrieve_supplementary_alignments(primary, self.samfile)
+        supplementary_alns = retrieve_other_alignments(primary, self.samfile)
         self.assertEqual(len(supplementary_alns), 3)
     
     def test_satag_extraction_complete(self):
         primary = self.alignments[0]
-        supplementary_alns = retrieve_supplementary_alignments(primary, self.samfile)
+        supplementary_alns = retrieve_other_alignments(primary, self.samfile)
         for index, aln in enumerate(supplementary_alns):
             self.assertEqual(aln.cigarstring, self.alignments[index+1].cigarstring)
             self.assertEqual(aln.reference_id, self.alignments[index+1].reference_id)
@@ -42,13 +42,13 @@ class TestSAExtractionError(unittest.TestCase):
     
     def test_satag_too_many_fields(self):
         primary = self.alignments[0]
-        supplementary_alns = retrieve_supplementary_alignments(primary, self.samfile)
+        supplementary_alns = retrieve_other_alignments(primary, self.samfile)
         #first SA entry has too many fields
         self.assertEqual(len(supplementary_alns), 2)
 
     def test_satag_negative_mapq(self):
         primary = self.alignments[1]
-        supplementary_alns = retrieve_supplementary_alignments(primary, self.samfile)
+        supplementary_alns = retrieve_other_alignments(primary, self.samfile)
         #negative mapping quality is interpreted as 0
         self.assertEqual(len(supplementary_alns), 1)
         self.assertEqual(supplementary_alns[0].mapping_quality, 0)

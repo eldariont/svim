@@ -2,7 +2,7 @@ import unittest
 import pysam
 import tempfile
 
-from svim.SVIM_COLLECT import bam_iterator, analyze_alignment_file_querysorted, retrieve_supplementary_alignments
+from svim.SVIM_COLLECT import bam_iterator, analyze_alignment_file_querysorted, retrieve_other_alignments
 from svim.SVIM_input_parsing import parse_arguments
 from random import choice, triangular, uniform
 
@@ -216,13 +216,13 @@ class TestCollect(unittest.TestCase):
 
         self.assertEqual(len(signatures), 0)
     
-    def test_retrieve_supplementary_alignments(self):
+    def test_retrieve_other_alignments(self):
         alignment_it = self.alignment_file.fetch(until_eof=True)
         alignments = list(alignment_it)
         for i in range(10,30,2):
             primary = alignments[i]
             supplementary = alignments[i+1]
-            retrieved_supplementary_alns = retrieve_supplementary_alignments(primary, self.alignment_file)
+            retrieved_supplementary_alns = retrieve_other_alignments(primary, self.alignment_file)
             self.assertEqual(len(retrieved_supplementary_alns), 1)
             self.assertEqual(retrieved_supplementary_alns[0].cigarstring, supplementary.cigarstring)
             self.assertEqual(retrieved_supplementary_alns[0].reference_id, supplementary.reference_id)
