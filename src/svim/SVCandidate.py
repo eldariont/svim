@@ -38,8 +38,21 @@ class Candidate:
             return float("inf")
 
 
+    def get_std_span(self, ndigits=2):
+        if self.std_span:
+            return round(self.std_span, ndigits)
+        else:
+            return None
+
+
+    def get_std_pos(self, ndigits=2):
+        if self.std_pos:
+            return round(self.std_pos, ndigits)
+        else:
+            return None
+
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.source_contig, self.source_start, self.source_end, "{0};{1};{2}".format(self.type, self.get_std_span(), self.get_std_pos()), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
 
     def get_vcf_entry(self):
@@ -88,7 +101,7 @@ class CandidateDeletion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="q5" if self.score < 5 else "PASS",
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.std_span, self.std_pos),
+                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
 
@@ -135,7 +148,7 @@ class CandidateInversion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="q5" if self.score < 5 else "PASS",
-                    info="SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.std_span, self.std_pos),
+                    info="SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
 
@@ -162,7 +175,7 @@ class CandidateNovelInsertion(Candidate):
         return (self.dest_contig, self.dest_start, self.dest_end)
 
     def get_bed_entry(self):
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.std_span, self.std_pos), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.get_std_span(), self.get_std_pos()), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
@@ -187,7 +200,7 @@ class CandidateNovelInsertion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="q5" if self.score < 5 else "PASS",
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos),
+                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
 
@@ -225,14 +238,14 @@ class CandidateDuplicationTandem(Candidate):
                                                                                      source_end,
                                                                                      "tan_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end, self.std_span, self.std_pos), self.score, ".",
+                                                                                         dest_end, self.get_std_span(), self.get_std_pos()), self.score, ".",
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(dest_contig, dest_start, dest_end,
                                                                                    "tan_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end, self.std_span, self.std_pos), self.score, ".",
+                                                                                       source_end, self.get_std_span(), self.get_std_pos()), self.score, ".",
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -264,7 +277,7 @@ class CandidateDuplicationTandem(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="q5" if self.score < 5 else "PASS",
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.std_span, self.std_pos),
+                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
 
@@ -306,14 +319,14 @@ class CandidateDuplicationInterspersed(Candidate):
                                                                                      source_end,
                                                                                      "int_dup_source;>{0}:{1}-{2};{3};{4}".format(
                                                                                          dest_contig, dest_start,
-                                                                                         dest_end, self.std_span, self.std_pos), self.score, "origin potentially deleted" if self.cutpaste else ".",
+                                                                                         dest_end, self.get_std_span(), self.get_std_pos()), self.score, "origin potentially deleted" if self.cutpaste else ".",
                                                                                      "[" + "][".join(
                                                                                          [ev.as_string("|") for ev in
                                                                                           self.members]) + "]")
         dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}", "{6}"]).format(dest_contig, dest_start, dest_end,
                                                                                    "int_dup_dest;<{0}:{1}-{2};{3};{4}".format(
                                                                                        source_contig, source_start,
-                                                                                       source_end, self.std_span, self.std_pos), self.score, "origin potentially deleted" if self.cutpaste else ".",
+                                                                                       source_end, self.get_std_span(), self.get_std_pos()), self.score, "origin potentially deleted" if self.cutpaste else ".",
                                                                                    "[" + "][".join(
                                                                                        [ev.as_string("|") for ev in
                                                                                         self.members]) + "]")
@@ -343,6 +356,6 @@ class CandidateDuplicationInterspersed(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="q5" if self.score < 5 else "PASS",
-                    info="SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.std_span, self.std_pos),
+                    info="SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
