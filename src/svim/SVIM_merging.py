@@ -93,8 +93,8 @@ def calculate_score_insertion(main_score, translocation_distances, translocation
     ds1 = max(0, 100 - destination_stds[1]) / 100
 
     #calculate final score as product of components
-    product = (main_score / 100) *  td0 * td1 * ts0 * ts1 * ds0 * ds1
-    final_score = pow(product, 1/7) * 100
+    product = td0 * td1 * ts0 * ts1 * ds0 * ds1
+    final_score = pow(product, 1/6) * main_score
     return final_score
 
 
