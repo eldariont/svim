@@ -1,11 +1,6 @@
 import os
 import logging
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-
 from svim.SVIM_clustering import partition_and_cluster
 from svim.SVSignature import SignatureTranslocation
 
