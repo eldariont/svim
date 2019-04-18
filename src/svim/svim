@@ -19,6 +19,7 @@ from svim.SVIM_COLLECT import analyze_alignment_file_coordsorted, analyze_alignm
 from svim.SVIM_CLUSTER import cluster_sv_signatures, write_signature_clusters_bed, write_signature_clusters_vcf
 from svim.SVIM_COMBINE import combine_clusters, write_candidates, write_final_vcf
 from svim.SVIM_genotyping import genotype
+from svim.SVIM_plot import plot_sv_lengths
 
 
 def main():
@@ -117,12 +118,17 @@ def main():
 
     logging.info("****************** STEP 3: COMBINE ******************")
     deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates = combine_clusters(signature_clusters, options)
+    plot_sv_lengths(deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, options)
 
     if aln_file.header["HD"]["SO"] == "coordinate":
-        logging.info("Genotyping found SVs..")
+        logging.info("****************** STEP 4: GENOTYPE ******************")
+        logging.info("Genotyping deletions..")
         genotype(deletion_candidates, aln_file, "del", options)
+        logging.info("Genotyping inversions..")
         genotype(inversion_candidates, aln_file, "inv", options)
-        genotype(novel_insertion_candidates, aln_file, "ins", options)
+        logging.info("Genotyping novel insertions..")
+        genotype(novel_insertion_candidates, aln_file, 'ins', options)
+        logging.info("Genotyping interspersed duplications..")
         genotype(int_duplication_candidates, aln_file, "dup_int", options)
     elif aln_file.header["HD"]["SO"] == "queryname":
         logging.warning("Skipping genotyping because it requires a coordinate-sorted input BAM file. The given file, however, is queryname-sorted according to its header line.")

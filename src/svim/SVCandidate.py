@@ -89,7 +89,7 @@ class CandidateDeletion(Candidate):
             genotype_string = "0/0"
         else:
             genotype_string = "./."
-        if self.ref_reads and self.alt_reads:
+        if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
@@ -103,7 +103,7 @@ class CandidateDeletion(Candidate):
                     filter="q5" if self.score < 5 else "PASS",
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
 class CandidateInversion(Candidate):
@@ -136,7 +136,7 @@ class CandidateInversion(Candidate):
             genotype_string = "0/0"
         else:
             genotype_string = "./."
-        if self.ref_reads and self.alt_reads:
+        if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
@@ -150,7 +150,7 @@ class CandidateInversion(Candidate):
                     filter="q5" if self.score < 5 else "PASS",
                     info="SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
 class CandidateNovelInsertion(Candidate):
@@ -188,7 +188,7 @@ class CandidateNovelInsertion(Candidate):
             genotype_string = "0/0"
         else:
             genotype_string = "./."
-        if self.ref_reads and self.alt_reads:
+        if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
@@ -202,7 +202,7 @@ class CandidateNovelInsertion(Candidate):
                     filter="q5" if self.score < 5 else "PASS",
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
 class CandidateDuplicationTandem(Candidate):
@@ -265,7 +265,7 @@ class CandidateDuplicationTandem(Candidate):
             genotype_string = "0/0"
         else:
             genotype_string = "./."
-        if self.ref_reads and self.alt_reads:
+        if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
@@ -279,7 +279,7 @@ class CandidateDuplicationTandem(Candidate):
                     filter="q5" if self.score < 5 else "PASS",
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
 class CandidateDuplicationInterspersed(Candidate):
@@ -344,7 +344,7 @@ class CandidateDuplicationInterspersed(Candidate):
             genotype_string = "0/0"
         else:
             genotype_string = "./."
-        if self.ref_reads and self.alt_reads:
+        if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
@@ -358,4 +358,4 @@ class CandidateDuplicationInterspersed(Candidate):
                     filter="q5" if self.score < 5 else "PASS",
                     info="SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads else ".", alt=self.alt_reads if self.alt_reads else "."))
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))

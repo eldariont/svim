@@ -47,6 +47,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition (default: %(default)s)')
     group_fasta_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
     group_fasta_combine.add_argument('--sample', type=str, default="Sample", help='Sample ID to include in output vcf (default: %(default)s)')
+    group_fasta_genotype = parser_fasta.add_argument_group('GENOTYPE')
+    group_fasta_genotype.add_argument('--minimum_score', type=int, default=3, help='Minimum score for genotyping (default: %(default)s)')
+    group_fasta_genotype.add_argument('--homozygous_threshold', type=float, default=0.8, help='Minimum variant allele frequency to be called as homozygous (default: %(default)s)')
+    group_fasta_genotype.add_argument('--heterozygous_threshold', type=float, default=0.2, help='Minimum variant allele frequency to be called as heterozygous (default: %(default)s)')
+    group_fasta_genotype.add_argument('--minimum_depth', type=int, default=4, help='Minimum total read depth for genotyping (default: %(default)s)')
 
     parser_bam = subparsers.add_parser('alignment', help='Detect SVs from an existing alignment')
     parser_bam.add_argument('working_dir', type=os.path.abspath, help='working directory')
@@ -69,6 +74,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_combine.add_argument('--trans_partition_max_distance', type=int, default=200, help='Maximum distance in bp between translocation breakpoints in a partition (default: %(default)s)')
     group_bam_combine.add_argument('--trans_sv_max_distance', type=int, default=500, help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
     group_bam_combine.add_argument('--sample', type=str, default="Sample", help='Sample ID to include in output vcf (default: %(default)s)')
+    group_bam_genotype = parser_bam.add_argument_group('GENOTYPE')
+    group_bam_genotype.add_argument('--minimum_score', type=int, default=3, help='Minimum score for genotyping (default: %(default)s)')
+    group_bam_genotype.add_argument('--homozygous_threshold', type=float, default=0.8, help='Minimum variant allele frequency to be called as homozygous (default: %(default)s)')
+    group_bam_genotype.add_argument('--heterozygous_threshold', type=float, default=0.2, help='Minimum variant allele frequency to be called as heterozygous (default: %(default)s)')
+    group_bam_genotype.add_argument('--minimum_depth', type=int, default=4, help='Minimum read depth for genotyping (default: %(default)s)')
 
     return parser.parse_args(arguments)
 

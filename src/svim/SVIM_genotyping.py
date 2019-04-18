@@ -2,6 +2,7 @@ from svim.SVIM_intra import analyze_alignment_indel
 from svim.SVIM_inter import analyze_read_segments
 from svim.SVIM_COLLECT import retrieve_other_alignments
 
+import time
 
 def span_position_distance(candidate, signature, distance_normalizer):
     if candidate.type == "ins" or candidate.type == "dup_int":
@@ -30,6 +31,8 @@ def span_position_distance(candidate, signature, distance_normalizer):
 
 def genotype(candidates, bam, type, options):
     for candidate in candidates:
+        if candidate.score < options.minimum_score:
+            continue
         #Fetch alignments around variant locus
         if type == "ins" or type == "dup_int":
             contig, start, end = candidate.get_destination()
@@ -37,37 +40,42 @@ def genotype(candidates, bam, type, options):
             end = start
         else:
             contig, start, end = candidate.get_source()
-        alignment_it = bam.fetch(contig=contig, start=start-1000, stop=end+1000)
+        contig_length = bam.get_reference_length(contig)
+        alignment_it = bam.fetch(contig=contig, start=max(0, start-1000), stop=min(contig_length, end+1000))
 
-        sv_signatures = []
-        reads_covering_variant = set()
+        reads_supporting_variant = set([sig.read for sig in candidate.members])
+        #Count reads that overlap the locus and therefore support the reference
+        reads_supporting_reference = set()        
         #Loop through fetched alignments
-        while True:
+        aln_no = 0
+        while aln_no < 500:
             try:
                 current_alignment = next(alignment_it)
-                if current_alignment.is_unmapped or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
-                    continue
-                other_alignments = retrieve_other_alignments(current_alignment, bam)
-                good_other_alns = [aln for aln in other_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
-
-                if type == "del" or type == "inv" or type == "ins" or type == "dup_int":
-                    if current_alignment.reference_start < start - 100 and current_alignment.reference_end > end + 100:
-                        if not type == "inv" and not options.skip_indel:
-                            sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                        reads_covering_variant.add(current_alignment.query_name)
-                    if not options.skip_segment:
-                        sv_signatures.extend(analyze_read_segments(current_alignment, good_other_alns, bam, options))
             except StopIteration:
                 break
-        reads_supporting_variant = set([sig.read for sig in sv_signatures if span_position_distance(candidate, sig, options.distance_normalizer) < options.cluster_max_distance])
-        reads_supporting_reference = reads_covering_variant - reads_supporting_variant
-        if (len(reads_supporting_variant) + len(reads_supporting_reference)) > 3:
+            
+            if current_alignment.query_name in reads_supporting_variant:
+                continue
+            if current_alignment.is_unmapped or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
+                continue
+            aln_no += 1
+
+            if type == "del" or type == "inv":
+                minimum_overlap = min((end - start) / 2, 2000)
+                if (current_alignment.reference_start < (end - minimum_overlap) and current_alignment.reference_end > (end + 100) or
+                    current_alignment.reference_start < (start - 100) and current_alignment.reference_end > (start + minimum_overlap)):
+                    reads_supporting_reference.add(current_alignment.query_name)
+            if type == "ins" or type == "dup_int":
+                if current_alignment.reference_start < (start - 100) and current_alignment.reference_end > (end + 100):
+                    reads_supporting_reference.add(current_alignment.query_name)
+
+        if (len(reads_supporting_variant) + len(reads_supporting_reference)) >= options.minimum_depth:
             candidate.support_fraction = len(reads_supporting_variant) / (len(reads_supporting_variant) + len(reads_supporting_reference))
-            if candidate.support_fraction > 0.8:
+            if candidate.support_fraction >= options.homozygous_threshold:
                 candidate.genotype = 2
-            elif candidate.support_fraction > 0.3 and candidate.support_fraction < 0.7:
+            elif candidate.support_fraction >= options.heterozygous_threshold and candidate.support_fraction < options.homozygous_threshold:
                 candidate.genotype = 1
-            elif candidate.support_fraction < 0.2:
+            elif candidate.support_fraction < options.heterozygous_threshold:
                 candidate.genotype = 0
             else:
                 candidate.genotype = None
