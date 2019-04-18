@@ -93,6 +93,11 @@ class CandidateDeletion(Candidate):
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -100,7 +105,7 @@ class CandidateDeletion(Candidate):
                     ref="N",
                     alt="<" + svtype + ">",
                     qual=int(self.score),
-                    filter="q5" if self.score < 5 else "PASS",
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
@@ -140,6 +145,11 @@ class CandidateInversion(Candidate):
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start+1,
@@ -147,7 +157,7 @@ class CandidateInversion(Candidate):
                     ref="N",
                     alt="<" + svtype + ">",
                     qual=int(self.score),
-                    filter="q5" if self.score < 5 else "PASS",
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
@@ -192,6 +202,11 @@ class CandidateNovelInsertion(Candidate):
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -199,7 +214,7 @@ class CandidateNovelInsertion(Candidate):
                     ref="N",
                     alt="<" + svtype + ">",
                     qual=int(self.score),
-                    filter="q5" if self.score < 5 else "PASS",
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
@@ -269,6 +284,11 @@ class CandidateDuplicationTandem(Candidate):
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -276,7 +296,7 @@ class CandidateDuplicationTandem(Candidate):
                     ref="N",
                     alt="<" + svtype + ">",
                     qual=int(self.score),
-                    filter="q5" if self.score < 5 else "PASS",
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
@@ -348,6 +368,11 @@ class CandidateDuplicationInterspersed(Candidate):
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
             dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -355,7 +380,7 @@ class CandidateDuplicationInterspersed(Candidate):
                     ref="N",
                     alt="<" + svtype + ">",
                     qual=int(self.score),
-                    filter="q5" if self.score < 5 else "PASS",
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
