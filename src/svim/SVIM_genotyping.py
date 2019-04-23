@@ -34,6 +34,8 @@ def span_position_distance(candidate, signature, distance_normalizer):
 def genotype(candidates, bam, type, options):
     num_candidates = len(candidates)
     for nr, candidate in enumerate(candidates):
+        if (nr+1) % 10000 == 0:
+            logging.info("Processed {0} of {1} candidates".format(nr+1, num_candidates))
         if candidate.score < options.minimum_score:
             continue
         #Fetch alignments around variant locus
@@ -90,5 +92,3 @@ def genotype(candidates, bam, type, options):
             candidate.genotype = None
         candidate.ref_reads = len(reads_supporting_reference)
         candidate.alt_reads = len(reads_supporting_variant)
-        if (nr+1) % 10000 == 0:
-            logging.info("Processed {0} of {1} candidates".format(nr, num_candidates))
