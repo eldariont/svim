@@ -33,8 +33,6 @@ class TestInputParsing(unittest.TestCase):
         self.assertEqual(type(options.min_mapq), int)
         self.assertEqual(type(options.min_sv_size), int)
         self.assertEqual(type(options.max_sv_size), int)
-        self.assertEqual(type(options.skip_indel), bool)
-        self.assertEqual(type(options.skip_segment), bool)
         self.assertEqual(type(options.segment_gap_tolerance), int)
         self.assertEqual(type(options.segment_overlap_tolerance), int)
         self.assertEqual(type(options.partition_max_distance), int)

@@ -210,11 +210,10 @@ class TestCollect(unittest.TestCase):
         self.assertEqual(num_primary_supplementary, 10)
 
     def test_analyze_alignment_file_querysorted(self):
-        arguments = ['alignment', '--skip_segment', 'myworkdir', 'mybamfile']
+        arguments = ['alignment', 'myworkdir', 'mybamfile']
         options = parse_arguments('0.4.3', arguments)
         signatures = analyze_alignment_file_querysorted(self.alignment_file, options)
-
-        self.assertEqual(len(signatures), 0)
+        self.assertEqual(len([sig for sig in signatures if sig.signature == "cigar"]), 0)
     
     def test_retrieve_other_alignments(self):
         alignment_it = self.alignment_file.fetch(until_eof=True)
