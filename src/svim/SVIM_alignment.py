@@ -47,7 +47,7 @@ def run_alignment(working_dir, genome, reads_path, reads_type, cores, aligner, n
             command += ['|', 'samtools', 'view', '-b', '-@', str(cores)]
             command += ['|', 'samtools', 'sort', '-n', '-@', str(cores), '-o', full_aln]
             logging.info("Starting alignment pipeline..")
-            run(" ".join(command), shell=True, check=True)
+            run(" ".join(command), shell=True, check=True, executable='/bin/bash')
         except CalledProcessError as e:
             raise AlignmentPipelineError('The alignment pipeline failed with exit code {0}. Command was: {1}'.format(e.returncode, e.cmd)) from e
         logging.info("Alignment pipeline finished")
