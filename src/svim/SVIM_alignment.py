@@ -24,30 +24,33 @@ def run_alignment(working_dir, genome, reads_path, reads_type, cores, aligner, n
     """Align full reads with NGMLR or minimap2."""
     check_prereqisites(aligner)
     reads_file_prefix = os.path.splitext(os.path.basename(reads_path))[0]
-    full_aln = "{0}/{1}.{2}.querysorted.bam".format(working_dir, reads_file_prefix, aligner)
-    if not os.path.exists(full_aln):
+    full_aln = "{0}/{1}.{2}.coordsorted.bam".format(working_dir, reads_file_prefix, aligner)
+    full_aln_index = "{0}/{1}.{2}.coordsorted.bam.bai".format(working_dir, reads_file_prefix, aligner)
+    if not (os.path.exists(full_aln) & os.path.exists(full_aln_index)):
         try:
-            command = ['set', '-o', 'pipefail', '&&']
+            command_align = ['set', '-o', 'pipefail', '&&']
             if aligner == "ngmlr":
                 # We need to uncompress gzipped files for NGMLR first
                 if reads_type == "fasta_gzip" or reads_type == "fastq_gzip":
-                    command += ['gunzip', '-c', os.path.realpath(reads_path)]
-                    command += ['|', 'ngmlr', '-t', str(cores), '-r', genome]
+                    command_align += ['gunzip', '-c', os.path.realpath(reads_path)]
+                    command_align += ['|', 'ngmlr', '-t', str(cores), '-r', genome]
                     if nanopore:
-                        command += ['-x', 'ont']
+                        command_align += ['-x', 'ont']
                 else:
-                    command += ['ngmlr', '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)]
+                    command_align += ['ngmlr', '-t', str(cores), '-r', genome, '-q', os.path.realpath(reads_path)]
                     if nanopore:
-                        command += ['-x', 'ont']
+                        command_align += ['-x', 'ont']
             elif aligner == "minimap2":
                 if nanopore:
-                    command += ['minimap2', '-t', str(cores), '-x', 'map-ont', '-a', genome, os.path.realpath(reads_path)]
+                    command_align += ['minimap2', '-t', str(cores), '-x', 'map-ont', '-a', genome, os.path.realpath(reads_path)]
                 else:
-                    command += ['minimap2', '-t', str(cores), '-x', 'map-pb', '-a', genome, os.path.realpath(reads_path)]
-            command += ['|', 'samtools', 'view', '-b', '-@', str(cores)]
-            command += ['|', 'samtools', 'sort', '-n', '-@', str(cores), '-o', full_aln]
+                    command_align += ['minimap2', '-t', str(cores), '-x', 'map-pb', '-a', genome, os.path.realpath(reads_path)]
+            command_align += ['|', 'samtools', 'view', '-b', '-@', str(cores)]
+            command_align += ['|', 'samtools', 'sort', '-@', str(cores), '-o', full_aln]
+            command_index = ['samtools', 'index', full_aln]
             logging.info("Starting alignment pipeline..")
-            run(" ".join(command), shell=True, check=True, executable='/bin/bash')
+            run(" ".join(command_align), shell=True, check=True, executable='/bin/bash')
+            run(" ".join(command_index), shell=True, check=True, executable='/bin/bash')
         except CalledProcessError as e:
             raise AlignmentPipelineError('The alignment pipeline failed with exit code {0}. Command was: {1}'.format(e.returncode, e.cmd)) from e
         logging.info("Alignment pipeline finished")

@@ -72,12 +72,12 @@ def main():
                     return
                 bam_path = run_alignment(options.working_dir, options.genome, file_path, reads_type, options.cores, options.aligner, options.nanopore)
                 aln_file = pysam.AlignmentFile(bam_path)
-                sv_signatures.extend(analyze_alignment_file_querysorted(aln_file, options))
+                sv_signatures.extend(analyze_alignment_file_coordsorted(aln_file, options))
         else:
             # Single read file
             bam_path = run_alignment(options.working_dir, options.genome, options.reads, reads_type, options.cores, options.aligner, options.nanopore)
             aln_file = pysam.AlignmentFile(bam_path)
-            sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
+            sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file)))
