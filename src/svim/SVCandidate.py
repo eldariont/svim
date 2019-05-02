@@ -106,7 +106,7 @@ class CandidateDeletion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, start - end, self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, end, start - end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -158,7 +158,7 @@ class CandidateInversion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};STD_SPAN={2};STD_POS={3}".format(svtype, end, self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -215,7 +215,7 @@ class CandidateNovelInsertion(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -297,7 +297,7 @@ class CandidateDuplicationTandem(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, start, end - start, self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -381,6 +381,6 @@ class CandidateDuplicationInterspersed(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};{1}END={2};SVLEN={3};STD_SPAN={4};STD_POS={5}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))

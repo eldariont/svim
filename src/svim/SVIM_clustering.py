@@ -186,13 +186,16 @@ def partition_and_cluster_candidates(candidates, options, type):
     for cluster in clusters:
         combined_score = max([candidate.score for candidate in cluster])
         combined_members = [member for candidate in cluster for member in candidate.members]
-        try:
-            combined_std_span = mean([candidate.std_span for candidate in cluster])
-        except TypeError:
+
+        stds_span = [candidate.std_span for candidate in cluster if candidate.std_span != None]
+        if len(stds_span) >= 1:
+            combined_std_span = mean(stds_span)
+        else:
             combined_std_span = None
-        try:
-            combined_std_pos = mean([candidate.std_pos for candidate in cluster])
-        except TypeError:
+        stds_pos = [candidate.std_pos for candidate in cluster if candidate.std_pos != None]
+        if len(stds_pos) >= 1:
+            combined_std_pos = mean(stds_pos)
+        else:
             combined_std_pos = None
 
         #Source
