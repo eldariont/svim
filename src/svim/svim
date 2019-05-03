@@ -117,7 +117,7 @@ def main():
     write_signature_clusters_vcf(options.working_dir, signature_clusters, __version__)
 
     logging.info("****************** STEP 3: COMBINE ******************")
-    deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates = combine_clusters(signature_clusters, options)
+    deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates = combine_clusters(signature_clusters, options)
     plot_sv_lengths(deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, options)
 
     if aln_file.header["HD"]["SO"] == "coordinate":
@@ -140,8 +140,9 @@ def main():
     logging.info("Final interspersed duplication candidates: {0}".format(len(int_duplication_candidates)))
     logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
     logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
-    write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates))
-    write_final_vcf(options.working_dir, int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, __version__, aln_file.references, aln_file.lengths, options.sample)
+    logging.info("Final breakend candidates: {0}".format(len(breakend_candidates)))
+    write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates))
+    write_final_vcf(options.working_dir, int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates, __version__, aln_file.references, aln_file.lengths, options.sample)
 
 if __name__ == "__main__":
     try:

@@ -4,10 +4,11 @@ import re
 
 from collections import defaultdict
 from math import pow, sqrt
+from statistics import mean, stdev
 
-from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates
-from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion
-from svim.SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions
+from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
+from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion, CandidateBreakend
+from svim.SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions, cluster_positions_simple
 
 
 def cluster_sv_candidates(int_duplication_candidates, options):
@@ -19,7 +20,7 @@ def cluster_sv_candidates(int_duplication_candidates, options):
 
 
 def write_candidates(working_dir, candidates):
-    int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates, novel_insertion_candidates = candidates
+    int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates = candidates
 
     if not os.path.exists(working_dir + '/candidates'):
         os.mkdir(working_dir + '/candidates')
@@ -30,6 +31,7 @@ def write_candidates(working_dir, candidates):
     interspersed_duplication_candidate_source_output = open(working_dir + '/candidates/candidates_int_duplications_source.bed', 'w')
     interspersed_duplication_candidate_dest_output = open(working_dir + '/candidates/candidates_int_duplications_dest.bed', 'w')
     novel_insertion_candidate_output = open(working_dir + '/candidates/candidates_novel_insertions.bed', 'w')
+    breakend_candidate_output = open(working_dir + '/candidates/candidates_breakends.bed', 'w')
 
     for candidate in deletion_candidates:
         print(candidate.get_bed_entry(), file=deletion_candidate_output)
@@ -45,6 +47,10 @@ def write_candidates(working_dir, candidates):
         print(bed_entries[1], file=tandem_duplication_candidate_dest_output)
     for candidate in novel_insertion_candidates:
         print(candidate.get_bed_entry(), file=novel_insertion_candidate_output)
+    for candidate in breakend_candidates:
+        bed_entries = candidate.get_bed_entries()
+        print(bed_entries[0], file=breakend_candidate_output)
+        print(bed_entries[1], file=breakend_candidate_output)
 
     deletion_candidate_output.close()
     inversion_candidate_output.close()
@@ -52,6 +58,8 @@ def write_candidates(working_dir, candidates):
     interspersed_duplication_candidate_dest_output.close()
     tandem_duplication_candidate_source_output.close()
     tandem_duplication_candidate_dest_output.close()
+    novel_insertion_candidate_output.close()
+    breakend_candidate_output.close()
 
 
 def sorted_nicely(vcf_entries):
@@ -64,7 +72,17 @@ def sorted_nicely(vcf_entries):
     return sorted(vcf_entries, key = tuple_key)
 
 
-def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidates, tandem_duplication_candidates, deletion_candidates, novel_insertion_candidates, version, contig_names, contig_lengths, sample):
+def write_final_vcf(working_dir, 
+                    int_duplication_candidates, 
+                    inversion_candidates, 
+                    tandem_duplication_candidates, 
+                    deletion_candidates, 
+                    novel_insertion_candidates, 
+                    breakend_candidates, 
+                    version, 
+                    contig_names, 
+                    contig_lengths, 
+                    sample):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
@@ -80,6 +98,7 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
     print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
     print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
     print("##ALT=<ID=INS:NOVEL,Description=\"Novel Insertion\">", file=vcf_output)
+    print("##ALT=<ID=BND,Description=\"Breakend\">", file=vcf_output)
     print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
     print("##INFO=<ID=CUTPASTE,Number=0,Type=Flag,Description=\"Genomic origin of interspersed duplication seems to be deleted\">", file=vcf_output)
     print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
@@ -105,6 +124,8 @@ def write_final_vcf(working_dir, int_duplication_candidates, inversion_candidate
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
     for candidate in novel_insertion_candidates:
         vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
+    for candidate in breakend_candidates:
+        vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry()))
 
     # Sort and write entries to VCF
     for source, entry in sorted_nicely(vcf_entries):
@@ -133,16 +154,61 @@ def combine_clusters(signature_clusters, options):
         num_copies = int(round((dest_end - dest_start) / (source_end - source_start)))
         tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score, tan_dup_cluster.std_span, tan_dup_cluster.std_pos))
 
-    ###################################
-    # Merge translocation breakpoints #
-    ###################################
+    #####################################
+    # Cluster translocation breakpoints #
+    #####################################
 
     # Cluster translocations by contig and pos1
     logging.info("Cluster translocation breakpoints..")
     translocations_fwdfwd = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
     translocations_revrev = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "rev"]
+    translocations_fwdrev = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "rev"]
+    translocations_revfwd = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "fwd"]
     translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, options.trans_partition_max_distance)
     translocation_partitions_revrev = form_partitions(translocations_revrev, options.trans_partition_max_distance)
+    translocation_partitions_fwdrev = form_partitions(translocations_fwdrev, options.trans_partition_max_distance)
+    translocation_partitions_revfwd = form_partitions(translocations_revfwd, options.trans_partition_max_distance)
+
+    ##############################
+    # Create breakend candidates #
+    ##############################
+
+    breakend_candidates = []
+    for (dir1, dir2), partitions in {('fwd', 'fwd'): translocation_partitions_fwdfwd,
+                      ('fwd', 'rev'): translocation_partitions_fwdrev,
+                      ('rev', 'rev'): translocation_partitions_revrev,
+                      ('rev', 'fwd'): translocation_partitions_revfwd}.items():
+        for partition in partitions:
+            destination_partitions = cluster_positions_simple([(signature.contig2, signature.pos2, signature) for signature in partition], \
+                                                                    options.trans_destination_partition_max_distance)
+            for destination_partition in destination_partitions:
+                contig1 = partition[0].contig1
+                pos1_mean = int(round(mean([signature.pos1 for contig2, pos2, signature in destination_partition])))
+                contig2 = destination_partition[0][0]
+                pos2_mean = int(round(mean([pos2 for contig2, pos2, signature in destination_partition])))
+                if len(destination_partition) > 1:
+                    pos1_std = int(round(stdev([signature.pos1 for contig2, pos2, signature in destination_partition])))
+                    pos2_std = int(round(stdev([pos2 for contig2, pos2, signature in destination_partition])))
+                else:
+                    pos1_std = None
+                    pos2_std = None
+                members = [signature for contig2, pos2, signature in destination_partition]
+                #Use pos1_std and pos2_std because breakends do not have a span (for span_std)
+                score = calculate_score(members, pos1_std, pos2_std, options.trans_partition_max_distance, "bnd")
+                breakend_candidates.append(CandidateBreakend(contig1, 
+                                                            pos1_mean, 
+                                                            dir1, 
+                                                            contig2, 
+                                                            pos2_mean, 
+                                                            dir2, 
+                                                            members, 
+                                                            score, 
+                                                            pos1_std, 
+                                                            pos2_std))
+
+    ###################################################
+    # Merge translocation breakpoints with insertions #
+    ###################################################
 
     translocation_partitions_fwdfwd_dict = defaultdict(list)
     translocation_partitions_revrev_dict = defaultdict(list)
@@ -161,7 +227,6 @@ def combine_clusters(signature_clusters, options):
     for contig in translocation_partitions_revrev_dict.keys():
         translocation_partition_means_revrev_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_revrev_dict[contig]]
         translocation_partition_stds_revrev_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_revrev_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_revrev_dict[contig])]
-
 
     logging.info("Combine inserted regions with translocation breakpoints..")
     new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, options)
@@ -255,4 +320,4 @@ def combine_clusters(signature_clusters, options):
     logging.info("Cluster interspersed duplication candidates one more time..")
     final_int_duplication_candidates = cluster_sv_candidates(int_duplication_candidates, options)
 
-    return (deletion_candidates, inversion_candidates, final_int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates)
+    return (deletion_candidates, inversion_candidates, final_int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates)

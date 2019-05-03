@@ -384,3 +384,112 @@ class CandidateDuplicationInterspersed(Candidate):
                     info="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
+
+
+class CandidateBreakend(Candidate):
+    def __init__(self, source_contig, source_start, source_direction, dest_contig, dest_start, dest_direction, members, score, std_pos1, std_pos2, support_fraction = None, genotype = None, ref_reads = None, alt_reads = None):
+        self.source_contig = source_contig
+        #0-based source of the translocation (first base before the translocation)
+        self.source_start = source_start
+        self.source_direction = source_direction
+
+        self.dest_contig = dest_contig
+        #0-based destination of the translocation (first base after the translocation)
+        self.dest_start = dest_start
+        self.dest_direction = dest_direction
+
+        self.members = members
+        self.score = score
+        self.std_pos1 = std_pos1
+        self.std_pos2 = std_pos2
+        self.type = "bnd"
+        self.support_fraction = support_fraction
+        self.genotype = genotype
+        self.ref_reads = ref_reads
+        self.alt_reads = alt_reads
+
+
+    def get_source(self):
+        return (self.source_contig, self.source_start)
+
+
+    def get_destination(self):
+        return (self.dest_contig, self.dest_start)
+
+
+    def get_std_pos1(self, ndigits=2):
+        if self.std_pos1:
+            return round(self.std_pos1, ndigits)
+        else:
+            return None
+
+
+    def get_std_pos2(self, ndigits=2):
+        if self.std_pos2:
+            return round(self.std_pos2, ndigits)
+        else:
+            return None
+
+
+    def get_bed_entries(self, sep="\t"):
+        source_contig, source_start = self.get_source()
+        dest_contig, dest_start = self.get_destination()
+        source_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}"]).format(source_contig, 
+                                                                                   source_start,
+                                                                                   source_start + 1,
+                                                                                   "bnd;>{0}:{1};{2};{3}".format(
+                                                                                        dest_contig, dest_start, self.get_std_pos1(), self.get_std_pos2()), 
+                                                                                   self.score, 
+                                                                                   "[" + "][".join(
+                                                                                        [ev.as_string("|") for ev in self.members]) + "]")
+        dest_entry = sep.join(["{0}", "{1}", "{2}", "{3}", "{4}", "{5}"]).format(dest_contig, 
+                                                                                 dest_start, 
+                                                                                 dest_start + 1,
+                                                                                 "bnd;<{0}:{1};{2};{3}".format(
+                                                                                        source_contig, source_start, self.get_std_pos1(), self.get_std_pos2()), 
+                                                                                 self.score,
+                                                                                 "[" + "][".join(
+                                                                                        [ev.as_string("|") for ev in self.members]) + "]")
+        return (source_entry, dest_entry)
+
+
+    def get_vcf_entry(self):
+        source_contig, source_start = self.get_source()
+        dest_contig, dest_start = self.get_destination()
+        svtype = "BND"
+        if (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
+            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'fwd') and (self.dest_direction == 'rev'):
+            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'rev') and (self.dest_direction == 'rev'):
+            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'rev') and (self.dest_direction == 'fwd'):
+            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start)
+        if self.genotype == 2:
+            genotype_string = "1/1"
+        elif self.genotype == 1:
+            genotype_string = "0/1"
+        elif self.genotype == 0:
+            genotype_string = "0/0"
+        else:
+            genotype_string = "./."
+        if self.ref_reads != None and self.alt_reads != None:
+            dp_string = str(self.ref_reads + self.alt_reads)
+        else:
+            dp_string = "."
+        filters = []
+        if self.score < 5:
+            filters.append("q5")
+        if self.genotype == 0:
+            filters.append("hom_ref")
+        return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
+                    chrom=source_contig,
+                    pos=source_start,
+                    id=".",
+                    ref="N",
+                    alt=alt_string,
+                    qual=int(self.score),
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
+                    info="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}".format(svtype, len(set([sig.read for sig in self.members])), self.get_std_pos1(), self.get_std_pos2()),
+                    format="GT:DP:AD",
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
