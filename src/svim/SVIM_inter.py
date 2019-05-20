@@ -95,10 +95,13 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                     #overlap on reference
                     else:
                         #Tandem Duplication
-                        if distance_on_reference < -options.min_sv_size:
+                        if distance_on_reference <= -options.min_sv_size:
                             if not alignment_current['is_reverse']:
                                 #Tandem Duplication
                                 if alignment_next['ref_end'] > alignment_current['ref_start']:
+                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
+                                #Large tandem duplication
+                                elif distance_on_reference >= -options.max_sv_size:
                                     tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
@@ -107,6 +110,9 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                             else:
                                 #Tandem Duplication
                                 if alignment_next['ref_start'] < alignment_current['ref_end']:
+                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
+                                #Large tandem duplication
+                                elif distance_on_reference >= -options.max_sv_size:
                                     tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
                                 #Either very large TANDEM or TRANS
                                 else:
