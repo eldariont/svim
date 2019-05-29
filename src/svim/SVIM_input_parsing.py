@@ -154,6 +154,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         default="Sample",
                                         help='Sample ID to include in output vcf file (default: %(default)s)')
     group_fasta_genotype = parser_fasta.add_argument_group('GENOTYPE')
+    group_fasta_genotype.add_argument('--skip_genotyping',
+                                        action='store_true',
+                                        help='Disable genotyping (default: %(default)s)')
     group_fasta_genotype.add_argument('--minimum_score',
                                         type=int,
                                         default=3,
@@ -294,6 +297,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       default="Sample",
                                       help='Sample ID to include in output vcf (default: %(default)s)')
     group_bam_genotype = parser_bam.add_argument_group('GENOTYPE')
+    group_bam_genotype.add_argument('--skip_genotyping',
+                                        action='store_true',
+                                        help='Disable genotyping (default: %(default)s)')
     group_bam_genotype.add_argument('--minimum_score',
                                       type=int,
                                       default=3,
