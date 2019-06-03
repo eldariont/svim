@@ -7,17 +7,17 @@ from svim.SVIM_COLLECT import retrieve_other_alignments
 
 
 def span_position_distance(candidate, signature, distance_normalizer):
-    if candidate.type == "ins" or candidate.type == "dup_int":
+    if candidate.type == "INS" or candidate.type == "DUP_INT":
         c_contig, c_start, c_end = candidate.get_destination()
     else:
         c_contig, c_start, c_end = candidate.get_source()
-    if signature.type == "dup_int":
+    if signature.type == "DUP_INT":
         s_contig, s_start, s_end = signature.get_destination()
     else:
         s_contig, s_start, s_end = signature.get_source()
     #ins signatures can support dup_int candidates and vice versa
-    if not (candidate.type == "ins" and signature.type == "dup_int") and \
-       not (candidate.type == "dup_int" and signature.type == "ins") and \
+    if not (candidate.type == "INS" and signature.type == "DUP_INT") and \
+       not (candidate.type == "DUP_INT" and signature.type == "INS") and \
        candidate.type != signature.type:
         return float("inf")
     if c_contig != s_contig:
@@ -39,7 +39,7 @@ def genotype(candidates, bam, type, options):
         if candidate.score < options.minimum_score:
             continue
         #Fetch alignments around variant locus
-        if type == "ins" or type == "dup_int":
+        if type == "INS" or type == "DUP_INT":
             contig, start, end = candidate.get_destination()
             #We need the insertion locus on the reference for which end is equal to start
             end = start
@@ -65,12 +65,12 @@ def genotype(candidates, bam, type, options):
                 continue
             aln_no += 1
 
-            if type == "del" or type == "inv":
+            if type == "DEL" or type == "INV":
                 minimum_overlap = min((end - start) / 2, 2000)
                 if (current_alignment.reference_start < (end - minimum_overlap) and current_alignment.reference_end > (end + 100) or
                     current_alignment.reference_start < (start - 100) and current_alignment.reference_end > (start + minimum_overlap)):
                     reads_supporting_reference.add(current_alignment.query_name)
-            if type == "ins" or type == "dup_int":
+            if type == "INS" or type == "DUP_INT":
                 if current_alignment.reference_start < (start - 100) and current_alignment.reference_end > (end + 100):
                     reads_supporting_reference.add(current_alignment.query_name)
 

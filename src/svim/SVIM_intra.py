@@ -14,10 +14,10 @@ def analyze_cigar_indel(tuples, min_length):
             pos += length
         elif operation == 1:                   # insertion
             if length >= min_length:
-                indels.append((pos, length, 'ins'))
+                indels.append((pos, length, "INS"))
         elif operation == 2:                   # deletion
             if length >= min_length:
-                indels.append((pos, length, 'del'))
+                indels.append((pos, length, "DEL"))
             pos += length
         elif operation == 7 or operation == 8:        # match or mismatch
             pos += length
@@ -30,9 +30,9 @@ def analyze_alignment_indel(alignment, bam, query_name, options):
     ref_start = alignment.reference_start
     indels = analyze_cigar_indel(alignment.cigartuples, options.min_sv_size)
     for pos, length, typ in indels:
-        if typ == "del":
+        if typ == "DEL":
             sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos, ref_start + pos + length, "cigar", query_name))
-        elif typ == "ins":
+        elif typ == "INS":
             sv_signatures.append(SignatureInsertion(ref_chr, ref_start + pos, ref_start + pos + length, "cigar", query_name))
     return sv_signatures
 

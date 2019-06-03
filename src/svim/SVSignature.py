@@ -9,7 +9,7 @@ class Signature:
         self.end = end
         self.signature = signature
         self.read = read
-        self.type = "unk"
+        self.type = None
         if self.end < self.start:
             logging.warning("Signature with invalid coordinates (end < start): " + self.as_string())
 
@@ -50,7 +50,7 @@ class SignatureDeletion(Signature):
         self.end = end
         self.signature = signature
         self.read = read
-        self.type = "del"
+        self.type = "DEL"
 
 
 class SignatureInsertion(Signature):
@@ -63,7 +63,7 @@ class SignatureInsertion(Signature):
         self.end = end
         self.signature = signature
         self.read = read
-        self.type = "ins"
+        self.type = "INS"
 
 
 class SignatureInversion(Signature):
@@ -76,7 +76,7 @@ class SignatureInversion(Signature):
         self.end = end
         self.signature = signature
         self.read = read
-        self.type = "inv"
+        self.type = "INV"
         self.direction = direction
 
 
@@ -100,7 +100,7 @@ class SignatureInsertionFrom(Signature):
 
         self.signature = signature
         self.read = read
-        self.type = "dup_int"
+        self.type = "DUP_INT"
 
 
     def get_source(self):
@@ -140,7 +140,7 @@ class SignatureDuplicationTandem(Signature):
 
         self.signature = signature
         self.read = read
-        self.type = "dup_tan"
+        self.type = "DUP_TAN"
 
 
     def get_destination(self):
@@ -169,7 +169,7 @@ class SignatureTranslocation(Signature):
         self.direction2 = direction2
         self.signature = signature
         self.read = read
-        self.type = "tra"
+        self.type = "BND"
 
 
     def get_source(self):
@@ -213,15 +213,10 @@ class SignatureClusterUniLocal(Signature):
 
 
     def get_vcf_entry(self):
-        if self.type == "del":
-            svtype = "DEL"
-        elif self.type == "ins":
-            svtype = "INS"
-        elif self.type == "inv":
-            svtype = "INV"
+        if self.type in ["DEL", "INS", "INV"]:
+            return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.start+1, ".", "N", "<" + self.type + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(self.type, self.end, self.end - self.start, self.std_span, self.std_pos))
         else:
             return
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.contig, self.start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, self.end, self.end - self.start, self.std_span, self.std_pos))
 
 
     def get_length(self):
@@ -261,11 +256,10 @@ class SignatureClusterBiLocal(Signature):
 
 
     def get_vcf_entry(self):
-        if self.type == "dup_tan":
-            svtype = "DUP:TANDEM"
+        if self.type == "DUP_TAN":
+            return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.source_contig, self.source_start+1, ".", "N", "<DUP:TANDEM>", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format("DUP:TANDEM", self.source_end, self.source_end - self.source_start, self.std_span, self.std_pos))
         else:
             return
-        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}".format(self.source_contig, self.source_start+1, ".", "N", "<" + svtype + ">", ".", "PASS", "SVTYPE={0};END={1};SVLEN={2};STD_SPAN={3};STD_POS={4}".format(svtype, self.source_end, self.source_end - self.source_start, self.std_span, self.std_pos))
 
 
     def get_source_length(self):

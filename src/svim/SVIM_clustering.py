@@ -66,11 +66,11 @@ def clusters_from_partitions(partitions, options):
             partition_sample = partition
         element_type = partition_sample[0].type
         #Uni-local clustering
-        if element_type == "del" or element_type == "ins" or element_type == "inv" or element_type == "dup_tan":
+        if element_type == "DEL" or element_type == "INS" or element_type == "INV" or element_type == "DUP_TAN":
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance)
         #Bi-local clustering
-        elif element_type == "dup_int":
+        elif element_type == "DUP_INT":
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance_bilocal)
 
@@ -90,7 +90,7 @@ def calculate_score(cluster, std_span, std_pos, span, type):
         span_deviation_score = 1 - min(1, std_span / span)
         pos_deviation_score = 1 - min(1, std_pos / span)
 
-    if type == "inv":
+    if type == "INV":
         directions = [signature.direction for signature in cluster]
         direction_counts = [0, 0, 0, 0, 0]
         for direction in directions:
@@ -144,7 +144,7 @@ def consolidate_clusters_bilocal(clusters):
             source_std_span = None
             source_std_pos = None
 
-        if cluster[0].type == "dup_tan":
+        if cluster[0].type == "DUP_TAN":
             max_copies = max([member.copies for member in cluster])
             score = calculate_score(cluster, source_std_span, source_std_pos, source_average_end - source_average_start, cluster[0].type)
             consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0],
@@ -212,7 +212,7 @@ def partition_and_cluster_candidates(candidates, options, type):
             if member.cutpaste:
                 cutpaste = True
 
-        if cluster[0].type == "dup_int":
+        if cluster[0].type == "DUP_INT":
             final_candidates.append(CandidateDuplicationInterspersed(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                        cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), combined_members, combined_score, combined_std_span, combined_std_pos, cutpaste))
     return final_candidates

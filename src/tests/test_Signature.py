@@ -8,7 +8,7 @@ class TestSVSignature(unittest.TestCase):
         deletion = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
 
         self.assertEqual(deletion.get_source(), ("chr1", 100, 300))
-        self.assertEqual(deletion.get_key(), ("del", "chr1", 200))
+        self.assertEqual(deletion.get_key(), ("DEL", "chr1", 200))
     
     def test_position_distance_to(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")

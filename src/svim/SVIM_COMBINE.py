@@ -196,7 +196,7 @@ def combine_clusters(signature_clusters, options):
                     pos2_std = None
                 members = [signature for contig2, pos2, signature in destination_partition]
                 #Use pos1_std and pos2_std because breakends do not have a span (for span_std)
-                score = calculate_score(members, pos1_std, pos2_std, options.trans_partition_max_distance, "bnd")
+                score = calculate_score(members, pos1_std, pos2_std, options.trans_partition_max_distance, "BND")
                 breakend_candidates.append(CandidateBreakend(contig1, 
                                                             pos1_mean, 
                                                             dir1, 

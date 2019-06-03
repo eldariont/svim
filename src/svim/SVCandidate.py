@@ -10,7 +10,7 @@ class Candidate:
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "unk"
+        self.type = None
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -71,7 +71,7 @@ class CandidateDeletion(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "del"
+        self.type = "DEL"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -80,7 +80,6 @@ class CandidateDeletion(Candidate):
 
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
-        svtype = "DEL"
         if self.genotype == 2:
             genotype_string = "1/1"
         elif self.genotype == 1:
@@ -103,10 +102,10 @@ class CandidateDeletion(Candidate):
                     pos=start,
                     id=".",
                     ref="N",
-                    alt="<" + svtype + ">",
+                    alt="<" + self.type + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, end, start - end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(self.type, end, start - end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -123,7 +122,7 @@ class CandidateInversion(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "inv"
+        self.type = "INV"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -132,7 +131,6 @@ class CandidateInversion(Candidate):
 
     def get_vcf_entry(self):
         contig, start, end = self.get_source()
-        svtype = "INV"
         if self.genotype == 2:
             genotype_string = "1/1"
         elif self.genotype == 1:
@@ -155,10 +153,10 @@ class CandidateInversion(Candidate):
                     pos=start+1,
                     id=".",
                     ref="N",
-                    alt="<" + svtype + ">",
+                    alt="<" + self.type + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(svtype, end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(self.type, end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -175,7 +173,7 @@ class CandidateNovelInsertion(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "ins"
+        self.type = "INS"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -189,7 +187,6 @@ class CandidateNovelInsertion(Candidate):
 
     def get_vcf_entry(self):
         contig, start, end = self.get_destination()
-        svtype = "INS:NOVEL"
         if self.genotype == 2:
             genotype_string = "1/1"
         elif self.genotype == 1:
@@ -212,10 +209,10 @@ class CandidateNovelInsertion(Candidate):
                     pos=start,
                     id=".",
                     ref="N",
-                    alt="<" + svtype + ">",
+                    alt="<" + self.type + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(self.type, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -234,7 +231,7 @@ class CandidateDuplicationTandem(Candidate):
         self.score = score
         self.std_span = std_span
         self.std_pos = std_pos
-        self.type = "dup_tan"
+        self.type = "DUP_TAN"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -321,7 +318,7 @@ class CandidateDuplicationInterspersed(Candidate):
         self.std_span = std_span
         self.std_pos = std_pos
         self.cutpaste= cutpaste
-        self.type = "dup_int"
+        self.type = "DUP_INT"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -402,7 +399,7 @@ class CandidateBreakend(Candidate):
         self.score = score
         self.std_pos1 = std_pos1
         self.std_pos2 = std_pos2
-        self.type = "bnd"
+        self.type = "BND"
         self.support_fraction = support_fraction
         self.genotype = genotype
         self.ref_reads = ref_reads
@@ -456,7 +453,6 @@ class CandidateBreakend(Candidate):
     def get_vcf_entry(self):
         source_contig, source_start = self.get_source()
         dest_contig, dest_start = self.get_destination()
-        svtype = "BND"
         if (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
             alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start)
         elif (self.source_direction == 'fwd') and (self.dest_direction == 'rev'):
@@ -490,6 +486,6 @@ class CandidateBreakend(Candidate):
                     alt=alt_string,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}".format(svtype, len(set([sig.read for sig in self.members])), self.get_std_pos1(), self.get_std_pos2()),
+                    info="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}".format(self.type, len(set([sig.read for sig in self.members])), self.get_std_pos1(), self.get_std_pos2()),
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=genotype_string, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))

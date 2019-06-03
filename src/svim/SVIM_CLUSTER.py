@@ -18,12 +18,12 @@ def cluster_sv_signatures(sv_signatures, options):
     """Takes a list of SVSignatures and splits them up by type. The SVSignatures of each type are clustered and returned as a tuple of
     (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocation_signatures)."""
 
-    deletion_signatures = [ev for ev in sv_signatures if ev.type == 'del']
-    insertion_signatures = [ev for ev in sv_signatures if ev.type == 'ins']
-    inversion_signatures = [ev for ev in sv_signatures if ev.type == 'inv']
-    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == 'dup_tan']
-    translocation_signatures = [ev for ev in sv_signatures if ev.type == 'tra']
-    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == 'dup_int']
+    deletion_signatures = [ev for ev in sv_signatures if ev.type == "DEL"]
+    insertion_signatures = [ev for ev in sv_signatures if ev.type == "INS"]
+    inversion_signatures = [ev for ev in sv_signatures if ev.type == "INV"]
+    tandem_duplication_signatures = [ev for ev in sv_signatures if ev.type == "DUP_TAN"]
+    translocation_signatures = [ev for ev in sv_signatures if ev.type == "BND"]
+    insertion_from_signatures = [ev for ev in sv_signatures if ev.type == "DUP_INT"]
 
     # Cluster SV signatures
     deletion_signature_clusters = partition_and_cluster(deletion_signatures, options, "deleted regions")
