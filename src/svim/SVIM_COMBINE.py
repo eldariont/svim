@@ -63,7 +63,7 @@ def write_candidates(working_dir, candidates):
 
 
 def sorted_nicely(vcf_entries):
-    """ Sort the given vcf entries (in the form ((contig, start, end), vcf_string)) in the way that humans expect.
+    """ Sort the given vcf entries (in the form ((contig, start, end), vcf_string, sv_type)) in the way that humans expect.
         e.g. chr10 comes after chr2
         Algorithm adapted from https://blog.codinghorror.com/sorting-for-humans-natural-sort-order/"""
     convert = lambda text: int(text) if text.isdigit() else text
@@ -82,23 +82,30 @@ def write_final_vcf(working_dir,
                     version, 
                     contig_names, 
                     contig_lengths, 
-                    sample):
+                    sample,
+                    types_to_output,
+                    duplications_as_insertions):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
     print("##fileformat=VCFv4.2", file=vcf_output)
     print("##source=SVIMV{0}".format(version), file=vcf_output)
-    #print("##reference={0}".format(genome), file=vcf_output)
     for contig_name, contig_length in zip(contig_names, contig_lengths):
         print("##contig=<ID={0},length={1}>".format(contig_name, contig_length), file=vcf_output)
-    print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
-    print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
-    print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
-    print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
-    print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
-    print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
-    print("##ALT=<ID=INS:NOVEL,Description=\"Novel Insertion\">", file=vcf_output)
-    print("##ALT=<ID=BND,Description=\"Breakend\">", file=vcf_output)
+    if "DEL" in types_to_output:
+        print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
+    if "INV" in types_to_output:
+        print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
+    if not duplications_as_insertions and ("DUP_TAN" in types_to_output or "DUP_INT" in types_to_output):
+        print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
+    if not duplications_as_insertions and "DUP_TAN" in types_to_output:
+        print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
+    if not duplications_as_insertions and "DUP_INT" in types_to_output:
+        print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
+    if "INS" in types_to_output:
+        print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
+    if "BND" in types_to_output:
+        print("##ALT=<ID=BND,Description=\"Breakend\">", file=vcf_output)
     print("##INFO=<ID=SVTYPE,Number=1,Type=String,Description=\"Type of structural variant\">", file=vcf_output)
     print("##INFO=<ID=CUTPASTE,Number=0,Type=Flag,Description=\"Genomic origin of interspersed duplication seems to be deleted\">", file=vcf_output)
     print("##INFO=<ID=END,Number=1,Type=Integer,Description=\"End position of the variant described in this record\">", file=vcf_output)
@@ -115,23 +122,41 @@ def write_final_vcf(working_dir,
     print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample, file=vcf_output)
 
+    # Prepare VCF entries depending on command-line parameters
     vcf_entries = []
-    for candidate in deletion_candidates:
-        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
-    for candidate in inversion_candidates:
-        vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry()))
-    for candidate in tandem_duplication_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in int_duplication_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in novel_insertion_candidates:
-        vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry()))
-    for candidate in breakend_candidates:
-        vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry()))
+    if "DEL" in types_to_output:
+        for candidate in deletion_candidates:
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "DEL"))
+    if "INV" in types_to_output:
+        for candidate in inversion_candidates:
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "INV"))
+    if "INS" in types_to_output:
+            for candidate in novel_insertion_candidates:
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(), "INS"))
+    if duplications_as_insertions:
+        if "INS" in types_to_output:
+            for candidate in tandem_duplication_candidates:
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(), "INS"))
+            for candidate in int_duplication_candidates:
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(), "INS"))
+    else:
+        if "DUP_TAN" in types_to_output:
+            for candidate in tandem_duplication_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(), "DUP_TAN"))
+        if "DUP_INT" in types_to_output:
+            for candidate in int_duplication_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(), "DUP_INT"))
+    if "BND" in types_to_output:
+        for candidate in breakend_candidates:
+            vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(), "BND"))
 
     # Sort and write entries to VCF
-    for source, entry in sorted_nicely(vcf_entries):
-        print(entry, file=vcf_output)
+    svtype_counter = defaultdict(int)
+    for source, entry, svtype in sorted_nicely(vcf_entries):
+        variant_id = "svim.{svtype}.{number}".format(svtype = svtype, number = svtype_counter[svtype] + 1)
+        entry_with_id = entry.replace("PLACEHOLDERFORID", variant_id, 1)
+        svtype_counter[svtype] += 1
+        print(entry_with_id, file=vcf_output)
 
     vcf_output.close()
 

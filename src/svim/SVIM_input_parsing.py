@@ -149,10 +149,6 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         type=int,
                                         default=500,
                                         help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
-    group_fasta_combine.add_argument('--sample',
-                                        type=str,
-                                        default="Sample",
-                                        help='Sample ID to include in output vcf file (default: %(default)s)')
     group_fasta_genotype = parser_fasta.add_argument_group('GENOTYPE')
     group_fasta_genotype.add_argument('--skip_genotyping',
                                         action='store_true',
@@ -187,6 +183,24 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         help='Minimum total read depth for genotyping (default: %(default)s). \
                                               Variants covered by a total number of reads lower than this value are not assigned \
                                               a genotype (./. in the output VCF file).')
+    group_fasta_output = parser_fasta.add_argument_group('OUTPUT')
+    group_fasta_output.add_argument('--sample',
+                                        type=str,
+                                        default="Sample",
+                                        help='Sample ID to include in output vcf file (default: %(default)s)')
+    group_fasta_output.add_argument('--types',
+                                        type=str,
+                                        default="DEL,INS,INV,DUP_TAN,DUP_INT,BND",
+                                        help='SV types to include in output VCF (default: %(default)s). \
+                                              Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
+                                              INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
+                                              DUP_INT (interspersed duplications), BND (breakends).')
+    group_fasta_output.add_argument('--duplications_as_insertions',
+                                        action='store_true',
+                                        help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
+                                              POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
+                                              and POS and END both give the insertion point of the duplication.')
 
     parser_bam = subparsers.add_parser('alignment',
                                         help='Detect SVs from an existing alignment')
@@ -292,10 +306,6 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       type=int,
                                       default=500,
                                       help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
-    group_bam_combine.add_argument('--sample',
-                                      type=str,
-                                      default="Sample",
-                                      help='Sample ID to include in output vcf (default: %(default)s)')
     group_bam_genotype = parser_bam.add_argument_group('GENOTYPE')
     group_bam_genotype.add_argument('--skip_genotyping',
                                         action='store_true',
@@ -330,6 +340,24 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       help='Minimum total read depth for genotyping (default: %(default)s). \
                                             Variants covered by a total number of reads lower than this value are not assigned \
                                             a genotype (./. in the output VCF file).')
+    group_bam_output = parser_bam.add_argument_group('OUTPUT')
+    group_bam_output.add_argument('--sample',
+                                        type=str,
+                                        default="Sample",
+                                        help='Sample ID to include in output vcf file (default: %(default)s)')
+    group_bam_output.add_argument('--types',
+                                        type=str,
+                                        default="DEL,INS,INV,DUP_TAN,DUP_INT,BND",
+                                        help='SV types to include in output VCF (default: %(default)s). \
+                                              Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
+                                              INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
+                                              DUP_INT (interspersed duplications), BND (breakends).')
+    group_bam_output.add_argument('--duplications_as_insertions',
+                                        action='store_true',
+                                        help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
+                                              POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
+                                              and POS and END both give the insertion point of the duplication.')
 
     return parser.parse_args(arguments)
 

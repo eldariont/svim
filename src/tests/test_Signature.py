@@ -23,8 +23,8 @@ class TestSVSignature(unittest.TestCase):
     def test_as_string(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
 
-        self.assertEqual(deletion1.as_string(), "chr1\t100\t300\tdel;cigar\tread1")
-        self.assertEqual(deletion1.as_string(":"), "chr1:100:300:del;cigar:read1")
+        self.assertEqual(deletion1.as_string(), "chr1\t100\t300\tDEL;cigar\tread1")
+        self.assertEqual(deletion1.as_string(":"), "chr1:100:300:DEL;cigar:read1")
 
 
 if __name__ == '__main__':
