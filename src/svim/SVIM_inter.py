@@ -99,10 +99,10 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                             if not alignment_current['is_reverse']:
                                 #Tandem Duplication
                                 if alignment_next['ref_end'] > alignment_current['ref_start']:
-                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
+                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end'], True))
                                 #Large tandem duplication
                                 elif distance_on_reference >= -options.max_sv_size:
-                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end']))
+                                    tandem_duplications.append((ref_chr, alignment_next['ref_start'], alignment_current['ref_end'], False))
                                 #Either very large TANDEM or TRANS
                                 else:
                                     sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
@@ -110,10 +110,10 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                             else:
                                 #Tandem Duplication
                                 if alignment_next['ref_start'] < alignment_current['ref_end']:
-                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
+                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end'], True))
                                 #Large tandem duplication
                                 elif distance_on_reference >= -options.max_sv_size:
-                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end']))
+                                    tandem_duplications.append((ref_chr, alignment_current['ref_start'], alignment_next['ref_end'], False))
                                 #Either very large TANDEM or TRANS
                                 else:
                                     sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
@@ -198,25 +198,31 @@ def analyze_read_segments(primary, supplementaries, bam, options):
     current_starts = []
     current_ends = []
     current_copy_number = 0
+    current_fully_covered = []
     for tandem_duplication in tandem_duplications:
         if current_chromosome == None:
             current_chromosome = tandem_duplication[0]
             current_starts.append(tandem_duplication[1])
             current_ends.append(tandem_duplication[2])
             current_copy_number = 1
+            current_fully_covered.append(tandem_duplication[3])
         else:
             if is_similar(current_chromosome, mean(current_starts), mean(current_ends), tandem_duplication[0], tandem_duplication[1], tandem_duplication[2]):
                 current_starts.append(tandem_duplication[1])
                 current_ends.append(tandem_duplication[2])
                 current_copy_number += 1
+                current_fully_covered.append(tandem_duplication[3])
             else:
-                sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+                fully_covered = True if sum(current_fully_covered) else False
+                sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, fully_covered, "suppl", read_name))
                 current_chromosome = tandem_duplication[0]
-                current_starts.append(tandem_duplication[1])
-                current_ends.append(tandem_duplication[2])
+                current_starts =[tandem_duplication[1]]
+                current_ends =[tandem_duplication[2]]
                 current_copy_number = 1
+                current_fully_covered = [tandem_duplication[3]]
     if current_chromosome != None:
-        sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, "suppl", read_name))
+        fully_covered = True if sum(current_fully_covered) else False
+        sv_signatures.append(SignatureDuplicationTandem(current_chromosome, int(mean(current_starts)), int(mean(current_ends)), current_copy_number, fully_covered, "suppl", read_name))
 
     #Handle insertions_from
     for this_index in range(len(translocations)):

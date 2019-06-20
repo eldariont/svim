@@ -117,6 +117,7 @@ def write_final_vcf(working_dir,
     print("##INFO=<ID=STD_POS2,Number=1,Type=Float,Description=\"Standard deviation of breakend 2 position\">", file=vcf_output)
     print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FILTER=<ID=hom_ref,Description=\"Genotype is homozygous reference\">", file=vcf_output)
+    print("##FILTER=<ID=not_fully_covered,Description=\"Tandem duplication is not fully covered by a single read\">", file=vcf_output)
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)
     print("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">", file=vcf_output)
     print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
@@ -179,7 +180,8 @@ def combine_clusters(signature_clusters, options):
         source_contig, source_start, source_end = tan_dup_cluster.get_source()
         dest_contig, dest_start, dest_end = tan_dup_cluster.get_destination()
         num_copies = int(round((dest_end - dest_start) / (source_end - source_start)))
-        tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, tan_dup_cluster.members, tan_dup_cluster.score, tan_dup_cluster.std_span, tan_dup_cluster.std_pos))
+        fully_covered = True if sum([sig.fully_covered for sig in tan_dup_cluster.members]) else False
+        tan_dup_candidates.append(CandidateDuplicationTandem(tan_dup_cluster.source_contig, tan_dup_cluster.source_start, tan_dup_cluster.source_end, num_copies, fully_covered, tan_dup_cluster.members, tan_dup_cluster.score, tan_dup_cluster.std_span, tan_dup_cluster.std_pos))
 
     #####################################
     # Cluster translocation breakpoints #

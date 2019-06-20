@@ -194,7 +194,7 @@ class CandidateNovelInsertion(Candidate):
 
 
 class CandidateDuplicationTandem(Candidate):
-    def __init__(self, source_contig, source_start, source_end, copies, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
+    def __init__(self, source_contig, source_start, source_end, copies, fully_covered, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based start of the region (first copied base)
         self.source_start = source_start
@@ -212,6 +212,7 @@ class CandidateDuplicationTandem(Candidate):
         self.genotype = genotype
         self.ref_reads = ref_reads
         self.alt_reads = alt_reads
+        self.fully_covered = fully_covered
 
 
     def get_destination(self):
@@ -254,6 +255,8 @@ class CandidateDuplicationTandem(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        if not(self.fully_covered):
+            filters.append("not_fully_covered")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -282,6 +285,8 @@ class CandidateDuplicationTandem(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        if not(self.fully_covered):
+            filters.append("not_fully_covered")
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,

@@ -129,7 +129,7 @@ class SignatureInsertionFrom(Signature):
 class SignatureDuplicationTandem(Signature):
     """SV Signature: a region (contig:start-end) has been tandemly duplicated"""
 
-    def __init__(self, contig, start, end, copies, signature, read):
+    def __init__(self, contig, start, end, copies, fully_covered, signature, read):
         self.contig = contig
         #0-based start of the region (first copied base)
         self.start = start
@@ -137,6 +137,7 @@ class SignatureDuplicationTandem(Signature):
         self.end = end
 
         self.copies = copies
+        self.fully_covered = fully_covered
 
         self.signature = signature
         self.read = read

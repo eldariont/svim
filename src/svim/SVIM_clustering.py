@@ -156,7 +156,7 @@ def consolidate_clusters_bilocal(clusters):
                                                                 (int(round(source_average_end)) -
                                                                  int(round(source_average_start))),
                                                                 score, len(cluster), cluster, cluster[0].type, source_std_span, source_std_pos))
-        else:
+        if cluster[0].type == "DUP_INT":
             #Destination
             destination_average_start = sum([member.get_destination()[1] for member in cluster]) / len(cluster)
             destination_average_end = sum([member.get_destination()[2] for member in cluster]) / len(cluster)
