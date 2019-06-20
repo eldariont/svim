@@ -43,6 +43,9 @@ def bam_iterator(bam):
 
 def retrieve_other_alignments(main_alignment, bam):
     """Reconstruct other alignments of the same read for a given alignment from the SA tag"""
+    #reconstructing other alignments from SA tag does not work if sequence of main_alignment is hard-clipped
+    if main_alignment.get_cigar_stats()[0][5] > 0:
+        return []
     try:
         sa_tag = main_alignment.get_tag("SA").split(";")
     except KeyError:

@@ -38,6 +38,32 @@ class TestCollect(unittest.TestCase):
             sequence += str(next_length) + next_operation
         return "{0}S{1}{2}S".format(softclip_left, sequence, softclip_right)
 
+
+    def generate_random_cigar_string_hardclipped(self, readlength):
+        """Generate random cigar string for a read of a given length.
+        Simulate small mismatches and indels but nothing larger than 10bp. Simulate hard-clipping and return tuple (left-clipped, right-clipped, cigar)"""
+        hardclip_left = round(triangular(0, readlength, min(1000, readlength * 0.5)))
+        non_clipped = readlength - hardclip_left
+        hardclip_right = round(triangular(0, non_clipped, min(1000, non_clipped * 0.5)))
+        non_clipped = readlength - hardclip_left - hardclip_right
+        sequence = ""
+        read_bases_consumed = 0
+        while read_bases_consumed < non_clipped:
+            #choose next operation
+            if len(sequence) == 0 or sequence[-1] == "I" or sequence[-1] == "D":
+                next_operation = "M"
+                next_length = round(triangular(1, non_clipped - read_bases_consumed, min(30, non_clipped - read_bases_consumed)))
+                read_bases_consumed += next_length
+            else:
+                next_operation = choice("ID")
+                if next_operation == "I":
+                    next_length = round(triangular(1, min(10, non_clipped - read_bases_consumed), 1))
+                    read_bases_consumed += next_length
+                else:
+                    next_length = round(triangular(1, 10, 1))
+            sequence += str(next_length) + next_operation
+        return (hardclip_left, hardclip_right, "{0}H{1}{2}H".format(hardclip_left, sequence, hardclip_right))
+
     def generate_read(self, qname, flag):
         rname = "chr1"
         pos = int(uniform(1,249250620))
@@ -49,25 +75,56 @@ class TestCollect(unittest.TestCase):
         read_info = (qname, flag, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", "")
 
         return read_info
-    
-    def generate_primary_read_with_sa_tag(self, qname, flag):
-        rname = "chr1"
-        pos = int(uniform(1,249250620))
-        mapq = int(triangular(0, 60, 50))
+
+
+    def generate_split_read_with_sa_tags(self, qname, flag):
         length = int(triangular(100, 20000, 15000))
-        cigar = self.generate_random_cigar_string(length)
         seq = self.generate_random_sequence(length)
 
-        supplementary_read_info = (qname, flag + 2048, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", "")
-        sa_tag = "SA:Z:{rname},{pos},{strand},{cigar},{mapq},{nm};".format(rname=rname, pos=pos, strand=("-" if flag & 16 else "+"), cigar=cigar, mapq=mapq, nm=0)
-        
-        rname = "chr1"
-        pos = int(uniform(1,249250620))
-        mapq = int(triangular(0, 60, 50))
-        cigar = self.generate_random_cigar_string(length)
+        suppl_rname = "chr1"
+        suppl_pos = int(uniform(1,249250620))
+        suppl_mapq = int(triangular(0, 60, 50))
+        suppl_hardclipped_left, suppl_hardclipped_right, suppl_cigar = self.generate_random_cigar_string_hardclipped(length)
 
-        primary_read_info = (qname, flag, rname, pos, mapq, cigar, "*", 0, 0, seq, "*", sa_tag)
+        prim_rname = "chr1"
+        prim_pos = int(uniform(1,249250620))
+        prim_mapq = int(triangular(0, 60, 50))
+        prim_cigar = self.generate_random_cigar_string(length)
 
+        supplementary_read_info = ( qname,
+                                    flag + 2048,
+                                    suppl_rname,
+                                    suppl_pos,
+                                    suppl_mapq,
+                                    suppl_cigar,
+                                    "*",
+                                    0,
+                                    0,
+                                    seq[suppl_hardclipped_left:-suppl_hardclipped_right],
+                                    "*",
+                                    "SA:Z:{rname},{pos},{strand},{cigar},{mapq},{nm};".format(rname=prim_rname,
+                                                                                              pos=prim_pos,
+                                                                                              strand=("-" if flag & 16 else "+"),
+                                                                                              cigar=prim_cigar,
+                                                                                              mapq=prim_mapq,
+                                                                                              nm=0))
+        primary_read_info = (   qname,
+                                flag,
+                                prim_rname,
+                                prim_pos,
+                                prim_mapq,
+                                prim_cigar,
+                                "*",
+                                0,
+                                0,
+                                seq,
+                                "*",
+                                "SA:Z:{rname},{pos},{strand},{cigar},{mapq},{nm};".format(rname=suppl_rname,
+                                                                                          pos=suppl_pos,
+                                                                                          strand=("-" if flag & 16 else "+"),
+                                                                                          cigar=suppl_cigar.replace("H", "S"),
+                                                                                          mapq=suppl_mapq,
+                                                                                          nm=0))
         return (primary_read_info, supplementary_read_info)
 
     def setUp(self):
@@ -179,7 +236,7 @@ class TestCollect(unittest.TestCase):
 
         #10 reads with primary and supplementary alignment
         for index in range(10, 20):
-            primary_read_info, supplementary_read_info = self.generate_primary_read_with_sa_tag("read{}".format(index+1), 0)
+            primary_read_info, supplementary_read_info = self.generate_split_read_with_sa_tags("read{}".format(index+1), 0)
             #primary with SA tag
             self.read_infos.append(primary_read_info)
             sam_entry = "\n" + "\t".join([str(el) for el in primary_read_info])
@@ -215,7 +272,7 @@ class TestCollect(unittest.TestCase):
         signatures = analyze_alignment_file_querysorted(self.alignment_file, options)
         self.assertEqual(len([sig for sig in signatures if sig.signature == "cigar"]), 0)
     
-    def test_retrieve_other_alignments(self):
+    def test_retrieve_supplementary_alignment_from_primary(self):
         alignment_it = self.alignment_file.fetch(until_eof=True)
         alignments = list(alignment_it)
         for i in range(10,30,2):
@@ -223,14 +280,20 @@ class TestCollect(unittest.TestCase):
             supplementary = alignments[i+1]
             retrieved_supplementary_alns = retrieve_other_alignments(primary, self.alignment_file)
             self.assertEqual(len(retrieved_supplementary_alns), 1)
-            self.assertEqual(retrieved_supplementary_alns[0].cigarstring, supplementary.cigarstring)
+            self.assertEqual(retrieved_supplementary_alns[0].cigarstring, supplementary.cigarstring.replace("H", "S"))
             self.assertEqual(retrieved_supplementary_alns[0].reference_id, supplementary.reference_id)
             self.assertEqual(retrieved_supplementary_alns[0].reference_start, supplementary.reference_start)
             self.assertEqual(retrieved_supplementary_alns[0].reference_end, supplementary.reference_end)
             self.assertEqual(retrieved_supplementary_alns[0].flag, supplementary.flag)
             self.assertEqual(retrieved_supplementary_alns[0].mapping_quality, supplementary.mapping_quality)
-            self.assertEqual(retrieved_supplementary_alns[0].query_sequence, supplementary.query_sequence)
+            self.assertEqual(retrieved_supplementary_alns[0].query_sequence[retrieved_supplementary_alns[0].query_alignment_start:retrieved_supplementary_alns[0].query_alignment_end], supplementary.query_sequence)
             self.assertEqual(retrieved_supplementary_alns[0].query_name, supplementary.query_name)
-            self.assertEqual(retrieved_supplementary_alns[0].query_alignment_start, supplementary.query_alignment_start)
-            self.assertEqual(retrieved_supplementary_alns[0].query_alignment_end, supplementary.query_alignment_end)
 
+    def test_retrieve_primary_alignment_from_supplementary(self):
+        alignment_it = self.alignment_file.fetch(until_eof=True)
+        alignments = list(alignment_it)
+        for i in range(10,30,2):
+            primary = alignments[i]
+            supplementary = alignments[i+1]
+            retrieved_primary_alns = retrieve_other_alignments(supplementary, self.alignment_file)
+            self.assertEqual(len(retrieved_primary_alns), 0)

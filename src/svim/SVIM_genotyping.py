@@ -77,18 +77,18 @@ def genotype(candidates, bam, type, options):
         if (len(reads_supporting_variant) + len(reads_supporting_reference)) >= options.minimum_depth:
             candidate.support_fraction = len(reads_supporting_variant) / (len(reads_supporting_variant) + len(reads_supporting_reference))
             if candidate.support_fraction >= options.homozygous_threshold:
-                candidate.genotype = 2
+                candidate.genotype = "1/1"
             elif candidate.support_fraction >= options.heterozygous_threshold and candidate.support_fraction < options.homozygous_threshold:
-                candidate.genotype = 1
+                candidate.genotype = "0/1"
             elif candidate.support_fraction < options.heterozygous_threshold:
-                candidate.genotype = 0
+                candidate.genotype = "0/0"
             else:
-                candidate.genotype = None
+                candidate.genotype = "./."
         elif (len(reads_supporting_variant) + len(reads_supporting_reference)) > 0:
             candidate.support_fraction = len(reads_supporting_variant) / (len(reads_supporting_variant) + len(reads_supporting_reference))
-            candidate.genotype = None
+            candidate.genotype = "./."
         else:
-            candidate.support_fraction = None
-            candidate.genotype = None
+            candidate.support_fraction = "."
+            candidate.genotype = "./."
         candidate.ref_reads = len(reads_supporting_reference)
         candidate.alt_reads = len(reads_supporting_variant)
