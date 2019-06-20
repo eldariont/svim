@@ -4,6 +4,7 @@ import re
 
 from collections import defaultdict
 from math import pow, sqrt
+import time
 from statistics import mean, stdev
 
 from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
@@ -89,7 +90,8 @@ def write_final_vcf(working_dir,
 
     # Write header lines
     print("##fileformat=VCFv4.2", file=vcf_output)
-    print("##source=SVIMV{0}".format(version), file=vcf_output)
+    print("##fileDate={0}".format(time.strftime("%Y-%m-%d|%I:%M:%S%p|%Z|%z")), file=vcf_output)
+    print("##source=SVIM-v{0}".format(version), file=vcf_output)
     for contig_name, contig_length in zip(contig_names, contig_lengths):
         print("##contig=<ID={0},length={1}>".format(contig_name, contig_length), file=vcf_output)
     if "DEL" in types_to_output:
