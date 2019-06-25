@@ -80,28 +80,29 @@ def draw_allele_plot(refs_11, alts_11, refs_10, alts_10, refs_00, alts_00, refs_
     """Makes a scatter plot of allele support
     """
     num_points = len(refs_11)+len(refs_10)+len(refs_00)+len(refs_nn)
+    point_alpha = 10 / math.sqrt(max(100, num_points))
     plt.scatter(x=[ref+random.uniform(-0.5, 0.5) for ref in refs_11],
                 y=[alt+random.uniform(-0.5, 0.5) for alt in alts_11],
                 c='tab:red',
-                alpha=10/math.sqrt(num_points),
+                alpha=point_alpha,
                 label='1/1',
                 edgecolors='none')
     plt.scatter(x=[ref+random.uniform(-0.5, 0.5) for ref in refs_10],
                 y=[alt+random.uniform(-0.5, 0.5) for alt in alts_10],
                 c='tab:purple',
-                alpha=10/math.sqrt(num_points),
+                alpha=point_alpha,
                 label='0/1',
                 edgecolors='none')
     plt.scatter(x=[ref+random.uniform(-0.5, 0.5) for ref in refs_00],
                 y=[alt+random.uniform(-0.5, 0.5) for alt in alts_00],
                 c='tab:blue',
-                alpha=10/math.sqrt(num_points),
+                alpha=point_alpha,
                 label='0/0',
                 edgecolors='none')
     plt.scatter(x=[ref+random.uniform(-0.5, 0.5) for ref in refs_nn],
                 y=[alt+random.uniform(-0.5, 0.5) for alt in alts_nn],
                 c='tab:brown',
-                alpha=10/math.sqrt(max(100, num_points)),
+                alpha=point_alpha,
                 label='./.',
                 edgecolors='none')
     axes = plt.gca()
