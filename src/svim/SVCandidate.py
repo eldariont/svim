@@ -78,7 +78,7 @@ class CandidateDeletion(Candidate):
         self.alt_reads = alt_reads
 
 
-    def get_vcf_entry(self):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -89,12 +89,18 @@ class CandidateDeletion(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        if sequence_alleles:
+            ref_allele = reference.fetch(contig, max(0, start-1), end).upper()
+            alt_allele = reference.fetch(contig, max(0, start-1), start).upper()
+        else:
+            ref_allele = "N"
+            alt_allele = "<" + self.type + ">"
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
                     id="PLACEHOLDERFORID",
-                    ref="N",
-                    alt="<" + self.type + ">",
+                    ref=ref_allele,
+                    alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(self.type, end, start - end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
@@ -120,8 +126,10 @@ class CandidateInversion(Candidate):
         self.ref_reads = ref_reads
         self.alt_reads = alt_reads
 
+        self.complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
-    def get_vcf_entry(self):
+
+    def get_vcf_entry(self, sequence_alleles = False, reference = None):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -132,12 +140,18 @@ class CandidateInversion(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        if sequence_alleles:
+            ref_allele = reference.fetch(contig, start, end).upper()
+            alt_allele = "".join(self.complement.get(base.upper(), base.upper()) for base in reversed(ref_allele))
+        else:
+            ref_allele = "N"
+            alt_allele = "<" + self.type + ">"
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start+1,
                     id="PLACEHOLDERFORID",
-                    ref="N",
-                    alt="<" + self.type + ">",
+                    ref=ref_allele,
+                    alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(self.type, end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),

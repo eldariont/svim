@@ -143,7 +143,21 @@ def main():
     logging.info("Final breakend candidates: {0}".format(len(breakend_candidates)))
     write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates))
     types_to_output = [entry.strip() for entry in options.types.split(",")]
-    write_final_vcf(options.working_dir, int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates, __version__, aln_file.references, aln_file.lengths, options.sample, types_to_output, options.duplications_as_insertions)
+    write_final_vcf(options.working_dir,
+                int_duplication_candidates,
+                inversion_candidates,
+                tan_dup_candidates,
+                deletion_candidates,
+                novel_insertion_candidates,
+                breakend_candidates,
+                __version__,
+                aln_file.references,
+                aln_file.lengths,
+                options.sample,
+                types_to_output,
+                options.duplications_as_insertions,
+                options.genome,
+                options.sequence_alleles)
     logging.info("Draw plots..")
     plot_sv_lengths(deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, options)
     if not options.skip_genotyping:

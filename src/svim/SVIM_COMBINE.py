@@ -6,6 +6,7 @@ from collections import defaultdict
 from math import pow, sqrt
 import time
 from statistics import mean, stdev
+from pysam import FastaFile
 
 from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
 from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion, CandidateBreakend
@@ -85,7 +86,9 @@ def write_final_vcf(working_dir,
                     contig_lengths, 
                     sample,
                     types_to_output,
-                    duplications_as_insertions):
+                    duplications_as_insertions,
+                    genome,
+                    sequence_alleles):
     vcf_output = open(working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
@@ -125,14 +128,33 @@ def write_final_vcf(working_dir,
     print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample, file=vcf_output)
 
+    # Open reference genome sequence file
+    if sequence_alleles:
+        try:
+            reference = FastaFile(genome)
+        except ValueError:
+            logging.warning("The given reference genome is missing an index file ({path}.fai). Sequence alleles cannot be retrieved.".format(genome))
+            sequence_alleles = False
+        except IOError:
+            logging.warning("The given reference genome is missing ({path}). Sequence alleles cannot be retrieved.".format(genome))
+            sequence_alleles = False
+
     # Prepare VCF entries depending on command-line parameters
     vcf_entries = []
     if "DEL" in types_to_output:
-        for candidate in deletion_candidates:
-            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "DEL"))
+        if sequence_alleles:
+            for candidate in deletion_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference), "DEL"))
+        else:
+            for candidate in deletion_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "DEL"))
     if "INV" in types_to_output:
-        for candidate in inversion_candidates:
-            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "INV"))
+        if sequence_alleles:
+            for candidate in inversion_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference), "INV"))
+        else:
+            for candidate in inversion_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "INV"))
     if "INS" in types_to_output:
             for candidate in novel_insertion_candidates:
                 vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(), "INS"))
@@ -152,6 +174,9 @@ def write_final_vcf(working_dir,
     if "BND" in types_to_output:
         for candidate in breakend_candidates:
             vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(), "BND"))
+
+    if sequence_alleles:
+        reference.close()
 
     # Sort and write entries to VCF
     svtype_counter = defaultdict(int)

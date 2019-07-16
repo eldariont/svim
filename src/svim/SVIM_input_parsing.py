@@ -195,6 +195,10 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
                                               INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
                                               DUP_INT (interspersed duplications), BND (breakends).')
+    group_fasta_output.add_argument('--sequence_alleles',
+                                        action='store_true',
+                                        help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
+                                              By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
     group_fasta_output.add_argument('--duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
@@ -212,6 +216,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     parser_bam.add_argument('bam_file',
                              type=str,
                              help='SAM/BAM file with aligned long reads (sorted either by coordinate or queryname)')
+    parser_bam.add_argument('genome',
+                               type=str,
+                               help='Reference genome file that the long reads were aligned to (FASTA)')
     group_bam_collect = parser_bam.add_argument_group('COLLECT')
     group_bam_collect.add_argument('--min_mapq',
                                       type=int,
@@ -352,6 +359,10 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
                                               INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
                                               DUP_INT (interspersed duplications), BND (breakends).')
+    group_bam_output.add_argument('--sequence_alleles',
+                                        action='store_true',
+                                        help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
+                                              By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
     group_bam_output.add_argument('--duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
