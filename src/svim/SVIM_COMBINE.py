@@ -74,8 +74,7 @@ def sorted_nicely(vcf_entries):
     return sorted(vcf_entries, key = tuple_key)
 
 
-def write_final_vcf(working_dir, 
-                    int_duplication_candidates, 
+def write_final_vcf(int_duplication_candidates,
                     inversion_candidates, 
                     tandem_duplication_candidates, 
                     deletion_candidates, 
@@ -83,13 +82,10 @@ def write_final_vcf(working_dir,
                     breakend_candidates, 
                     version, 
                     contig_names, 
-                    contig_lengths, 
-                    sample,
+                    contig_lengths,
                     types_to_output,
-                    duplications_as_insertions,
-                    genome,
-                    sequence_alleles):
-    vcf_output = open(working_dir + '/final_results.vcf', 'w')
+                    options):
+    vcf_output = open(options.working_dir + '/final_results.vcf', 'w')
 
     # Write header lines
     print("##fileformat=VCFv4.2", file=vcf_output)
@@ -101,11 +97,11 @@ def write_final_vcf(working_dir,
         print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     if "INV" in types_to_output:
         print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
-    if not duplications_as_insertions and ("DUP_TAN" in types_to_output or "DUP_INT" in types_to_output):
+    if not options.duplications_as_insertions and ("DUP_TAN" in types_to_output or "DUP_INT" in types_to_output):
         print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
-    if not duplications_as_insertions and "DUP_TAN" in types_to_output:
+    if not options.duplications_as_insertions and "DUP_TAN" in types_to_output:
         print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
-    if not duplications_as_insertions and "DUP_INT" in types_to_output:
+    if not options.duplications_as_insertions and "DUP_INT" in types_to_output:
         print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
     if "INS" in types_to_output:
         print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
@@ -120,60 +116,59 @@ def write_final_vcf(working_dir,
     print("##INFO=<ID=STD_POS,Number=1,Type=Float,Description=\"Standard deviation in position of merged SV signatures\">", file=vcf_output)
     print("##INFO=<ID=STD_POS1,Number=1,Type=Float,Description=\"Standard deviation of breakend 1 position\">", file=vcf_output)
     print("##INFO=<ID=STD_POS2,Number=1,Type=Float,Description=\"Standard deviation of breakend 2 position\">", file=vcf_output)
+    if options.insertion_sequences:
+        print("##INFO=<ID=SEQS,Number=.,Type=String,Description=\"Insertion sequences from all supporting reads\">", file=vcf_output)
+    if options.read_names:
+        print("##INFO=<ID=READS,Number=.,Type=String,Description=\"Names of all supporting reads\">", file=vcf_output)
     print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FILTER=<ID=hom_ref,Description=\"Genotype is homozygous reference\">", file=vcf_output)
     print("##FILTER=<ID=not_fully_covered,Description=\"Tandem duplication is not fully covered by a single read\">", file=vcf_output)
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)
     print("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">", file=vcf_output)
     print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
-    print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + sample, file=vcf_output)
+    print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + options.sample, file=vcf_output)
 
     # Open reference genome sequence file
+    sequence_alleles = options.sequence_alleles
     if sequence_alleles:
         try:
-            reference = FastaFile(genome)
+            reference = FastaFile(options.genome)
         except ValueError:
-            logging.warning("The given reference genome is missing an index file ({path}.fai). Sequence alleles cannot be retrieved.".format(genome))
+            logging.warning("The given reference genome is missing an index file ({path}.fai). Sequence alleles cannot be retrieved.".format(options.genome))
             sequence_alleles = False
         except IOError:
-            logging.warning("The given reference genome is missing ({path}). Sequence alleles cannot be retrieved.".format(genome))
+            logging.warning("The given reference genome is missing ({path}). Sequence alleles cannot be retrieved.".format(options.genome))
             sequence_alleles = False
+    else:
+        reference = None
 
     # Prepare VCF entries depending on command-line parameters
     vcf_entries = []
     if "DEL" in types_to_output:
-        if sequence_alleles:
-            for candidate in deletion_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference), "DEL"))
-        else:
-            for candidate in deletion_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "DEL"))
+        for candidate in deletion_candidates:
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names), "DEL"))
     if "INV" in types_to_output:
-        if sequence_alleles:
-            for candidate in inversion_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference), "INV"))
-        else:
-            for candidate in inversion_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(), "INV"))
+        for candidate in inversion_candidates:
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names), "INV"))
     if "INS" in types_to_output:
-            for candidate in novel_insertion_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(), "INS"))
-    if duplications_as_insertions:
+        for candidate in novel_insertion_candidates:
+            vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(options.insertion_sequences, options.read_names), "INS"))
+    if options.duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names), "INS"))
             for candidate in int_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names), "INS"))
     else:
         if "DUP_TAN" in types_to_output:
             for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(), "DUP_TAN"))
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names), "DUP_TAN"))
         if "DUP_INT" in types_to_output:
             for candidate in int_duplication_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(), "DUP_INT"))
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names), "DUP_INT"))
     if "BND" in types_to_output:
         for candidate in breakend_candidates:
-            vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(), "BND"))
+            vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(options.read_names), "BND"))
 
     if sequence_alleles:
         reference.close()

@@ -199,12 +199,21 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
+    group_fasta_output.add_argument('--insertion_sequences',
+                                        action='store_true',
+                                        help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
+                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
+                                              However, the insertion sequences are not combined into a consensus sequence.')
     group_fasta_output.add_argument('--duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
                                               By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
                                               POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
                                               and POS and END both give the insertion point of the duplication.')
+    group_fasta_output.add_argument('--read_names',
+                                        action='store_true',
+                                        help='Output names of supporting reads in INFO tag of VCF (default: %(default)s). \
+                                              If enabled, the INFO/READS tag contains the list of names of the supporting reads.')
 
     parser_bam = subparsers.add_parser('alignment',
                                         help='Detect SVs from an existing alignment')
@@ -363,12 +372,21 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
+    group_bam_output.add_argument('--insertion_sequences',
+                                        action='store_true',
+                                        help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
+                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
+                                              However, the insertion sequences are not combined into a consensus sequence.')
     group_bam_output.add_argument('--duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
                                               By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
                                               POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
                                               and POS and END both give the insertion point of the duplication.')
+    group_bam_output.add_argument('--read_names',
+                                        action='store_true',
+                                        help='Output names of supporting reads in INFO tag of VCF (default: %(default)s). \
+                                              If enabled, the INFO/READS tag contains the list of names of the supporting reads.')
 
     return parser.parse_args(arguments)
 

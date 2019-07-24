@@ -7,20 +7,26 @@ from svim.SVSignature import SignatureDeletion, SignatureInsertion
 
 def analyze_cigar_indel(tuples, min_length):
     """Parses CIGAR tuples (op, len) and returns Indels with a length > minLength"""
-    pos = 0
+    pos_ref = 0
+    pos_read = 0
     indels = []
     for operation, length in tuples:
         if operation == 0:                     # alignment match
-            pos += length
+            pos_ref += length
+            pos_read += length
         elif operation == 1:                   # insertion
             if length >= min_length:
-                indels.append((pos, length, "INS"))
+                indels.append((pos_ref, pos_read, length, "INS"))
+            pos_read += length
         elif operation == 2:                   # deletion
             if length >= min_length:
-                indels.append((pos, length, "DEL"))
-            pos += length
+                indels.append((pos_ref, pos_read, length, "DEL"))
+            pos_ref += length
+        elif operation == 4:                   # soft clip
+            pos_read += length
         elif operation == 7 or operation == 8:        # match or mismatch
-            pos += length
+            pos_ref += length
+            pos_read += length
     return indels
 
 
@@ -29,11 +35,12 @@ def analyze_alignment_indel(alignment, bam, query_name, options):
     ref_chr = bam.getrname(alignment.reference_id)
     ref_start = alignment.reference_start
     indels = analyze_cigar_indel(alignment.cigartuples, options.min_sv_size)
-    for pos, length, typ in indels:
+    for pos_ref, pos_read, length, typ in indels:
         if typ == "DEL":
-            sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos, ref_start + pos + length, "cigar", query_name))
+            sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name))
         elif typ == "INS":
-            sv_signatures.append(SignatureInsertion(ref_chr, ref_start + pos, ref_start + pos + length, "cigar", query_name))
+            insertion_seq = alignment.query_sequence[pos_read:pos_read+length]
+            sv_signatures.append(SignatureInsertion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name, insertion_seq))
     return sv_signatures
 
 

@@ -78,7 +78,7 @@ class CandidateDeletion(Candidate):
         self.alt_reads = alt_reads
 
 
-    def get_vcf_entry(self, sequence_alleles = False, reference = None):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -95,6 +95,16 @@ class CandidateDeletion(Candidate):
         else:
             ref_allele = "N"
             alt_allele = "<" + self.type + ">"
+        info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
+        info_string = info_template.format(self.type, 
+                                           end, 
+                                           start - end, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -103,7 +113,7 @@ class CandidateDeletion(Candidate):
                     alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(self.type, end, start - end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -129,7 +139,7 @@ class CandidateInversion(Candidate):
         self.complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 
-    def get_vcf_entry(self, sequence_alleles = False, reference = None):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -146,6 +156,15 @@ class CandidateInversion(Candidate):
         else:
             ref_allele = "N"
             alt_allele = "<" + self.type + ">"
+        info_template="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}"
+        info_string = info_template.format(self.type, 
+                                            end, 
+                                            len(set([sig.read for sig in self.members])), 
+                                            self.get_std_span(), 
+                                            self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start+1,
@@ -154,7 +173,7 @@ class CandidateInversion(Candidate):
                     alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}".format(self.type, end, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -183,7 +202,7 @@ class CandidateNovelInsertion(Candidate):
     def get_bed_entry(self):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.get_std_span(), self.get_std_pos()), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
-    def get_vcf_entry(self):
+    def get_vcf_entry(self, insertion_sequences = False, read_names = False):
         contig, start, end = self.get_destination()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -194,6 +213,19 @@ class CandidateNovelInsertion(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
+        info_string = info_template.format(self.type, 
+                                           start, 
+                                           end - start, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos()) 
+        if insertion_sequences:
+            insertion_seqs = [member.sequence for member in self.members]
+            info_string += ";SEQS={0}".format(",".join(insertion_seqs))
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -202,7 +234,7 @@ class CandidateNovelInsertion(Candidate):
                     alt="<" + self.type + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(self.type, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -255,7 +287,7 @@ class CandidateDuplicationTandem(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self):
+    def get_vcf_entry_as_ins(self, read_names = False):
         contig = self.source_contig
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
@@ -271,6 +303,16 @@ class CandidateDuplicationTandem(Candidate):
             filters.append("hom_ref")
         if not(self.fully_covered):
             filters.append("not_fully_covered")
+        info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
+        info_string = info_template.format(svtype, 
+                                           start, 
+                                           end - start, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -279,12 +321,12 @@ class CandidateDuplicationTandem(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
-    def get_vcf_entry_as_dup(self):
+    def get_vcf_entry_as_dup(self, read_names = False):
         contig = self.source_contig
         start = self.source_start
         end = self.source_end
@@ -301,6 +343,16 @@ class CandidateDuplicationTandem(Candidate):
             filters.append("hom_ref")
         if not(self.fully_covered):
             filters.append("not_fully_covered")
+        info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
+        info_string = info_template.format(svtype, 
+                                           end, 
+                                           length, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -309,7 +361,7 @@ class CandidateDuplicationTandem(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}".format(svtype, end, length, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -365,7 +417,7 @@ class CandidateDuplicationInterspersed(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self):
+    def get_vcf_entry_as_ins(self, read_names = False):
         contig, start, end = self.get_destination()
         svtype = "INS"
         if self.ref_reads != None and self.alt_reads != None:
@@ -377,6 +429,17 @@ class CandidateDuplicationInterspersed(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
+        info_string = info_template.format(svtype, 
+                                           "CUTPASTE;" if self.cutpaste else "", 
+                                           start, 
+                                           end - start, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -385,12 +448,12 @@ class CandidateDuplicationInterspersed(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}".format(svtype, "CUTPASTE;" if self.cutpaste else "", start, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
-    def get_vcf_entry_as_dup(self):
+    def get_vcf_entry_as_dup(self, read_names = False):
         contig, start, end = self.get_source()
         svtype = "DUP_INT"
         if self.ref_reads != None and self.alt_reads != None:
@@ -402,6 +465,17 @@ class CandidateDuplicationInterspersed(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
+        info_string = info_template.format(svtype, 
+                                           "CUTPASTE;" if self.cutpaste else "", 
+                                           end, 
+                                           end - start, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_span(), 
+                                           self.get_std_pos())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -410,7 +484,7 @@ class CandidateDuplicationInterspersed(Candidate):
                     alt="<" + svtype + ">",
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}".format(svtype, "CUTPASTE;" if self.cutpaste else "", end, end - start, len(set([sig.read for sig in self.members])), self.get_std_span(), self.get_std_pos()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
@@ -482,7 +556,7 @@ class CandidateBreakend(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry(self):
+    def get_vcf_entry(self, read_names = False):
         source_contig, source_start = self.get_source()
         dest_contig, dest_start = self.get_destination()
         if (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
@@ -502,6 +576,14 @@ class CandidateBreakend(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        info_template="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}"
+        info_string = info_template.format(self.type, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_pos1(), 
+                                           self.get_std_pos2())
+        if read_names:
+            read_ids = [member.read for member in self.members]
+            info_string += ";READS={0}".format(",".join(read_ids))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=source_contig,
                     pos=source_start,
@@ -510,6 +592,6 @@ class CandidateBreakend(Candidate):
                     alt=alt_string,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
-                    info="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}".format(self.type, len(set([sig.read for sig in self.members])), self.get_std_pos1(), self.get_std_pos2()),
+                    info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))

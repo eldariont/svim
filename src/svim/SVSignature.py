@@ -55,7 +55,7 @@ class SignatureDeletion(Signature):
 
 class SignatureInsertion(Signature):
     """SV Signature: a region of length end-start has been inserted at contig:start"""
-    def __init__(self, contig, start, end, signature, read):
+    def __init__(self, contig, start, end, signature, read, sequence):
         self.contig = contig
         #0-based start of the insertion (base after the insertion)
         self.start = start
@@ -63,6 +63,7 @@ class SignatureInsertion(Signature):
         self.end = end
         self.signature = signature
         self.read = read
+        self.sequence = sequence
         self.type = "INS"
 
 

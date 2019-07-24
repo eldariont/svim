@@ -48,6 +48,7 @@ Installation
 
 Changelog
 ---------
+- **v1.2.0**: add 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
 - **v1.1.0**: outputs BNDs in VCF, detects large tandem duplications, allows skipping genotyping, makes VCF output more flexible, adds genotype scatter plot
 - **v1.0.0**: adds genotyping of deletions, inversions, insertions and interspersed duplications, produces plots of SV length distribution, improves help descriptions
 - **v0.5.0**: replaces graph-based clustering with hierarchical clustering, modifies scoring function, improves partitioning prior to clustering, improves calling from coordinate-sorted SAM/BAM files, improves VCF output

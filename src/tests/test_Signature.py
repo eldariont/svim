@@ -14,7 +14,7 @@ class TestSVSignature(unittest.TestCase):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
         deletion2 = SignatureDeletion("chr1", 150, 200, "cigar", "read2")
         deletion3 = SignatureDeletion("chr2", 150, 200, "cigar", "read2")
-        insertion = SignatureInsertion("chr1", 150, 200, "cigar", "read2")
+        insertion = SignatureInsertion("chr1", 150, 200, "cigar", "read2", "ACGTAGTAGCTAGCTTTGCTAGCATTAGCGACTGCTTACGCAGCTCCCTA")
 
         self.assertEqual(deletion1.position_distance_to(deletion2), 25)
         self.assertEqual(deletion1.position_distance_to(deletion3), float("Inf"))

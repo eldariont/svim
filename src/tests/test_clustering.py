@@ -24,7 +24,7 @@ class TestSVIMClustering(unittest.TestCase):
             half_span = 2000 + uniform(-100, 100)
             new_sig = SignatureDeletion("chr1", center - half_span, center + half_span, "cigar", str(i))
             self.signatures.append(new_sig)
-        self.options = parse_arguments('0.5.0', ['alignment', 'myworkdir', 'mybamfile'])
+        self.options = parse_arguments('1.2.0', ['alignment', 'myworkdir', 'mybamfile', 'mygenome'])
 
     def test_clustering(self):
         clusters = partition_and_cluster(self.signatures, options=self.options, type="deleted regions")

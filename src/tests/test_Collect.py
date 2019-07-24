@@ -267,8 +267,8 @@ class TestCollect(unittest.TestCase):
         self.assertEqual(num_primary_supplementary, 10)
 
     def test_analyze_alignment_file_querysorted(self):
-        arguments = ['alignment', 'myworkdir', 'mybamfile']
-        options = parse_arguments('0.4.3', arguments)
+        arguments = ['alignment', 'myworkdir', 'mybamfile', 'mygenome']
+        options = parse_arguments('1.2.0', arguments)
         signatures = analyze_alignment_file_querysorted(self.alignment_file, options)
         self.assertEqual(len([sig for sig in signatures if sig.signature == "cigar"]), 0)
     

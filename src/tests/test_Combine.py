@@ -29,12 +29,12 @@ class TestSVIMClustering(unittest.TestCase):
 
     def test_combine(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            options = parse_arguments('0.5.0', ['alignment', tmpdirname, 'mybamfile'])
+            options = parse_arguments('1.2.0', ['alignment', tmpdirname, 'mybamfile', 'mygenome'])
             signature_clusters = cluster_sv_signatures(self.signatures, options)
 
             # Write SV signature clusters
             write_signature_clusters_bed(options.working_dir, signature_clusters)
-            write_signature_clusters_vcf(options.working_dir, signature_clusters, '0.5.0')
+            write_signature_clusters_vcf(options.working_dir, signature_clusters, '1.2.0')
 
             combine_clusters(signature_clusters, options)
 

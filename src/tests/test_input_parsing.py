@@ -28,8 +28,8 @@ class TestInputParsing(unittest.TestCase):
             self.assertEqual(guess_file_type(list_path), "list")
     
     def test_parse_arguments(self):
-        arguments = ['alignment', 'myworkdir', 'mybamfile']
-        options = parse_arguments('0.4.3', arguments)
+        arguments = ['alignment', 'myworkdir', 'mybamfile', 'myalignment']
+        options = parse_arguments('1.2.0', arguments)
         self.assertEqual(type(options.min_mapq), int)
         self.assertEqual(type(options.min_sv_size), int)
         self.assertEqual(type(options.max_sv_size), int)
