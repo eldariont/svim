@@ -39,7 +39,10 @@ def analyze_alignment_indel(alignment, bam, query_name, options):
         if typ == "DEL":
             sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name))
         elif typ == "INS":
-            insertion_seq = alignment.query_sequence[pos_read:pos_read+length]
+            try:
+                insertion_seq = alignment.query_sequence[pos_read:pos_read+length]
+            except TypeError:
+                insertion_seq = ""
             sv_signatures.append(SignatureInsertion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name, insertion_seq))
     return sv_signatures
 

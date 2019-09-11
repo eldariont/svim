@@ -224,7 +224,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                    If the directory does not exist, it is created.')
     parser_bam.add_argument('bam_file',
                              type=str,
-                             help='SAM/BAM file with aligned long reads (sorted either by coordinate or queryname)')
+                             help='Coordinate-sorted and indexed BAM file with aligned long reads')
     parser_bam.add_argument('genome',
                                type=str,
                                help='Reference genome file that the long reads were aligned to (FASTA)')

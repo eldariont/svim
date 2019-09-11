@@ -71,10 +71,16 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                             #No gap on reference
                             if distance_on_reference <= options.segment_gap_tolerance:
                                 if not alignment_current['is_reverse']:
-                                    insertion_seq = primary.query_sequence[alignment_current['q_end']:alignment_current['q_end']+deviation]
+                                    try:
+                                        insertion_seq = primary.query_sequence[alignment_current['q_end']:alignment_current['q_end']+deviation]
+                                    except TypeError:
+                                        insertion_seq = ""
                                     sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_end'], alignment_current['ref_end'] + deviation, "suppl", read_name, insertion_seq))
                                 else:
-                                    insertion_seq = primary.query_sequence[primary.infer_read_length() - alignment_next['q_start']:primary.infer_read_length() - alignment_next['q_start'] + deviation]
+                                    try:
+                                        insertion_seq = primary.query_sequence[primary.infer_read_length() - alignment_next['q_start']:primary.infer_read_length() - alignment_next['q_start'] + deviation]
+                                    except TypeError:
+                                        insertion_seq = ""
                                     sv_signatures.append(SignatureInsertion(ref_chr, alignment_current['ref_start'], alignment_current['ref_start'] + deviation, "suppl", read_name, insertion_seq))
                         #DEL candidate
                         elif -options.max_sv_size <= deviation <= -options.min_sv_size:
