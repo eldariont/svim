@@ -44,6 +44,7 @@ class SignatureDeletion(Signature):
     """SV Signature: a region (contig:start-end) has been deleted and is not present in sample"""
     def __init__(self, contig, start, end, signature, read):
         self.contig = contig
+        assert end >= start
         #0-based start of the deletion (first deleted base)
         self.start = start
         #0-based end of the deletion (one past the last deleted base)
@@ -57,6 +58,7 @@ class SignatureInsertion(Signature):
     """SV Signature: a region of length end-start has been inserted at contig:start"""
     def __init__(self, contig, start, end, signature, read, sequence):
         self.contig = contig
+        assert end >= start
         #0-based start of the insertion (base after the insertion)
         self.start = start
         #0-based start of the insertion (base after the insertion) + length of the insertion
@@ -71,6 +73,7 @@ class SignatureInversion(Signature):
     """SV Signature: a region (contig:start-end) has been inverted in the sample"""
     def __init__(self, contig, start, end, signature, read, direction):
         self.contig = contig
+        assert end >= start
         #0-based start of the inversion (first inverted base)
         self.start = start
         #0-based end of the inversion (one past the last inverted base)
@@ -90,6 +93,7 @@ class SignatureInsertionFrom(Signature):
     """SV Signature: a region (contig:start-end) has been inserted at contig2:pos in the sample"""
     def __init__(self, contig1, start, end, contig2, pos, signature, read):
         self.contig1 = contig1
+        assert end >= start
         #0-based start of the region (first copied base)
         self.start = start
         #0-based end of the region (one past the last copied base)
@@ -132,6 +136,7 @@ class SignatureDuplicationTandem(Signature):
 
     def __init__(self, contig, start, end, copies, fully_covered, signature, read):
         self.contig = contig
+        assert end >= start
         #0-based start of the region (first copied base)
         self.start = start
         #0-based end of the region (one past the last copied base)

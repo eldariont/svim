@@ -133,20 +133,20 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                     if -options.segment_overlap_tolerance <= distance_on_read <= options.segment_gap_tolerance:
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -options.segment_overlap_tolerance: # Case 1
                             #INV candidate
-                            if alignment_next['ref_end'] - alignment_current['ref_end'] <= options.max_sv_size:
+                            if options.min_sv_size <= alignment_next['ref_end'] - alignment_current['ref_end'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_end'], alignment_next['ref_end'], "suppl", read_name, "left_fwd"))
                                 #transitions.append(('inversion', 'left_fwd', ref_chr, alignment_current['ref_end'], alignment_next['ref_end']))
                             #Either very large INV or TRANS
-                            else:
+                            elif alignment_next['ref_end'] - alignment_current['ref_end'] > options.max_sv_size:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_end'] - 1))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -options.segment_overlap_tolerance: # Case 3
                             #INV candidate
-                            if alignment_current['ref_end'] - alignment_next['ref_end'] <= options.max_sv_size:
+                            if options.min_sv_size <= alignment_current['ref_end'] - alignment_next['ref_end'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_end'], alignment_current['ref_end'], "suppl", read_name, "left_rev"))
                                 #transitions.append(('inversion', 'left_rev', ref_chr, alignment_next['ref_end'], alignment_current['ref_end']))
                             #Either very large INV or TRANS
-                            else:
+                            elif alignment_current['ref_end'] - alignment_next['ref_end'] > options.max_sv_size:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_end'] - 1, 'fwd', ref_chr, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
                                 translocations.append(('fwd', 'rev', ref_chr, alignment_current['ref_end'] - 1, ref_chr, alignment_next['ref_end'] - 1))
                     else:
@@ -157,20 +157,20 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                     if -options.segment_overlap_tolerance <= distance_on_read <= options.segment_gap_tolerance:
                         if alignment_next['ref_start'] - alignment_current['ref_end'] >= -options.segment_overlap_tolerance: # Case 2
                             #INV candidate
-                            if alignment_next['ref_start'] - alignment_current['ref_start'] <= options.max_sv_size:
+                            if options.min_sv_size <= alignment_next['ref_start'] - alignment_current['ref_start'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_current['ref_start'], alignment_next['ref_start'], "suppl", read_name, "right_fwd"))
                                 #transitions.append(('inversion', 'right_fwd', ref_chr, alignment_current['ref_start'], alignment_next['ref_start']))
                             #Either very large INV or TRANS
-                            else:
+                            elif alignment_next['ref_start'] - alignment_current['ref_start'] > options.max_sv_size:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
                         elif alignment_current['ref_start'] - alignment_next['ref_end'] >= -options.segment_overlap_tolerance: # Case 4
                             #INV candidate
-                            if alignment_current['ref_start'] - alignment_next['ref_start'] <= options.max_sv_size:
+                            if options.min_sv_size <= alignment_current['ref_start'] - alignment_next['ref_start'] <= options.max_sv_size:
                                 sv_signatures.append(SignatureInversion(ref_chr, alignment_next['ref_start'], alignment_current['ref_start'], "suppl", read_name, "right_rev"))
                                 #transitions.append(('inversion', 'right_rev', ref_chr, alignment_next['ref_start'], alignment_current['ref_start']))
                             #Either very large INV or TRANS
-                            else:
+                            elif alignment_current['ref_start'] - alignment_next['ref_start'] > options.max_sv_size:
                                 sv_signatures.append(SignatureTranslocation(ref_chr, alignment_current['ref_start'], 'rev', ref_chr, alignment_next['ref_start'], 'fwd', "suppl", read_name))
                                 translocations.append(('rev', 'fwd', ref_chr, alignment_current['ref_start'], ref_chr, alignment_next['ref_start']))
                     else:
