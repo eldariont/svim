@@ -362,8 +362,8 @@ class CandidateDuplicationTandem(Candidate):
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info=info_string,
-                    format="GT:DP:AD",
-                    samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
+                    format="GT:CN:DP:AD",
+                    samples="{gt}:{cn}:{dp}:{ref},{alt}".format(gt=self.genotype, cn=self.copies + 1, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
 class CandidateDuplicationInterspersed(Candidate):
