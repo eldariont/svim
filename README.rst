@@ -35,7 +35,10 @@ Installation
 
 .. code-block:: bash
 
-    #Install via conda: easiest option, installs all dependencies including read alignment dependencies
+    #Install via conda into a new environment (recommended): installs all dependencies including read alignment dependencies
+    conda create -n svim_env --channel bioconda svim
+
+    #Install via conda into existing (active) environment: installs all dependencies including read alignment dependencies
     conda install --channel bioconda svim
 
     #Install via pip (requires Python 3.6.*): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
