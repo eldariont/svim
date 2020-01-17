@@ -198,8 +198,20 @@ def analyze_read_segments(primary, supplementaries, bam, options):
                     #print("Overlapping read segments in read", read_name)
             #Different orientation
             else:
-                #INV + TRANS
-                pass
+                #No overlap on read
+                if distance_on_read >= -options.segment_overlap_tolerance:
+                    #No gap on read
+                    if distance_on_read <= options.segment_gap_tolerance:
+                        if not alignment_current['is_reverse']:
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_end'] - 1, 'fwd', ref_chr_next, alignment_next['ref_end'] - 1, 'rev', "suppl", read_name))
+                            translocations.append(('fwd', 'rev', ref_chr_current, alignment_current['ref_end'] - 1, ref_chr_next, alignment_next['ref_end'] - 1))
+                        else:
+                            sv_signatures.append(SignatureTranslocation(ref_chr_current, alignment_current['ref_start'], 'rev', ref_chr_next, alignment_next['ref_start'], 'fwd', "suppl", read_name))
+                            translocations.append(('rev', 'fwd', ref_chr_current, alignment_current['ref_start'], ref_chr_next, alignment_next['ref_start']))
+                #Overlap on read
+                else:
+                    pass
+                    #print("Overlapping read segments in read", read_name)
 
     #Handle tandem duplications
     current_chromosome = None
