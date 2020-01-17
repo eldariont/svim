@@ -85,7 +85,7 @@ def write_final_vcf(int_duplication_candidates,
                     contig_lengths,
                     types_to_output,
                     options):
-    vcf_output = open(options.working_dir + '/final_results.vcf', 'w')
+    vcf_output = open(options.working_dir + '/variants.vcf', 'w')
 
     # Write header lines
     print("##fileformat=VCFv4.2", file=vcf_output)
