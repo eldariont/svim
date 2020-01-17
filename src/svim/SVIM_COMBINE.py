@@ -120,6 +120,8 @@ def write_final_vcf(int_duplication_candidates,
         print("##INFO=<ID=SEQS,Number=.,Type=String,Description=\"Insertion sequences from all supporting reads\">", file=vcf_output)
     if options.read_names:
         print("##INFO=<ID=READS,Number=.,Type=String,Description=\"Names of all supporting reads\">", file=vcf_output)
+    if options.zmws:
+        print("##INFO=<ID=ZMWS,Number=1,Type=Integer,Description=\"Number of supporting ZMWs (PacBio only)\">", file=vcf_output)
     print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FILTER=<ID=hom_ref,Description=\"Genotype is homozygous reference\">", file=vcf_output)
     print("##FILTER=<ID=not_fully_covered,Description=\"Tandem duplication is not fully covered by a single read\">", file=vcf_output)
@@ -146,29 +148,29 @@ def write_final_vcf(int_duplication_candidates,
     vcf_entries = []
     if "DEL" in types_to_output:
         for candidate in deletion_candidates:
-            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names), "DEL"))
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names, options.zmws), "DEL"))
     if "INV" in types_to_output:
         for candidate in inversion_candidates:
-            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names), "INV"))
+            vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names, options.zmws), "INV"))
     if "INS" in types_to_output:
         for candidate in novel_insertion_candidates:
-            vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(options.insertion_sequences, options.read_names), "INS"))
+            vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(options.insertion_sequences, options.read_names, options.zmws), "INS"))
     if options.duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
             for candidate in int_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
     else:
         if "DUP_TAN" in types_to_output:
             for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names), "DUP_TAN"))
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names, options.zmws), "DUP_TAN"))
         if "DUP_INT" in types_to_output:
             for candidate in int_duplication_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names), "DUP_INT"))
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names, options.zmws), "DUP_INT"))
     if "BND" in types_to_output:
         for candidate in breakend_candidates:
-            vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(options.read_names), "BND"))
+            vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(options.read_names, options.zmws), "BND"))
 
     if sequence_alleles:
         reference.close()

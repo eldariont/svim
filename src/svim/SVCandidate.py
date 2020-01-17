@@ -78,7 +78,7 @@ class CandidateDeletion(Candidate):
         self.alt_reads = alt_reads
 
 
-    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False, zmws = False):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -102,9 +102,20 @@ class CandidateDeletion(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_span(), 
                                            self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -139,7 +150,7 @@ class CandidateInversion(Candidate):
         self.complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 
-    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None, read_names = False, zmws = False):
         contig, start, end = self.get_source()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -162,9 +173,20 @@ class CandidateInversion(Candidate):
                                             len(set([sig.read for sig in self.members])), 
                                             self.get_std_span(), 
                                             self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start+1,
@@ -202,7 +224,7 @@ class CandidateNovelInsertion(Candidate):
     def get_bed_entry(self):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.get_std_span(), self.get_std_pos()), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
-    def get_vcf_entry(self, insertion_sequences = False, read_names = False):
+    def get_vcf_entry(self, insertion_sequences = False, read_names = False, zmws = False):
         contig, start, end = self.get_destination()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -223,9 +245,20 @@ class CandidateNovelInsertion(Candidate):
         if insertion_sequences:
             insertion_seqs = [member.sequence for member in self.members]
             info_string += ";SEQS={0}".format(",".join(insertion_seqs))
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -287,7 +320,7 @@ class CandidateDuplicationTandem(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self, read_names = False):
+    def get_vcf_entry_as_ins(self, read_names = False, zmws = False):
         contig = self.source_contig
         start = self.source_end
         end = self.source_end + self.copies * (self.source_end - self.source_start)
@@ -310,9 +343,20 @@ class CandidateDuplicationTandem(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_span(), 
                                            self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -326,7 +370,7 @@ class CandidateDuplicationTandem(Candidate):
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
-    def get_vcf_entry_as_dup(self, read_names = False):
+    def get_vcf_entry_as_dup(self, read_names = False, zmws = False):
         contig = self.source_contig
         start = self.source_start
         end = self.source_end
@@ -350,9 +394,20 @@ class CandidateDuplicationTandem(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_span(), 
                                            self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -417,7 +472,7 @@ class CandidateDuplicationInterspersed(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self, read_names = False):
+    def get_vcf_entry_as_ins(self, read_names = False, zmws = False):
         contig, start, end = self.get_destination()
         svtype = "INS"
         if self.ref_reads != None and self.alt_reads != None:
@@ -437,9 +492,20 @@ class CandidateDuplicationInterspersed(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_span(), 
                                            self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -453,7 +519,7 @@ class CandidateDuplicationInterspersed(Candidate):
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
-    def get_vcf_entry_as_dup(self, read_names = False):
+    def get_vcf_entry_as_dup(self, read_names = False, zmws = False):
         contig, start, end = self.get_source()
         svtype = "DUP_INT"
         if self.ref_reads != None and self.alt_reads != None:
@@ -473,9 +539,20 @@ class CandidateDuplicationInterspersed(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_span(), 
                                            self.get_std_pos())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
                     pos=start,
@@ -556,7 +633,7 @@ class CandidateBreakend(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry(self, read_names = False):
+    def get_vcf_entry(self, read_names = False, zmws = False):
         source_contig, source_start = self.get_source()
         dest_contig, dest_start = self.get_destination()
         if (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
@@ -581,9 +658,20 @@ class CandidateBreakend(Candidate):
                                            len(set([sig.read for sig in self.members])), 
                                            self.get_std_pos1(), 
                                            self.get_std_pos2())
+        read_ids = [member.read for member in self.members]
         if read_names:
-            read_ids = [member.read for member in self.members]
             info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=source_contig,
                     pos=source_start,

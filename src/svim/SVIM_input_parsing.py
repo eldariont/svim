@@ -214,6 +214,10 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Output names of supporting reads in INFO tag of VCF (default: %(default)s). \
                                               If enabled, the INFO/READS tag contains the list of names of the supporting reads.')
+    group_fasta_output.add_argument('--zmws',
+                                        action='store_true',
+                                        help='look for information on ZMWs in PacBio read names (default: %(default)s). \
+                                              If enabled, the INFO/ZMWS tag contains the number of ZMWs that produced supporting reads.')
 
     parser_bam = subparsers.add_parser('alignment',
                                         help='Detect SVs from an existing alignment')
@@ -387,6 +391,10 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Output names of supporting reads in INFO tag of VCF (default: %(default)s). \
                                               If enabled, the INFO/READS tag contains the list of names of the supporting reads.')
+    group_bam_output.add_argument('--zmws',
+                                        action='store_true',
+                                        help='look for information on ZMWs in PacBio read names (default: %(default)s). \
+                                              If enabled, the INFO/ZMWS tag contains the number of ZMWs that produced supporting reads.')
 
     return parser.parse_args(arguments)
 
