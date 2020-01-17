@@ -197,8 +197,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               DUP_INT (interspersed duplications), BND (breakends).')
     group_fasta_output.add_argument('--sequence_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
-                                              By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
+                                        help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
+                                              By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
+                                              If enabled, ALT alleles of insertions are obtained from the sequence of a random read that supports the variant.')
     group_fasta_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
@@ -374,8 +375,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               DUP_INT (interspersed duplications), BND (breakends).')
     group_bam_output.add_argument('--sequence_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions and inversions in output VCF (default: %(default)s). \
-                                              By default, all SVs are represented by symbolic alleles, such as <DEL> or <INV>.')
+                                        help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
+                                              By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
+                                              If enabled, ALT alleles of insertions are obtained from the sequence of a random read that supports the variant.')
     group_bam_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \

@@ -224,7 +224,7 @@ class CandidateNovelInsertion(Candidate):
     def get_bed_entry(self):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}".format(self.dest_contig, self.dest_start, self.dest_end, "{0};{1};{2}".format(self.type, self.get_std_span(), self.get_std_pos()), self.score, ".", "["+"][".join([ev.as_string("|") for ev in self.members])+"]")
 
-    def get_vcf_entry(self, insertion_sequences = False, read_names = False, zmws = False):
+    def get_vcf_entry(self, sequence_alleles = False, reference = None, insertion_sequences = False, read_names = False, zmws = False):
         contig, start, end = self.get_destination()
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -235,6 +235,14 @@ class CandidateNovelInsertion(Candidate):
             filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
+        if sequence_alleles:
+            ref_allele = reference.fetch(contig, max(0, start-1), max(0, start-1) + 1).upper()
+            #Use insertion sequence of a random read
+            alt_allele = ref_allele + self.members[0].sequence.upper()
+        else:
+            ref_allele = "N"
+            alt_allele = "<" + self.type + ">"
+        info_template="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}"
         info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
         info_string = info_template.format(self.type, 
                                            start, 
@@ -263,8 +271,8 @@ class CandidateNovelInsertion(Candidate):
                     chrom=contig,
                     pos=start,
                     id="PLACEHOLDERFORID",
-                    ref="N",
-                    alt="<" + self.type + ">",
+                    ref=ref_allele,
+                    alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info=info_string,

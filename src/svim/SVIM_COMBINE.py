@@ -154,7 +154,7 @@ def write_final_vcf(int_duplication_candidates,
             vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry(sequence_alleles, reference, options.read_names, options.zmws), "INV"))
     if "INS" in types_to_output:
         for candidate in novel_insertion_candidates:
-            vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(options.insertion_sequences, options.read_names, options.zmws), "INS"))
+            vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(sequence_alleles, reference, options.insertion_sequences, options.read_names, options.zmws), "INS"))
     if options.duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in tandem_duplication_candidates:
