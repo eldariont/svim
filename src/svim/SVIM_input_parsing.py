@@ -8,7 +8,7 @@ def parse_arguments(program_version, arguments = sys.argv[1:]):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
 It discriminates five different variant classes: deletions, tandem and interspersed duplications, 
-inversions and novel element insertions. SVIM is unique in its capability of extracting both the genomic origin and 
+inversions and insertions. SVIM is unique in its capability of extracting both the genomic origin and 
 destination of duplications.
 
 SVIM consists of four major steps:

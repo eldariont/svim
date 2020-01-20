@@ -9,7 +9,7 @@ SVIM - Structural variant identification using long reads
 
 SVIM (pronounced *SWIM*) is a structural variant caller for long reads.
 It is able to detect, classify and genotype five different classes of structural variants.
-Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and novel element insertions.
+Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and insertions.
 In our experiments on simulated data and real datasets from PacBio and Nanopore sequencing machines, SVIM reached consistently better results than competing methods.
 Furthermore, it is unique in its capability of extracting both the genomic origin and destination of duplications.
 
@@ -51,6 +51,7 @@ Installation
 
 Changelog
 ---------
+- **v1.3.0**: improve BND detection, add INFO:ZMWS tag with number of supporting PacBio wells, add sequence alleles for INS, add FORMAT:CN tag for tandem duplications, bugfixes
 - **v1.2.0**: add 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
 - **v1.1.0**: outputs BNDs in VCF, detects large tandem duplications, allows skipping genotyping, makes VCF output more flexible, adds genotype scatter plot
 - **v1.0.0**: adds genotyping of deletions, inversions, insertions and interspersed duplications, produces plots of SV length distribution, improves help descriptions
@@ -69,10 +70,8 @@ It works best for alignment files produced by `NGMLR <https://github.com/philres
 Output
 ------
 
-SVIM distinguishes five different SV classes (see above schema): deletions, inversions, tandem and interspersed duplications and novel insertions.
-Additionally, SVIM indicates for detected interspersed duplications whether the genomic origin location seems to be deleted in at least one haplotype (indicating a cut&paste insertion) or not (indicating a canonic interspersed duplication).
-For each of these SV classes, SVIM produces a BED file with the SV coordinates.
-Additionally, a VCF file is produced containing all found SVs.
+SVIM's main output file called `variants.vcf` (formerly final_results.vcf) is placed into the given working directory.
+For each of the five detected SV classes, SVIM also produces a BED file with the SV coordinates in the `candidates` subdirectory.
 
 Usage
 ----------------------
