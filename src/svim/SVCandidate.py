@@ -380,7 +380,7 @@ class CandidateDuplicationTandem(Candidate):
         contig = self.source_contig
         start = self.source_start
         end = self.source_end
-        length = self.copies * (self.source_end - self.source_start)
+        length = self.source_end - self.source_start
         svtype = "DUP:TANDEM"
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
