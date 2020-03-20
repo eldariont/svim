@@ -20,17 +20,15 @@ class Signature:
 
     def get_key(self):
         contig, start, end = self.get_source()
-        return (self.type, contig, (start + end) // 2)
+        return (self.type, contig, end)
 
 
-    def position_distance_to(self, signature2):
-        """Return position distance between two signatures."""
+    def downstream_distance_to(self, signature2):
+        """Return distance >= 0 between this signature's end and the start of signature2."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = signature2.get_source()
-        this_center = (this_start + this_end) // 2
-        other_center = (other_start + other_end) // 2
         if self.type == signature2.type and this_contig == other_contig:
-            return min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center))
+            return max(0, other_start - this_end)
         else:
             return float("inf")
 
@@ -120,8 +118,20 @@ class SignatureInsertionFrom(Signature):
     def get_key(self):
         source_contig, source_start, source_end = self.get_source()
         dest_contig, dest_start, dest_end = self.get_destination()
-        return (self.type, source_contig, dest_contig, dest_start + (source_start + source_end) // 2)
+        return (self.type, dest_contig, source_contig, dest_start)
 
+    def downstream_distance_to(self, signature2):
+        """Return distance >= 0 between this signature's end and the start of signature2."""
+        this_source_contig, this_source_start, this_source_end = self.get_source()
+        other_source_contig, other_source_start, other_source_end = signature2.get_source()
+        this_destination_contig, this_destination_start, this_destination_end = self.get_destination()
+        other_destination_contig, other_destination_start, other_destination_end = signature2.get_destination()
+        if self.type == signature2.type and \
+           this_destination_contig == other_destination_contig and \
+           this_source_contig == other_source_contig:
+            return max(0, other_destination_start - this_destination_start)
+        else:
+            return float("inf")
 
     def as_string(self, sep="\t"):
         source_contig, source_start, source_end = self.get_source()

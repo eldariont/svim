@@ -23,17 +23,15 @@ class Candidate:
 
     def get_key(self):
         contig, start, end = self.get_source()
-        return (self.type, contig, (start + end) // 2)
+        return (self.type, contig, end)
 
 
-    def position_distance_to(self, candidate2):
-        """Return position distance between two candidates."""
+    def downstream_distance_to(self, candidate2):
+        """Return distance >= 0 between this candidate's end and the start of candidate2."""
         this_contig, this_start, this_end = self.get_source()
         other_contig, other_start, other_end = candidate2.get_source()
-        this_center = (this_start + this_end) // 2
-        other_center = (other_start + other_end) // 2
         if self.type == candidate2.type and this_contig == other_contig:
-            return min(abs(this_start - other_start), abs(this_end - other_end), abs(this_center - other_center))
+            return max(0, other_start - this_end)
         else:
             return float("inf")
 

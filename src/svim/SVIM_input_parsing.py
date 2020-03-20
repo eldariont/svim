@@ -104,8 +104,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         default=5000,
                                         help='Maximum distance in bp between SVs in a partition (default: %(default)s). \
                                               Before clustering, the SV signatures are divided into coarse partitions. This parameter \
-                                              determines the maximum distance between two signatures in the same partition. \
-                                              If the distance between two signatures (i.e. between their start, center and end positions) \
+                                              determines the maximum distance between two subsequent signatures in the same partition. \
+                                              If the distance between two subsequent signatures \
                                               is larger than this parameter, they are distributed into separate partitions.')
     group_fasta_cluster.add_argument('--distance_normalizer',
                                         type=int,
@@ -282,8 +282,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       default=5000,
                                       help='Maximum distance in bp between SVs in a partition (default: %(default)s). \
                                             Before clustering, the SV signatures are divided into coarse partitions. This parameter \
-                                            determines the maximum distance between two signatures in the same partition. \
-                                            If the distance between two signatures (i.e. between their start, center and end positions) \
+                                            determines the maximum distance between two subsequent signatures in the same partition. \
+                                            If the distance between two subsequent signatures \
                                             is larger than this parameter, they are distributed into separate partitions.')
     group_bam_cluster.add_argument('--distance_normalizer',
                                       type=int,
