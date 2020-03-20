@@ -33,7 +33,7 @@ def span_position_distance(signature1, signature2):
     span2 = signature2[1] - signature2[0]
     center1 = (signature1[0] + signature1[1]) // 2
     center2 = (signature2[0] + signature2[1]) // 2
-    position_distance = min(abs(signature1[0] - signature2[0]), abs(signature1[1] - signature2[1]), abs(center1 - center2)) / distance_normalizer
+    position_distance = abs(center1 - center2) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance + span_distance
 
@@ -45,10 +45,10 @@ def span_position_distance_bilocal(signature1, signature2):
     span2 = signature2[1] - signature2[0]
     source_center1 = (signature1[0] + signature1[1]) // 2
     source_center2 = (signature2[0] + signature2[1]) // 2
-    position_distanc_source = min(abs(signature1[0] - signature2[0]), abs(signature1[1] - signature2[1]), abs(source_center1 - source_center2)) / distance_normalizer
-    position_distanc_destination = abs(signature1[2] - signature2[2]) / distance_normalizer
+    position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
+    position_distance_destination = abs(signature1[2] - signature2[2]) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
-    return position_distanc_source + position_distanc_destination + span_distance
+    return position_distance_source + position_distance_destination + span_distance
 
 
 def clusters_from_partitions(partitions, options):
