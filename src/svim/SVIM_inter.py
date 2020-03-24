@@ -15,9 +15,6 @@ def is_similar(chr1, start1, end1, chr2, start2, end2):
 
 
 def analyze_read_segments(primary, supplementaries, bam, options):
-    if len(supplementaries) > 3:
-        return []
-
     read_name = primary.query_name
     alignments = [primary] + supplementaries
     alignment_list = []
