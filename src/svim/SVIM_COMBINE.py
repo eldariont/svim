@@ -97,11 +97,12 @@ def write_final_vcf(int_duplication_candidates,
         print("##ALT=<ID=DEL,Description=\"Deletion\">", file=vcf_output)
     if "INV" in types_to_output:
         print("##ALT=<ID=INV,Description=\"Inversion\">", file=vcf_output)
-    if not options.duplications_as_insertions and ("DUP_TAN" in types_to_output or "DUP_INT" in types_to_output):
+    if (not options.tandem_duplications_as_insertions and "DUP:TANDEM" in types_to_output) or \
+       (not options.interspersed_duplications_as_insertions and "DUP:INT" in types_to_output):
         print("##ALT=<ID=DUP,Description=\"Duplication\">", file=vcf_output)
-    if not options.duplications_as_insertions and "DUP_TAN" in types_to_output:
+    if not options.tandem_duplications_as_insertions and "DUP:TANDEM" in types_to_output:
         print("##ALT=<ID=DUP:TANDEM,Description=\"Tandem Duplication\">", file=vcf_output)
-    if not options.duplications_as_insertions and "DUP_INT" in types_to_output:
+    if not options.interspersed_duplications_as_insertions and "DUP:INT" in types_to_output:
         print("##ALT=<ID=DUP:INT,Description=\"Interspersed Duplication\">", file=vcf_output)
     if "INS" in types_to_output:
         print("##ALT=<ID=INS,Description=\"Insertion\">", file=vcf_output)
@@ -128,7 +129,7 @@ def write_final_vcf(int_duplication_candidates,
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)
     print("##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">", file=vcf_output)
     print("##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Read depth for each allele\">", file=vcf_output)
-    if not options.duplications_as_insertions and "DUP_TAN" in types_to_output:
+    if not options.tandem_duplications_as_insertions and "DUP:TANDEM" in types_to_output:
         print("##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number of tandem duplication (e.g. 2 for one additional copy)\">", file=vcf_output)
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + options.sample, file=vcf_output)
 
@@ -157,17 +158,20 @@ def write_final_vcf(int_duplication_candidates,
     if "INS" in types_to_output:
         for candidate in novel_insertion_candidates:
             vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry(sequence_alleles, reference, options.insertion_sequences, options.read_names, options.zmws), "INS"))
-    if options.duplications_as_insertions:
+    if options.tandem_duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in tandem_duplication_candidates:
                 vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
+    else:
+        if "DUP:TANDEM" in types_to_output:
+            for candidate in tandem_duplication_candidates:
+                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names, options.zmws), "DUP_TANDEM"))
+    if options.interspersed_duplications_as_insertions:
+        if "INS" in types_to_output:
             for candidate in int_duplication_candidates:
                 vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
     else:
-        if "DUP_TAN" in types_to_output:
-            for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names, options.zmws), "DUP_TAN"))
-        if "DUP_INT" in types_to_output:
+        if "DUP:INT" in types_to_output:
             for candidate in int_duplication_candidates:
                 vcf_entries.append((candidate.get_source(), candidate.get_vcf_entry_as_dup(options.read_names, options.zmws), "DUP_INT"))
     if "BND" in types_to_output:

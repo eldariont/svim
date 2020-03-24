@@ -190,11 +190,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         help='Sample ID to include in output vcf file (default: %(default)s)')
     group_fasta_output.add_argument('--types',
                                         type=str,
-                                        default="DEL,INS,INV,DUP_TAN,DUP_INT,BND",
+                                        default="DEL,INS,INV,DUP:TANDEM,DUP:INT,BND",
                                         help='SV types to include in output VCF (default: %(default)s). \
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
-                                              INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
-                                              DUP_INT (interspersed duplications), BND (breakends).')
+                                              INS (novel insertions), INV (inversions), DUP:TANDEM (tandem duplications), \
+                                              DUP:INT (interspersed duplications), BND (breakends).')
     group_fasta_output.add_argument('--sequence_alleles',
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
@@ -205,10 +205,16 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
                                               If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
                                               However, the insertion sequences are not combined into a consensus sequence.')
-    group_fasta_output.add_argument('--duplications_as_insertions',
+    group_fasta_output.add_argument('--tandem_duplications_as_insertions',
                                         action='store_true',
-                                        help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
-                                              By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
+                                        help='Represent tandem duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, tandem duplications are represented by the SVTYPE=DUP:TANDEM and the genomic source is given by the \
+                                              POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
+                                              and POS and END both give the insertion point of the duplication.')
+    group_fasta_output.add_argument('--interspersed_duplications_as_insertions',
+                                        action='store_true',
+                                        help='Represent interspersed duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, interspersed duplications are represented by the SVTYPE=DUP:INT and the genomic source is given by the \
                                               POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
                                               and POS and END both give the insertion point of the duplication.')
     group_fasta_output.add_argument('--read_names',
@@ -368,11 +374,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         help='Sample ID to include in output vcf file (default: %(default)s)')
     group_bam_output.add_argument('--types',
                                         type=str,
-                                        default="DEL,INS,INV,DUP_TAN,DUP_INT,BND",
+                                        default="DEL,INS,INV,DUP:TANDEM,DUP:INT,BND",
                                         help='SV types to include in output VCF (default: %(default)s). \
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
-                                              INS (novel insertions), INV (inversions), DUP_TAN (tandem duplications), \
-                                              DUP_INT (interspersed duplications), BND (breakends).')
+                                              INS (novel insertions), INV (inversions), DUP:TANDEM (tandem duplications), \
+                                              DUP:INT (interspersed duplications), BND (breakends).')
     group_bam_output.add_argument('--sequence_alleles',
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
@@ -383,10 +389,16 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
                                               If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
                                               However, the insertion sequences are not combined into a consensus sequence.')
-    group_bam_output.add_argument('--duplications_as_insertions',
+    group_bam_output.add_argument('--tandem_duplications_as_insertions',
                                         action='store_true',
-                                        help='Represent tandem and interspersed duplications as insertions in output VCF (default: %(default)s). \
-                                              By default, duplications are represented by the SVTYPE=DUP and the genomic source is given by the \
+                                        help='Represent tandem duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, tandem duplications are represented by the SVTYPE=DUP:TANDEM and the genomic source is given by the \
+                                              POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
+                                              and POS and END both give the insertion point of the duplication.')
+    group_bam_output.add_argument('--interspersed_duplications_as_insertions',
+                                        action='store_true',
+                                        help='Represent interspersed duplications as insertions in output VCF (default: %(default)s). \
+                                              By default, interspersed duplications are represented by the SVTYPE=DUP:INT and the genomic source is given by the \
                                               POS and END tags. When enabling this option, duplications are instead represented by the SVTYPE=INS \
                                               and POS and END both give the insertion point of the duplication.')
     group_bam_output.add_argument('--read_names',

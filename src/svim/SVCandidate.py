@@ -527,7 +527,7 @@ class CandidateDuplicationInterspersed(Candidate):
 
     def get_vcf_entry_as_dup(self, read_names = False, zmws = False):
         contig, start, end = self.get_source()
-        svtype = "DUP_INT"
+        svtype = "DUP:INT"
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
