@@ -123,7 +123,6 @@ def write_final_vcf(int_duplication_candidates,
         print("##INFO=<ID=READS,Number=.,Type=String,Description=\"Names of all supporting reads\">", file=vcf_output)
     if options.zmws:
         print("##INFO=<ID=ZMWS,Number=1,Type=Integer,Description=\"Number of supporting ZMWs (PacBio only)\">", file=vcf_output)
-    print("##FILTER=<ID=q5,Description=\"Score below 5\">", file=vcf_output)
     print("##FILTER=<ID=hom_ref,Description=\"Genotype is homozygous reference\">", file=vcf_output)
     print("##FILTER=<ID=not_fully_covered,Description=\"Tandem duplication is not fully covered by a single read\">", file=vcf_output)
     print("##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">", file=vcf_output)

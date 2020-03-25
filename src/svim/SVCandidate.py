@@ -83,8 +83,6 @@ class CandidateDeletion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         if sequence_alleles:
@@ -155,8 +153,6 @@ class CandidateInversion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         if sequence_alleles:
@@ -229,8 +225,6 @@ class CandidateNovelInsertion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         if sequence_alleles:
@@ -336,8 +330,6 @@ class CandidateDuplicationTandem(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         if not(self.fully_covered):
@@ -387,8 +379,6 @@ class CandidateDuplicationTandem(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         if not(self.fully_covered):
@@ -486,8 +476,6 @@ class CandidateDuplicationInterspersed(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
@@ -533,8 +521,6 @@ class CandidateDuplicationInterspersed(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
@@ -655,8 +641,6 @@ class CandidateBreakend(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.score < 5:
-            filters.append("q5")
         if self.genotype == 0:
             filters.append("hom_ref")
         info_template="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}"
