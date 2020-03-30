@@ -38,6 +38,8 @@ def analyze_alignment_indel(alignment, bam, query_name, options):
     for pos_ref, pos_read, length, typ in indels:
         if typ == "DEL":
             sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name))
+            if options.all_bnds:
+                sv_signatures.append(SignatureTranslocation(ref_chr, ref_start + pos_ref, 'fwd', ref_chr, ref_start + pos_ref + length, 'fwd', "cigar", query_name))
         elif typ == "INS":
             try:
                 insertion_seq = alignment.query_sequence[pos_read:pos_read+length]

@@ -98,6 +98,15 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               far apart from each other on the reference. The segment overlap tolerance determines \
                                               the maximum tolerated length of an overlap between both segments on the read. If the \
                                               overlap between the two segments on the read is larger than this value, no deletion is called.')
+    group_fasta_collect.add_argument('--all_bnds',
+                                        action='store_true',
+                                        help='Output all rearrangements additionally in BND notation (default: %(default)s). \
+                                              By default, SV signatures from the read alignments are used to detect complete SVs, \
+                                              such as deletions, insertions and inversions. When this option is enabled, all SVs \
+                                              are also output in breakend (BND) notation as defined in the VCF specs. For instance, \
+                                              a deletion gets two records in the VCF output: 1. the normal <DEL> record and 2. \
+                                              a <BND> record representing the novel adjacency between the deletion\'s start and \
+                                              end coordinate in the sample genome.')
     group_fasta_cluster = parser_fasta.add_argument_group('CLUSTER')
     group_fasta_cluster.add_argument('--partition_max_distance',
                                         type=int,
@@ -316,6 +325,15 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             clusters with smaller distances between its members. \
                                             This parameter determines the height of the cut-off in the hierarchical clustering \
                                             dendrogram.')
+    group_bam_cluster.add_argument('--all_bnds',
+                                        action='store_true',
+                                        help='Output all rearrangements additionally in BND notation (default: %(default)s). \
+                                              By default, SV signatures from the read alignments are used to detect complete SVs, \
+                                              such as deletions, insertions and inversions. When this option is enabled, all SVs \
+                                              are also output in breakend (BND) notation as defined in the VCF specs. For instance, \
+                                              a deletion gets two records in the VCF output: 1. the normal <DEL> record and 2. \
+                                              a <BND> record representing the novel adjacency between the deletion\'s start and \
+                                              end coordinate in the sample genome.')
     group_bam_combine = parser_bam.add_argument_group('COMBINE')
     group_bam_combine.add_argument('--del_ins_dup_max_distance',
                                       type=float,
