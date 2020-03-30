@@ -51,6 +51,7 @@ Installation
 
 Changelog
 ---------
+- **v1.3.1**: small changes to partitioning and clustering algorithm, add two new command-line options to output duplications as INS records in VCF, remove limit on number of supplementary alignments, remove q5 filter, bugfixes
 - **v1.3.0**: improve BND detection, add INFO:ZMWS tag with number of supporting PacBio wells, add sequence alleles for INS, add FORMAT:CN tag for tandem duplications, bugfixes
 - **v1.2.0**: add 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
 - **v1.1.0**: outputs BNDs in VCF, detects large tandem duplications, allows skipping genotyping, makes VCF output more flexible, adds genotype scatter plot
