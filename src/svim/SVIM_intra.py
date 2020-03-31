@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import sys
 
-from svim.SVSignature import SignatureDeletion, SignatureInsertion
+from svim.SVSignature import SignatureDeletion, SignatureInsertion, SignatureTranslocation
 
 
 def analyze_cigar_indel(tuples, min_length):
