@@ -65,7 +65,21 @@ class SignatureInsertion(Signature):
         self.read = read
         self.sequence = sequence
         self.type = "INS"
+    
 
+    def get_key(self):
+        contig, start, end = self.get_source()
+        return (self.type, contig, start)
+    
+
+    def downstream_distance_to(self, signature2):
+        """Return distance >= 0 between this signature's end and the start of signature2."""
+        this_contig, this_start, this_end = self.get_source()
+        other_contig, other_start, other_end = signature2.get_source()
+        if self.type == signature2.type and this_contig == other_contig:
+            return max(0, other_start - this_start)
+        else:
+            return float("inf")
 
 class SignatureInversion(Signature):
     """SV Signature: a region (contig:start-end) has been inverted in the sample"""
