@@ -84,9 +84,14 @@ def main():
         aln_file = pysam.AlignmentFile(options.bam_file)
         try:
             if aln_file.header["HD"]["SO"] == "coordinate":
-                if not aln_file.check_index():
-                    logging.warning("Input BAM file is missing an index. Please generate with 'samtools faidx'. Continuing without genotyping for now..")
+                try:
+                    aln_file.check_index()
+                except ValueError:
+                    logging.warning("Input BAM file is missing a valid index. Please generate with 'samtools faidx'. Continuing without genotyping for now..")
                     options.skip_genotyping = True
+                except AttributeError:
+                    logging.warning("pysam's .check_index raised an Attribute error. Something is wrong with the input BAM file.")
+                    return
                 sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
             elif aln_file.header["HD"]["SO"] == "queryname":
                 sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
