@@ -84,15 +84,21 @@ def main():
         aln_file = pysam.AlignmentFile(options.bam_file)
         try:
             if aln_file.header["HD"]["SO"] == "coordinate":
+                if not aln_file.check_index():
+                    logging.warning("Input BAM file is missing an index. Please generate with 'samtools faidx'. Continuing without genotyping for now..")
+                    options.skip_genotyping = True
                 sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
             elif aln_file.header["HD"]["SO"] == "queryname":
                 sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
+                logging.warning("Skipping genotyping because it requires a coordinate-sorted input BAM file and an index. The given file, however, is queryname-sorted according to its header line.")
+                options.skip_genotyping = True
             else:
                 logging.error("Input BAM file needs to be coordinate-sorted or queryname-sorted. The given file, however, is unsorted according to its header line.")
                 return
         except KeyError:
             logging.error("Is the given input BAM file sorted? It does not contain a sorting order in its header line.")
             return
+        
 
     deletion_signatures = [ev for ev in sv_signatures if ev.type == "DEL"]
     insertion_signatures = [ev for ev in sv_signatures if ev.type == "INS"]
@@ -120,19 +126,16 @@ def main():
     deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates = combine_clusters(signature_clusters, options)
 
     if not options.skip_genotyping:
-        if aln_file.header["HD"]["SO"] == "coordinate":
-            logging.info("****************** STEP 4: GENOTYPE ******************")
-            logging.info("Genotyping deletions..")
-            genotype(deletion_candidates, aln_file, "DEL", options)
-            logging.info("Genotyping inversions..")
-            genotype(inversion_candidates, aln_file, "INV", options)
-            logging.info("Genotyping novel insertions..")
-            genotype(novel_insertion_candidates, aln_file, "INS", options)
-            logging.info("Genotyping interspersed duplications..")
-            genotype(int_duplication_candidates, aln_file, "DUP_INT", options)
-        elif aln_file.header["HD"]["SO"] == "queryname":
-            logging.warning("Skipping genotyping because it requires a coordinate-sorted input BAM file. The given file, however, is queryname-sorted according to its header line.")
-
+        logging.info("****************** STEP 4: GENOTYPE ******************")
+        logging.info("Genotyping deletions..")
+        genotype(deletion_candidates, aln_file, "DEL", options)
+        logging.info("Genotyping inversions..")
+        genotype(inversion_candidates, aln_file, "INV", options)
+        logging.info("Genotyping novel insertions..")
+        genotype(novel_insertion_candidates, aln_file, "INS", options)
+        logging.info("Genotyping interspersed duplications..")
+        genotype(int_duplication_candidates, aln_file, "DUP_INT", options)
+    
     # Write SV candidates
     logging.info("Write SV candidates..")
     logging.info("Final deletion candidates: {0}".format(len(deletion_candidates)))
