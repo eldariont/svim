@@ -33,7 +33,10 @@ def main():
     # Set up logging
     logFormatter = logging.Formatter("%(asctime)s [%(levelname)-7.7s]  %(message)s")
     rootLogger = logging.getLogger()
-    rootLogger.setLevel(logging.INFO)
+    if options.verbose:
+        rootLogger.setLevel(logging.DEBUG)
+    else:
+        rootLogger.setLevel(logging.INFO)
 
     # Create working dir if it does not exist
     if not os.path.exists(options.working_dir):

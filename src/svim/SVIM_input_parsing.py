@@ -43,6 +43,22 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     parser_fasta.add_argument('genome',
                                type=str,
                                help='Reference genome file (FASTA)')
+    parser_fasta.add_argument('--verbose',
+                              action='store_true',
+                              help='Enable more verbose logging (default: %(default)s)')
+    group_fasta_align = parser_fasta.add_argument_group('ALIGN')
+    group_fasta_align.add_argument('--cores',
+                                        type=int,
+                                        default=1,
+                                        help='CPU cores to use for the alignment (default: %(default)s)')
+    group_fasta_align.add_argument('--aligner',
+                                        type=str,
+                                        default="ngmlr",
+                                        choices=["ngmlr", "minimap2"],
+                                        help='Tool for read alignment: ngmlr or minimap2 (default: %(default)s)')
+    group_fasta_align.add_argument('--nanopore',
+                                        action='store_true',
+                                        help='Use Nanopore settings for read alignment (default: %(default)s)')
     group_fasta_collect = parser_fasta.add_argument_group('COLLECT')
     group_fasta_collect.add_argument('--min_mapq',
                                         type=int,
@@ -68,18 +84,6 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               indicate a very long deletion (inversion) or a translocation breakpoint. \
                                               SVIM calls a translocation breakpoint if the mapping distance is larger \
                                               than this parameter and a deletion (or inversion) if it is smaller or equal.')
-    group_fasta_collect.add_argument('--cores',
-                                        type=int,
-                                        default=1,
-                                        help='CPU cores to use for the alignment (default: %(default)s)')
-    group_fasta_collect.add_argument('--aligner',
-                                        type=str,
-                                        default="ngmlr",
-                                        choices=["ngmlr", "minimap2"],
-                                        help='Tool for read alignment: ngmlr or minimap2 (default: %(default)s)')
-    group_fasta_collect.add_argument('--nanopore',
-                                        action='store_true',
-                                        help='Use Nanopore settings for read alignment (default: %(default)s)')
     group_fasta_collect.add_argument('--segment_gap_tolerance',
                                         type=int,
                                         default=10,
@@ -248,6 +252,9 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     parser_bam.add_argument('genome',
                                type=str,
                                help='Reference genome file that the long reads were aligned to (FASTA)')
+    parser_bam.add_argument('--verbose',
+                              action='store_true',
+                              help='Enable more verbose logging (default: %(default)s)')
     group_bam_collect = parser_bam.add_argument_group('COLLECT')
     group_bam_collect.add_argument('--min_mapq',
                                       type=int,

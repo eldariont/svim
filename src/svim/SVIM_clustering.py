@@ -66,6 +66,7 @@ def clusters_from_partitions(partitions, options):
     """Finds clusters in partitions using span-position distance and hierarchical clustering. 
     Assumes that all signatures in the given partition are of the same type and on the same contig"""
     clusters_final = []
+    large_partitions = 0
     # Find clusters in each partition individually.
     for partition in partitions:
         if len(partition) == 1:
@@ -73,6 +74,7 @@ def clusters_from_partitions(partitions, options):
             continue
         elif len(partition) > 100:
             partition_sample = sample(partition, 100)
+            large_partitions += 1
         else:
             partition_sample = partition
         element_type = partition_sample[0].type
@@ -91,6 +93,7 @@ def clusters_from_partitions(partitions, options):
         for signature_index, cluster_index in enumerate(cluster_indices):
             new_clusters[cluster_index-1].append(partition_sample[signature_index])
         clusters_final.extend(new_clusters)
+    logging.debug("%d out of %d partitions for %s exceeded 100 elements." % (large_partitions, len(partitions), element_type))
     return clusters_final
 
 
