@@ -114,7 +114,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_cluster = parser_fasta.add_argument_group('CLUSTER')
     group_fasta_cluster.add_argument('--partition_max_distance',
                                         type=int,
-                                        default=5000,
+                                        default=1000,
                                         help='Maximum distance in bp between SVs in a partition (default: %(default)s). \
                                               Before clustering, the SV signatures are divided into coarse partitions. This parameter \
                                               determines the maximum distance between two subsequent signatures in the same partition. \
@@ -301,7 +301,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_cluster = parser_bam.add_argument_group('CLUSTER')
     group_bam_cluster.add_argument('--partition_max_distance',
                                       type=int,
-                                      default=5000,
+                                      default=1000,
                                       help='Maximum distance in bp between SVs in a partition (default: %(default)s). \
                                             Before clustering, the SV signatures are divided into coarse partitions. This parameter \
                                             determines the maximum distance between two subsequent signatures in the same partition. \
