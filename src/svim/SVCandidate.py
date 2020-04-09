@@ -83,7 +83,7 @@ class CandidateDeletion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         if sequence_alleles:
             ref_allele = reference.fetch(contig, max(0, start-1), end).upper()
@@ -153,7 +153,7 @@ class CandidateInversion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         if sequence_alleles:
             ref_allele = reference.fetch(contig, start, end).upper()
@@ -225,7 +225,7 @@ class CandidateNovelInsertion(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         if sequence_alleles:
             ref_allele = reference.fetch(contig, max(0, start-1), max(0, start-1) + 1).upper()
@@ -330,7 +330,7 @@ class CandidateDuplicationTandem(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         if not(self.fully_covered):
             filters.append("not_fully_covered")
@@ -379,7 +379,7 @@ class CandidateDuplicationTandem(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         if not(self.fully_covered):
             filters.append("not_fully_covered")
@@ -476,7 +476,7 @@ class CandidateDuplicationInterspersed(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
         info_string = info_template.format(svtype, 
@@ -521,7 +521,7 @@ class CandidateDuplicationInterspersed(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
         info_string = info_template.format(svtype, 
@@ -641,7 +641,7 @@ class CandidateBreakend(Candidate):
         else:
             dp_string = "."
         filters = []
-        if self.genotype == 0:
+        if self.genotype == "0/0":
             filters.append("hom_ref")
         info_template="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}"
         info_string = info_template.format(self.type, 
