@@ -7,6 +7,9 @@ SVIM - Structural variant identification using long reads
 .. image:: https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg
     :target: http://bioconda.github.io
 
+.. image:: https://img.shields.io/badge/published%20in-Bioinformatics-blue.svg
+    :target: https://doi.org/10.1093/bioinformatics/btz041
+
 SVIM (pronounced *SWIM*) is a structural variant caller for long reads.
 It is able to detect, classify and genotype five different classes of structural variants.
 Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and insertions.
@@ -51,7 +54,7 @@ Installation
 
 Changelog
 ---------
-- **v1.4.0**: improve partitioning and clustering of insertions, update default value of --partition_max_distance to avoid very large partitions, add --verbose option
+- **v1.4.0**: fix and improve clustering of insertions, add option --all_bnds to output all SV classes in breakend notation, update default value of --partition_max_distance to avoid very large partitions, bugfixes
 - **v1.3.1**: small changes to partitioning and clustering algorithm, add two new command-line options to output duplications as INS records in VCF, remove limit on number of supplementary alignments, remove q5 filter, bugfixes
 - **v1.3.0**: improve BND detection, add INFO:ZMWS tag with number of supporting PacBio wells, add sequence alleles for INS, add FORMAT:CN tag for tandem duplications, bugfixes
 - **v1.2.0**: add 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
