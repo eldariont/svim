@@ -8,17 +8,19 @@ class TestSVSignature(unittest.TestCase):
         deletion = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
 
         self.assertEqual(deletion.get_source(), ("chr1", 100, 300))
-        self.assertEqual(deletion.get_key(), ("DEL", "chr1", 200))
+        self.assertEqual(deletion.get_key(), ("DEL", "chr1", 300))
     
-    def test_position_distance_to(self):
+    def test_downstream_distance_to(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")
-        deletion2 = SignatureDeletion("chr1", 150, 200, "cigar", "read2")
-        deletion3 = SignatureDeletion("chr2", 150, 200, "cigar", "read2")
+        deletion2 = SignatureDeletion("chr1", 450, 500, "cigar", "read2")
+        deletion3 = SignatureDeletion("chr1", 150, 200, "cigar", "read3")
+        deletion4 = SignatureDeletion("chr2", 350, 400, "cigar", "read3")
         insertion = SignatureInsertion("chr1", 150, 200, "cigar", "read2", "ACGTAGTAGCTAGCTTTGCTAGCATTAGCGACTGCTTACGCAGCTCCCTA")
 
-        self.assertEqual(deletion1.position_distance_to(deletion2), 25)
-        self.assertEqual(deletion1.position_distance_to(deletion3), float("Inf"))
-        self.assertEqual(deletion1.position_distance_to(insertion), float("Inf"))
+        self.assertEqual(deletion1.downstream_distance_to(deletion2), 150)
+        self.assertEqual(deletion1.downstream_distance_to(deletion3), 0)
+        self.assertEqual(deletion1.downstream_distance_to(deletion4), float("Inf"))
+        self.assertEqual(deletion1.downstream_distance_to(insertion), float("Inf"))
     
     def test_as_string(self):
         deletion1 = SignatureDeletion("chr1", 100, 300, "cigar", "read1")

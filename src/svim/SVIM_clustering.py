@@ -93,7 +93,9 @@ def clusters_from_partitions(partitions, options):
         for signature_index, cluster_index in enumerate(cluster_indices):
             new_clusters[cluster_index-1].append(partition_sample[signature_index])
         clusters_final.extend(new_clusters)
-    logging.debug("%d out of %d partitions for %s exceeded 100 elements." % (large_partitions, len(partitions), element_type))
+    if len(partitions) > 0:
+        if len(partitions[0]) > 0:
+            logging.debug("%d out of %d partitions for %s exceeded 100 elements." % (large_partitions, len(partitions), partitions[0][0].type))
     return clusters_final
 
 
