@@ -44,13 +44,13 @@ Installation
     #Install via conda into existing (active) environment: installs all dependencies including read alignment dependencies
     conda install --channel bioconda svim
 
-    #Install via pip (requires Python 3.6.*): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
-    pip3 install svim
+    #Install via pip (requires Python 3.6.* or newer): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
+    pip install svim
 
-    #Install from github (requires Python 3.6.*): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
+    #Install from github (requires Python 3.6.* or newer): installs all dependencies except those necessary for read alignment (ngmlr, minimap2, samtools)
     git clone https://github.com/eldariont/svim.git
     cd svim
-    pip3 install .
+    pip install .
 
 Changelog
 ---------
