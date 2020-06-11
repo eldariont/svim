@@ -1,20 +1,24 @@
 SVIM - Structural variant identification using long reads
 =========================================================
 
-.. image:: https://badge.fury.io/py/svim.svg
-    :target: https://badge.fury.io/py/svim
+.. image:: https://img.shields.io/pypi/v/svim?style=flat
+    :target: https://pypi.org/project/svim/
 
-.. image:: https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg
-    :target: http://bioconda.github.io
+.. image:: https://img.shields.io/conda/vn/bioconda/svim?style=flat
+    :target: https://anaconda.org/bioconda/svim
+
+.. image:: https://img.shields.io/conda/dn/bioconda/svim?label=bioconda%20downloads&style=flat
+    :target: https://anaconda.org/bioconda/svim
 
 .. image:: https://img.shields.io/badge/published%20in-Bioinformatics-blue.svg
     :target: https://doi.org/10.1093/bioinformatics/btz041
 
-SVIM (pronounced *SWIM*) is a structural variant caller for long reads.
+SVIM (pronounced *SWIM*) is a structural variant caller for long sequencing reads.
 It is able to detect, classify and genotype five different classes of structural variants.
-Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and insertions.
+Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and simple insertions.
 In our experiments on simulated data and real datasets from PacBio and Nanopore sequencing machines, SVIM reached consistently better results than competing methods.
-Furthermore, it is unique in its capability of extracting both the genomic origin and destination of duplications.
+
+**Note!** To analyze haploid or diploid genome assemblies or contigs, please use our other method `SVIM-asm <https://github.com/eldariont/svim-asm>`_.
 
 Background on Structural Variants and Long Reads
 ------------------------------------------------
@@ -23,14 +27,13 @@ Background on Structural Variants and Long Reads
     :align: center
 
 Structural variants (SVs) are typically defined as genomic variants larger than 50bps (e.g. deletions, duplications, inversions).
-Studies have shown that they affect more bases in any given genome than SNPs and small Indels taken together.
+Studies have shown that they affect more bases in an average genome than SNPs and small Indels together.
 Consequently, they have a large impact on genes and regulatory regions.
-This is reflected in the large number of genetic diseases that are caused by SVs.
+This is reflected in the large number of genetic disorders and other disease that are associated to SVs.
 
 Common sequencing technologies by providers such as Illumina generate short reads with high accuracy.
-However, they exhibit weaknesses in repeat and low-complexity regions.
-This negatively affects SV detection because SVs are associated to such regions.
-Single molecule long-read sequencing technologies from Pacific Biotechnologies and Oxford Nanopore produce reads with error rates of up to 15% but with lengths of several kb.
+However, they exhibit weaknesses in repeat and low-complexity regions where SVs are particularly common.
+Single molecule long-read sequencing technologies from Pacific Biotechnologies and Oxford Nanopore produce reads with error rates of up to 15% but with lengths of several kbps.
 The high read lengths enable them to cover entire repeats and SVs which facilitates SV detection.
 
 Installation
@@ -69,7 +72,7 @@ Input
 
 SVIM analyzes long reads given as a FASTA/FASTQ file (uncompressed or gzipped) or a file list.
 Alternatively, it can analyze an alignment file in BAM format.
-SVIM was tested on both PacBio and Nanopore data.
+SVIM has been successfully tested on PacBio CLR, PacBio CCS and Oxford Nanopore data.
 It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
 
 Output
