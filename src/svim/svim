@@ -131,7 +131,12 @@ def main():
     logging.info("****************** STEP 2: CLUSTER ******************")
     signature_clusters = cluster_sv_signatures(sv_signatures, options)
     if options.all_bnds:
+        rootLogger.setLevel(logging.WARNING)
         translocation_signature_clusters_all_bnds = cluster_sv_signatures(translocation_signatures_all_bnds, options)
+        if options.verbose:
+            rootLogger.setLevel(logging.DEBUG)
+        else:
+            rootLogger.setLevel(logging.INFO)
 
     # Write SV signature clusters
     logging.info("Finished clustering. Writing signature clusters..")
@@ -146,7 +151,12 @@ def main():
     logging.info("****************** STEP 3: COMBINE ******************")
     deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates = combine_clusters(signature_clusters, options)
     if options.all_bnds:
+        rootLogger.setLevel(logging.WARNING)
         breakend_candidates_all_bnds = combine_clusters(translocation_signature_clusters_all_bnds, options)[5]
+        if options.verbose:
+            rootLogger.setLevel(logging.DEBUG)
+        else:
+            rootLogger.setLevel(logging.INFO)
 
     if not options.skip_genotyping:
         logging.info("****************** STEP 4: GENOTYPE ******************")
