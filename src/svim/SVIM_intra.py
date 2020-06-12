@@ -32,6 +32,8 @@ def analyze_cigar_indel(tuples, min_length):
 
 def analyze_alignment_indel(alignment, bam, query_name, options):
     sv_signatures = []
+    #Translocation signatures from other SV classes are stored separately for --all_bnd option
+    translocation_signatures_all_bnds = []
     ref_chr = bam.getrname(alignment.reference_id)
     ref_start = alignment.reference_start
     indels = analyze_cigar_indel(alignment.cigartuples, options.min_sv_size)
@@ -39,13 +41,13 @@ def analyze_alignment_indel(alignment, bam, query_name, options):
         if typ == "DEL":
             sv_signatures.append(SignatureDeletion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name))
             if options.all_bnds:
-                sv_signatures.append(SignatureTranslocation(ref_chr, ref_start + pos_ref, 'fwd', ref_chr, ref_start + pos_ref + length, 'fwd', "cigar", query_name))
+                translocation_signatures_all_bnds.append(SignatureTranslocation(ref_chr, ref_start + pos_ref, 'fwd', ref_chr, ref_start + pos_ref + length, 'fwd', "cigar", query_name))
         elif typ == "INS":
             try:
                 insertion_seq = alignment.query_sequence[pos_read:pos_read+length]
             except TypeError:
                 insertion_seq = ""
             sv_signatures.append(SignatureInsertion(ref_chr, ref_start + pos_ref, ref_start + pos_ref + length, "cigar", query_name, insertion_seq))
-    return sv_signatures
+    return sv_signatures, translocation_signatures_all_bnds
 
 

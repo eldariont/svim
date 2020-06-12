@@ -94,6 +94,8 @@ def analyze_alignment_file_querysorted(bam, options):
     alignment_it = bam_iterator(bam)
 
     sv_signatures = []
+    #Translocation signatures from other SV classes are stored separately for --all_bnd option
+    translocation_signatures_all_bnds = []
     read_nr = 0
 
     while True:
@@ -106,22 +108,30 @@ def analyze_alignment_file_querysorted(bam, options):
             if read_nr % 10000 == 0:
                 logging.info("Processed read {0}".format(read_nr))
             good_suppl_alns = [aln for aln in suppl_aln if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
-            sv_signatures.extend(analyze_alignment_indel(primary_aln[0], bam, primary_aln[0].query_name, options))
+            sigs, trans_sigs = analyze_alignment_indel(primary_aln[0], bam, primary_aln[0].query_name, options)
+            sv_signatures.extend(sigs)
+            translocation_signatures_all_bnds.extend(trans_sigs)
             for alignment in good_suppl_alns:
-                sv_signatures.extend(analyze_alignment_indel(alignment, bam, alignment.query_name, options))
-            sv_signatures.extend(analyze_read_segments(primary_aln[0], good_suppl_alns, bam, options))
+                sigs, trans_sigs = analyze_alignment_indel(alignment, bam, alignment.query_name, options)
+                sv_signatures.extend(sigs)
+                translocation_signatures_all_bnds.extend(trans_sigs)
+            sigs, trans_sigs = analyze_read_segments(primary_aln[0], good_suppl_alns, bam, options)
+            sv_signatures.extend(sigs)
+            translocation_signatures_all_bnds.extend(trans_sigs)
         except StopIteration:
             break
         except KeyboardInterrupt:
             logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
-    return sv_signatures
+    return sv_signatures, translocation_signatures_all_bnds
 
 
 def analyze_alignment_file_coordsorted(bam, options):
     alignment_it = bam.fetch(until_eof=True)
 
     sv_signatures = []
+    #Translocation signatures from other SV classes are stored separately for --all_bnd option
+    translocation_signatures_all_bnds = []
     read_nr = 0
 
     while True:
@@ -130,7 +140,9 @@ def analyze_alignment_file_coordsorted(bam, options):
             if current_alignment.is_unmapped or current_alignment.is_secondary or current_alignment.mapping_quality < options.min_mapq:
                 continue
             if current_alignment.is_supplementary:
-                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
+                sigs, trans_sigs = analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options)
+                sv_signatures.extend(sigs)
+                translocation_signatures_all_bnds.extend(trans_sigs)
             else:
                 read_nr += 1
                 if read_nr % 10000 == 0:
@@ -138,11 +150,15 @@ def analyze_alignment_file_coordsorted(bam, options):
                 supplementary_alignments = retrieve_other_alignments(current_alignment, bam)
                 good_suppl_alns = [aln for aln in supplementary_alignments if not aln.is_unmapped and aln.mapping_quality >= options.min_mapq]
 
-                sv_signatures.extend(analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options))
-                sv_signatures.extend(analyze_read_segments(current_alignment, good_suppl_alns, bam, options))
+                sigs, trans_sigs = analyze_alignment_indel(current_alignment, bam, current_alignment.query_name, options)
+                sv_signatures.extend(sigs)
+                translocation_signatures_all_bnds.extend(trans_sigs)
+                sigs, trans_sigs = analyze_read_segments(current_alignment, good_suppl_alns, bam, options)
+                sv_signatures.extend(sigs)
+                translocation_signatures_all_bnds.extend(trans_sigs)
         except StopIteration:
             break
         except KeyboardInterrupt:
             logging.warning('Execution interrupted by user. Stop detection and continue with next step..')
             break
-    return sv_signatures
+    return sv_signatures, translocation_signatures_all_bnds

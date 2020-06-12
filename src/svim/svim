@@ -68,6 +68,8 @@ def main():
         elif reads_type == "list":
             # List of read files
             sv_signatures = []
+            #Translocation signatures from other SV classes are stored separately for --all_bnd option
+            translocation_signatures_all_bnds = []
             for index, file_path in enumerate(read_file_list(options.reads)):
                 logging.info("Starting processing of file {0} from the list..".format(index))
                 reads_type = guess_file_type(file_path)
@@ -75,12 +77,14 @@ def main():
                     return
                 bam_path = run_alignment(options.working_dir, options.genome, file_path, reads_type, options.cores, options.aligner, options.nanopore)
                 aln_file = pysam.AlignmentFile(bam_path)
-                sv_signatures.extend(analyze_alignment_file_coordsorted(aln_file, options))
+                sigs, trans_sigs = analyze_alignment_file_coordsorted(aln_file, options)
+                sv_signatures.extend(sigs)
+                translocation_signatures_all_bnds.extend(trans_sigs)
         else:
             # Single read file
             bam_path = run_alignment(options.working_dir, options.genome, options.reads, reads_type, options.cores, options.aligner, options.nanopore)
             aln_file = pysam.AlignmentFile(bam_path)
-            sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
+            sv_signatures, translocation_signatures_all_bnds = analyze_alignment_file_coordsorted(aln_file, options)
     elif options.sub == 'alignment':
         logging.info("MODE: alignment")
         logging.info("INPUT: {0}".format(os.path.abspath(options.bam_file)))
@@ -95,9 +99,9 @@ def main():
                 except AttributeError:
                     logging.warning("pysam's .check_index raised an Attribute error. Something is wrong with the input BAM file.")
                     return
-                sv_signatures = analyze_alignment_file_coordsorted(aln_file, options)
+                sv_signatures, translocation_signatures_all_bnds = analyze_alignment_file_coordsorted(aln_file, options)
             elif aln_file.header["HD"]["SO"] == "queryname":
-                sv_signatures = analyze_alignment_file_querysorted(aln_file, options)
+                sv_signatures, translocation_signatures_all_bnds = analyze_alignment_file_querysorted(aln_file, options)
                 logging.warning("Skipping genotyping because it requires a coordinate-sorted input BAM file and an index. The given file, however, is queryname-sorted according to its header line.")
                 options.skip_genotyping = True
             else:
@@ -120,18 +124,29 @@ def main():
     logging.info("Found {0} signatures for inverted regions.".format(len(inversion_signatures)))
     logging.info("Found {0} signatures for tandem duplicated regions.".format(len(tandem_duplication_signatures)))
     logging.info("Found {0} signatures for translocation breakpoints.".format(len(translocation_signatures)))
+    if options.all_bnds:
+        logging.info("Found {0} signatures for translocation breakpoints from other SV classes (DEL, INV, DUP).".format(len(translocation_signatures_all_bnds)))
     logging.info("Found {0} signatures for inserted regions with detected region of origin.".format(len(insertion_from_signatures)))
     
     logging.info("****************** STEP 2: CLUSTER ******************")
     signature_clusters = cluster_sv_signatures(sv_signatures, options)
+    if options.all_bnds:
+        translocation_signature_clusters_all_bnds = cluster_sv_signatures(translocation_signatures_all_bnds, options)
 
     # Write SV signature clusters
     logging.info("Finished clustering. Writing signature clusters..")
-    write_signature_clusters_bed(options.working_dir, signature_clusters)
-    write_signature_clusters_vcf(options.working_dir, signature_clusters, __version__)
+    if options.all_bnds:
+        all_signature_clusters = (signature_clusters[0], signature_clusters[1], signature_clusters[2], signature_clusters[3], signature_clusters[4], signature_clusters[5] + translocation_signature_clusters_all_bnds[5])
+        write_signature_clusters_bed(options.working_dir, all_signature_clusters)
+        write_signature_clusters_vcf(options.working_dir, all_signature_clusters, __version__)
+    else:
+        write_signature_clusters_bed(options.working_dir, signature_clusters)
+        write_signature_clusters_vcf(options.working_dir, signature_clusters, __version__)
 
     logging.info("****************** STEP 3: COMBINE ******************")
     deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates = combine_clusters(signature_clusters, options)
+    if options.all_bnds:
+        breakend_candidates_all_bnds = combine_clusters(translocation_signature_clusters_all_bnds, options)[5]
 
     if not options.skip_genotyping:
         logging.info("****************** STEP 4: GENOTYPE ******************")
@@ -152,19 +167,34 @@ def main():
     logging.info("Final tandem duplication candidates: {0}".format(len(tan_dup_candidates)))
     logging.info("Final novel insertion candidates: {0}".format(len(novel_insertion_candidates)))
     logging.info("Final breakend candidates: {0}".format(len(breakend_candidates)))
-    write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates))
     types_to_output = [entry.strip() for entry in options.types.split(",")]
-    write_final_vcf(int_duplication_candidates,
+    if options.all_bnds:
+        logging.info("Final breakend candidates from other SV classes (DEL, INV, DUP): {0}".format(len(breakend_candidates_all_bnds)))       
+        write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates + breakend_candidates_all_bnds))
+        write_final_vcf(int_duplication_candidates,
                     inversion_candidates,
                     tan_dup_candidates,
                     deletion_candidates,
                     novel_insertion_candidates,
-                    breakend_candidates,
+                    breakend_candidates + breakend_candidates_all_bnds,
                     __version__,
                     aln_file.references,
                     aln_file.lengths,
                     types_to_output,
                     options)
+    else:
+        write_candidates(options.working_dir, (int_duplication_candidates, inversion_candidates, tan_dup_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates))
+        write_final_vcf(int_duplication_candidates,
+                        inversion_candidates,
+                        tan_dup_candidates,
+                        deletion_candidates,
+                        novel_insertion_candidates,
+                        breakend_candidates,
+                        __version__,
+                        aln_file.references,
+                        aln_file.lengths,
+                        types_to_output,
+                        options)
     logging.info("Draw plots..")
     plot_sv_lengths(deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, options)
     if not options.skip_genotyping:

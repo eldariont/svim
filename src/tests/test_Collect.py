@@ -269,7 +269,7 @@ class TestCollect(unittest.TestCase):
     def test_analyze_alignment_file_querysorted(self):
         arguments = ['alignment', 'myworkdir', 'mybamfile', 'mygenome']
         options = parse_arguments('1.2.0', arguments)
-        signatures = analyze_alignment_file_querysorted(self.alignment_file, options)
+        signatures, translocation_signatures_all_bnds = analyze_alignment_file_querysorted(self.alignment_file, options)
         self.assertEqual(len([sig for sig in signatures if sig.signature == "cigar"]), 0)
     
     def test_retrieve_supplementary_alignment_from_primary(self):
