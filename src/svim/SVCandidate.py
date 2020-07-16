@@ -673,3 +673,53 @@ class CandidateBreakend(Candidate):
                     info=info_string,
                     format="GT:DP:AD",
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
+
+
+def get_vcf_entry_reverse(self, read_names = False, zmws = False):
+        source_contig, source_start = self.get_destination()
+        dest_contig, dest_start = self.get_source()
+        if (self.source_direction == 'rev') and (self.dest_direction == 'rev'):
+            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'fwd') and (self.dest_direction == 'rev'):
+            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
+            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start)
+        elif (self.source_direction == 'rev') and (self.dest_direction == 'fwd'):
+            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start)
+        if self.ref_reads != None and self.alt_reads != None:
+            dp_string = str(self.ref_reads + self.alt_reads)
+        else:
+            dp_string = "."
+        filters = []
+        if self.genotype == "0/0":
+            filters.append("hom_ref")
+        info_template="SVTYPE={0};SUPPORT={1};STD_POS1={2};STD_POS2={3}"
+        info_string = info_template.format(self.type, 
+                                           len(set([sig.read for sig in self.members])), 
+                                           self.get_std_pos2(), 
+                                           self.get_std_pos1())
+        read_ids = [member.read for member in self.members]
+        if read_names:
+            info_string += ";READS={0}".format(",".join(read_ids))
+        if zmws:
+            valid_pacbio_names = True
+            zmw_list = set()
+            for read_id in read_ids:
+                fields = read_id.split("/")
+                if len(fields) != 3:
+                    valid_pacbio_names = False
+                    break
+                zmw_list.add("/".join(fields[0:2]))
+            if valid_pacbio_names:
+                info_string += ";ZMWS={0}".format(len(zmw_list))
+        return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
+                    chrom=source_contig,
+                    pos=source_start,
+                    id="PLACEHOLDERFORID",
+                    ref="N",
+                    alt=alt_string,
+                    qual=int(self.score),
+                    filter="PASS" if len(filters) == 0 else ";".join(filters),
+                    info=info_string,
+                    format="GT:DP:AD",
+                    samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))

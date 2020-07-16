@@ -62,6 +62,17 @@ def span_position_distance_intdups(signature1, signature2):
     return position_distance_source + position_distance_destination + span_distance
 
 
+def span_position_distance_translocations(signature1, signature2):
+    distance_normalizer = signature1[2]
+    dist1 = signature1[0] - signature2[0]
+    dist2 = signature1[2] - signature2[2]
+    if signature1[1] == signature2[1] and signature1[3] == signature2[3]:
+        position_distance = (dist1 + dist2) / 3000
+    else:
+        position_distance = float("inf")
+    return position_distance
+
+
 def clusters_from_partitions(partitions, options):
     """Finds clusters in partitions using span-position distance and hierarchical clustering. 
     Assumes that all signatures in the given partition are of the same type and on the same contig"""
@@ -87,6 +98,9 @@ def clusters_from_partitions(partitions, options):
         elif element_type == "DUP_INT":
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance_intdups)
+        elif element_type == "BND":
+            data = np.array( [[signature.get_source()[1], signature.direction1, signature.get_destination()[1], signature.direction2] for signature in partition_sample])
+            Z = linkage(data, method = "average", metric = span_position_distance_translocations)
 
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
         new_clusters = [[] for i in range(max(cluster_indices))]
@@ -173,7 +187,7 @@ def consolidate_clusters_bilocal(clusters):
                                                                 (int(round(source_average_end)) -
                                                                  int(round(source_average_start))),
                                                                 score, len(cluster), cluster, cluster[0].type, source_std_span, source_std_pos))
-        if cluster[0].type == "DUP_INT":
+        elif cluster[0].type == "DUP_INT":
             #Destination
             destination_average_start = sum([member.get_destination()[1] for member in cluster]) / len(cluster)
             destination_average_end = sum([member.get_destination()[2] for member in cluster]) / len(cluster)
@@ -191,6 +205,34 @@ def consolidate_clusters_bilocal(clusters):
                 score = calculate_score(cluster, mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos]), mean([source_average_end - source_average_start, destination_average_end - destination_average_start]), cluster[0].type)
                 consolidated_clusters.append(SignatureClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
                                                                 cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, mean([source_std_span, destination_std_span]), mean([source_std_pos, destination_std_pos])))
+        elif cluster[0].type == "BND":
+            #Destination
+            destination_average_start = sum([member.get_destination()[1] for member in cluster]) / len(cluster)
+            destination_average_end = sum([member.get_destination()[2] for member in cluster]) / len(cluster)
+            #Directions
+            directions1 = list(set([member.direction1 for member in cluster]))
+            assert len(directions1) == 1
+            direction1 = directions1[0]
+            directions2 = list(set([member.direction2 for member in cluster]))
+            assert len(directions2) == 1
+            direction2 = directions2[0]
+
+            if len(cluster) > 1:
+                destination_std_pos = stdev([(member.get_destination()[2] + member.get_destination()[1]) / 2 for member in cluster])
+            else:
+                destination_std_span = None
+                destination_std_pos = None
+            if source_std_pos == None or destination_std_pos == None:
+                score = calculate_score(cluster, None, None, 500, cluster[0].type)
+                new_signature_cluster = SignatureClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                                cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, None, None)
+            else:
+                score = calculate_score(cluster, source_std_pos, destination_std_pos, 500, cluster[0].type)
+                new_signature_cluster = SignatureClusterBiLocal(cluster[0].get_source()[0], int(round(source_average_start)), int(round(source_average_end)),
+                                                                cluster[0].get_destination()[0], int(round(destination_average_start)), int(round(destination_average_end)), score, len(cluster), cluster, cluster[0].type, source_std_pos, destination_std_pos)
+            new_signature_cluster.direction1 = direction1
+            new_signature_cluster.direction2 = direction2
+            consolidated_clusters.append(new_signature_cluster)
     return consolidated_clusters
 
 
@@ -241,7 +283,7 @@ def partition_and_cluster(signatures, options, type):
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
     if type == "deleted regions" or type == "inserted regions" or type == "inverted regions":
         return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
-    elif type == "tandem duplicated regions" or type == "inserted regions with detected region of origin":
+    elif type == "tandem duplicated regions" or type == "inserted regions with detected region of origin" or type == "translocation breakpoints":
         return consolidate_clusters_bilocal(clusters)
     else:
         logging.error("Unknown parameter type={0} to function partition_and_cluster.")

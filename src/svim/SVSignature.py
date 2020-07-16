@@ -190,18 +190,27 @@ class SignatureDuplicationTandem(Signature):
 class SignatureTranslocation(Signature):
     """SV Signature: two positions (contig1:pos1 and contig2:pos2) are connected in the sample"""
     def __init__(self, contig1, pos1, direction1, contig2, pos2, direction2, signature, read):
-        self.contig1 = contig1
-        #0-based source of the translocation (first base before the translocation)
-        self.pos1 = pos1
-        self.direction1 = direction1
-        self.contig2 = contig2
-        #0-based destination of the translocation (first base after the translocation)
-        self.pos2 = pos2
-        self.direction2 = direction2
+        if contig1 < contig2 or (contig1 == contig2 and pos1 < pos2):
+            self.contig1 = contig1
+            #0-based source of the translocation (first base before the translocation)
+            self.pos1 = pos1
+            self.direction1 = direction1
+            self.contig2 = contig2
+            #0-based destination of the translocation (first base after the translocation)
+            self.pos2 = pos2
+            self.direction2 = direction2
+        else:
+            self.contig1 = contig2
+            #0-based source of the translocation (first base before the translocation)
+            self.pos1 = pos2
+            self.direction1 = 'fwd' if direction2 == 'rev' else 'rev'
+            self.contig2 = contig1
+            #0-based destination of the translocation (first base after the translocation)
+            self.pos2 = pos1
+            self.direction2 = 'fwd' if direction1 == 'rev' else 'rev'
         self.signature = signature
         self.read = read
         self.type = "BND"
-
 
     def get_source(self):
         return (self.contig1, self.pos1, self.pos1 + 1)

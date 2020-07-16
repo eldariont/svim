@@ -2,16 +2,6 @@ import os
 import logging
 
 from svim.SVIM_clustering import partition_and_cluster
-from svim.SVSignature import SignatureTranslocation
-
-
-def complete_translocations(translocation_signatures):
-    """Generate a complete list of translocation by adding all reversed translocations"""
-
-    reversed_translocations = []
-    for signature in translocation_signatures:
-        reversed_translocations.append(SignatureTranslocation(signature.contig2, signature.pos2, 'fwd' if signature.direction2 == 'rev' else 'rev', signature.contig1, signature.pos1, 'fwd' if signature.direction1 == 'rev' else 'rev', signature.signature, signature.read))
-    return translocation_signatures + reversed_translocations
 
 
 def cluster_sv_signatures(sv_signatures, options):
@@ -30,14 +20,15 @@ def cluster_sv_signatures(sv_signatures, options):
     insertion_signature_clusters = partition_and_cluster(insertion_signatures, options, "inserted regions")
     inversion_signature_clusters = partition_and_cluster(inversion_signatures, options, "inverted regions")
     tandem_duplication_signature_clusters = partition_and_cluster(tandem_duplication_signatures, options, "tandem duplicated regions")
+    translocation_signature_clusters = partition_and_cluster(translocation_signatures, options, "translocation breakpoints")
     insertion_from_signature_clusters = partition_and_cluster(insertion_from_signatures, options, "inserted regions with detected region of origin")
 
-    return (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, complete_translocations(translocation_signatures))
+    return (deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters)
 
 
 def write_signature_clusters_bed(working_dir, clusters):
     """Write signature clusters into working directory in BED format."""
-    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = clusters
+    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = clusters
 
     # Print SV signature clusters
     if not os.path.exists(working_dir + '/signatures'):
@@ -64,7 +55,7 @@ def write_signature_clusters_bed(working_dir, clusters):
         bed_entries = cluster.get_bed_entries()
         print(bed_entries[0], file=insertion_from_signature_output)
         print(bed_entries[1], file=insertion_from_signature_output)
-    for translocation in completed_translocations:
+    for translocation in translocation_signature_clusters:
         print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.signature, translocation.read), file=translocation_signature_output)
 
     deletion_signature_output.close()
@@ -78,7 +69,7 @@ def write_signature_clusters_bed(working_dir, clusters):
 
 def write_signature_clusters_vcf(working_dir, clusters, version):
     """Write signature clusters into working directory in VCF format."""
-    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = clusters
+    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = clusters
 
     if not os.path.exists(working_dir + '/signatures'):
         os.mkdir(working_dir + '/signatures')

@@ -10,7 +10,7 @@ from pysam import FastaFile
 
 from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
 from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion, CandidateBreakend
-from svim.SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions, cluster_positions_simple
+from svim.SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions
 
 
 def cluster_sv_candidates(int_duplication_candidates, options):
@@ -176,6 +176,7 @@ def write_final_vcf(int_duplication_candidates,
     if "BND" in types_to_output:
         for candidate in breakend_candidates:
             vcf_entries.append(((candidate.get_source()[0], candidate.get_source()[1], candidate.get_source()[1] + 1), candidate.get_vcf_entry(options.read_names, options.zmws), "BND"))
+            vcf_entries.append(((candidate.get_destination()[0], candidate.get_destination()[1], candidate.get_destination()[1] + 1), candidate.get_vcf_entry_reverse(options.read_names, options.zmws), "BND"))
 
     if sequence_alleles:
         reference.close()
@@ -192,7 +193,7 @@ def write_final_vcf(int_duplication_candidates,
 
 
 def combine_clusters(signature_clusters, options):
-    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, completed_translocations = signature_clusters
+    deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = signature_clusters
 
     ###############################
     # Create inversion candidates #
@@ -217,77 +218,39 @@ def combine_clusters(signature_clusters, options):
     #####################################
 
     # Cluster translocations by contig and pos1
-    logging.info("Cluster translocation breakpoints..")
-    translocations_fwdfwd = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
-    translocations_revrev = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "rev"]
-    translocations_fwdrev = [tra for tra in completed_translocations if tra.direction1 == "fwd" and tra.direction2 == "rev"]
-    translocations_revfwd = [tra for tra in completed_translocations if tra.direction1 == "rev" and tra.direction2 == "fwd"]
-    translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, options.trans_partition_max_distance)
-    translocation_partitions_revrev = form_partitions(translocations_revrev, options.trans_partition_max_distance)
-    translocation_partitions_fwdrev = form_partitions(translocations_fwdrev, options.trans_partition_max_distance)
-    translocation_partitions_revfwd = form_partitions(translocations_revfwd, options.trans_partition_max_distance)
+    # logging.info("Cluster translocation breakpoints..")
+    # translocations_fwdfwd = [tra for tra in translocation_signature_clusters if tra.direction1 == "fwd" and tra.direction2 == "fwd"]
+    # translocations_revrev = [tra for tra in translocation_signature_clusters if tra.direction1 == "rev" and tra.direction2 == "rev"]
+    # translocations_fwdrev = [tra for tra in translocation_signature_clusters if tra.direction1 == "fwd" and tra.direction2 == "rev"]
+    # translocations_revfwd = [tra for tra in translocation_signature_clusters if tra.direction1 == "rev" and tra.direction2 == "fwd"]
+    # translocation_partitions_fwdfwd = form_partitions(translocations_fwdfwd, options.trans_partition_max_distance)
+    # translocation_partitions_revrev = form_partitions(translocations_revrev, options.trans_partition_max_distance)
+    # translocation_partitions_fwdrev = form_partitions(translocations_fwdrev, options.trans_partition_max_distance)
+    # translocation_partitions_revfwd = form_partitions(translocations_revfwd, options.trans_partition_max_distance)
 
     ##############################
     # Create breakend candidates #
     ##############################
 
     breakend_candidates = []
-    for (dir1, dir2), partitions in {('fwd', 'fwd'): translocation_partitions_fwdfwd,
-                      ('fwd', 'rev'): translocation_partitions_fwdrev,
-                      ('rev', 'rev'): translocation_partitions_revrev,
-                      ('rev', 'fwd'): translocation_partitions_revfwd}.items():
-        for partition in partitions:
-            destination_partitions = cluster_positions_simple([(signature.contig2, signature.pos2, signature) for signature in partition], \
-                                                                    options.trans_destination_partition_max_distance)
-            for destination_partition in destination_partitions:
-                contig1 = partition[0].contig1
-                pos1_mean = int(round(mean([signature.pos1 for contig2, pos2, signature in destination_partition])))
-                contig2 = destination_partition[0][0]
-                pos2_mean = int(round(mean([pos2 for contig2, pos2, signature in destination_partition])))
-                if len(destination_partition) > 1:
-                    pos1_std = int(round(stdev([signature.pos1 for contig2, pos2, signature in destination_partition])))
-                    pos2_std = int(round(stdev([pos2 for contig2, pos2, signature in destination_partition])))
-                else:
-                    pos1_std = None
-                    pos2_std = None
-                members = [signature for contig2, pos2, signature in destination_partition]
-                #Use pos1_std and pos2_std because breakends do not have a span (for span_std)
-                score = calculate_score(members, pos1_std, pos2_std, options.trans_partition_max_distance, "BND")
-                breakend_candidates.append(CandidateBreakend(contig1, 
-                                                            pos1_mean, 
-                                                            dir1, 
-                                                            contig2, 
-                                                            pos2_mean, 
-                                                            dir2, 
-                                                            members, 
-                                                            score, 
-                                                            pos1_std, 
-                                                            pos2_std))
+    for tra_cluster in translocation_signature_clusters:
+        breakend_candidates.append(CandidateBreakend(tra_cluster.source_contig, 
+                                                     tra_cluster.source_start, 
+                                                     tra_cluster.direction1, 
+                                                     tra_cluster.dest_contig, 
+                                                     tra_cluster.dest_start, 
+                                                     tra_cluster.direction2, 
+                                                     tra_cluster.members, 
+                                                     tra_cluster.score, 
+                                                     tra_cluster.std_span, 
+                                                     tra_cluster.std_pos))
 
     ###################################################
     # Merge translocation breakpoints with insertions #
     ###################################################
 
-    translocation_partitions_fwdfwd_dict = defaultdict(list)
-    translocation_partitions_revrev_dict = defaultdict(list)
-    for partition in translocation_partitions_fwdfwd:
-        translocation_partitions_fwdfwd_dict[partition[0].contig1].append(partition)
-    for partition in translocation_partitions_revrev:
-        translocation_partitions_revrev_dict[partition[0].contig1].append(partition)
-
-    translocation_partition_means_fwdfwd_dict = {}
-    translocation_partition_stds_fwdfwd_dict = {}
-    for contig in translocation_partitions_fwdfwd_dict.keys():
-        translocation_partition_means_fwdfwd_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_fwdfwd_dict[contig]]
-        translocation_partition_stds_fwdfwd_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_fwdfwd_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_fwdfwd_dict[contig])]
-    translocation_partition_means_revrev_dict = {}
-    translocation_partition_stds_revrev_dict = {}
-    for contig in translocation_partitions_revrev_dict.keys():
-        translocation_partition_means_revrev_dict[contig] = [int(round(sum([ev.pos1 for ev in partition]) / len(partition))) for partition in translocation_partitions_revrev_dict[contig]]
-        translocation_partition_stds_revrev_dict[contig] = [int(round(sqrt(sum([pow(abs(ev.pos1 - translocation_partition_means_revrev_dict[contig][index]), 2) for ev in partition]) / len(partition)))) for index, partition in enumerate(translocation_partitions_revrev_dict[contig])]
-
     logging.info("Combine inserted regions with translocation breakpoints..")
-    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_partitions_fwdfwd_dict, translocation_partition_means_fwdfwd_dict, translocation_partition_stds_fwdfwd_dict, translocation_partitions_revrev_dict, translocation_partition_means_revrev_dict, translocation_partition_stds_revrev_dict, insertion_signature_clusters, options)
+    new_insertion_from_clusters, inserted_regions_to_remove_1 = merge_translocations_at_insertions(translocation_signature_clusters, insertion_signature_clusters, options)
     insertion_from_signature_clusters.extend(new_insertion_from_clusters)
 
     ############################################################################

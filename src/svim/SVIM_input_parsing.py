@@ -150,14 +150,6 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         type=float,
                                         default=1.0,
                                         help='Maximum span-position distance between the origin of an insertion and a deletion to be flagged as a potential cut&paste insertion (default: %(default)s)')
-    group_fasta_combine.add_argument('--trans_destination_partition_max_distance',
-                                        type=int,
-                                        default=1000,
-                                        help='Maximum distance in bp between translocation breakpoint destinations in a partition (default: %(default)s)')
-    group_fasta_combine.add_argument('--trans_partition_max_distance',
-                                        type=int,
-                                        default=200,
-                                        help='Maximum distance in bp between translocation breakpoints in a partition (default: %(default)s)')
     group_fasta_combine.add_argument('--trans_sv_max_distance',
                                         type=int,
                                         default=500,
@@ -346,14 +338,6 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       type=float,
                                       default=1.0,
                                       help='Maximum span-position distance between the origin of an insertion and a deletion to be flagged as a potential cut&paste insertion (default: %(default)s)')
-    group_bam_combine.add_argument('--trans_destination_partition_max_distance',
-                                      type=int,
-                                      default=1000,
-                                      help='Maximum distance in bp between translocation breakpoint destinations in a partition (default: %(default)s)')
-    group_bam_combine.add_argument('--trans_partition_max_distance',
-                                      type=int,
-                                      default=200,
-                                      help='Maximum distance in bp between translocation breakpoints in a partition (default: %(default)s)')
     group_bam_combine.add_argument('--trans_sv_max_distance',
                                       type=int,
                                       default=500,
