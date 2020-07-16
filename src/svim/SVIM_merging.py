@@ -66,12 +66,24 @@ def calculate_score_insertion(main_score, translocation_distances, translocation
     td1 = max(0, 100 - translocation_distances[1]) / 100
 
     #scale translocation std to [0, 1] range
-    ts0 = max(0, 100 - translocation_stds[0]) / 100
-    ts1 = max(0, 100 - translocation_stds[1]) / 100
+    if translocation_stds[0] == None:
+        ts0 = 0
+    else:
+        ts0 = max(0, 100 - translocation_stds[0]) / 100
+    if translocation_stds[1] == None:
+        ts1 = 0
+    else:
+        ts1 = max(0, 100 - translocation_stds[1]) / 100
 
     #scale destination stds to [0, 1] range
-    ds0 = max(0, 100 - destination_stds[0]) / 100
-    ds1 = max(0, 100 - destination_stds[1]) / 100
+    if destination_stds[0] == None:
+        ds0 = 0
+    else:
+        ds0 = max(0, 100 - destination_stds[0]) / 100
+    if destination_stds[1] == None:
+        ds1 = 0
+    else:
+        ds1 = max(0, 100 - destination_stds[1]) / 100
 
     #calculate final score as product of components
     product = td0 * td1 * ts0 * ts1 * ds0 * ds1
@@ -130,15 +142,15 @@ def merge_translocations_at_insertions(translocation_signature_clusters, inserti
             destination_from_start_revrev = (translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index].dest_contig, translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index].dest_start)
             destination_from_start_fwdfwd_std = translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index].std_pos
             destination_from_start_revrev_std = translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index].std_pos
-                # if the two destinations have the right distance
-                distance = abs(destination_from_start_revrev[1] - destination_from_start_fwdfwd[1])
-                if destination_from_start_revrev[0] == destination_from_start_fwdfwd[0] and 0.95 <= ((ins_end - ins_start + 1) / (distance + 1)) <= 1.1:
-                    members = ins_cluster.members + translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index].members + translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index].members
-                    score = calculate_score_insertion(ins_cluster.score, 
-                                                      [abs(closest_to_start_fwdfwd_mean - ins_start), abs(closest_to_start_revrev_mean - ins_start)], 
-                                                      [translocation_partition_stds_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index], translocation_partition_stds_revrev_dict[ins_contig][closest_to_start_revrev_index]], 
-                                                      [destination_from_start_fwdfwd_std, destination_from_start_revrev_std])
-                    insertion_from_signature_clusters.append(SignatureClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "DUP_INT", ins_cluster.std_span, ins_cluster.std_pos))
-                    inserted_regions_to_remove.append(insertion_index)
+            # if the two destinations have the right distance
+            distance = abs(destination_from_start_revrev[1] - destination_from_start_fwdfwd[1])
+            if destination_from_start_revrev[0] == destination_from_start_fwdfwd[0] and 0.95 <= ((ins_end - ins_start + 1) / (distance + 1)) <= 1.1:
+                members = ins_cluster.members + translocation_partitions_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index].members + translocation_partitions_revrev_dict[ins_contig][closest_to_start_revrev_index].members
+                score = calculate_score_insertion(ins_cluster.score, 
+                                                  [abs(closest_to_start_fwdfwd_mean - ins_start), abs(closest_to_start_revrev_mean - ins_start)], 
+                                                  [translocation_partition_stds_fwdfwd_dict[ins_contig][closest_to_start_fwdfwd_index], translocation_partition_stds_revrev_dict[ins_contig][closest_to_start_revrev_index]], 
+                                                  [destination_from_start_fwdfwd_std, destination_from_start_revrev_std])
+                insertion_from_signature_clusters.append(SignatureClusterBiLocal(destination_from_start_revrev[0], min(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), max(destination_from_start_revrev[1], destination_from_start_fwdfwd[1]), ins_contig, ins_start, ins_start + distance, score, len(members), members, "DUP_INT", ins_cluster.std_span, ins_cluster.std_pos))
+                inserted_regions_to_remove.append(insertion_index)
 
     return insertion_from_signature_clusters, inserted_regions_to_remove

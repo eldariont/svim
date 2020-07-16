@@ -63,13 +63,12 @@ def span_position_distance_intdups(signature1, signature2):
 
 
 def span_position_distance_translocations(signature1, signature2):
-    distance_normalizer = signature1[2]
-    dist1 = signature1[0] - signature2[0]
-    dist2 = signature1[2] - signature2[2]
+    dist1 = abs(signature1[0] - signature2[0])
+    dist2 = abs(signature1[2] - signature2[2])
     if signature1[1] == signature2[1] and signature1[3] == signature2[3]:
         position_distance = (dist1 + dist2) / 3000
     else:
-        position_distance = float("inf")
+        position_distance = 99999
     return position_distance
 
 
@@ -99,7 +98,7 @@ def clusters_from_partitions(partitions, options):
             data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance_intdups)
         elif element_type == "BND":
-            data = np.array( [[signature.get_source()[1], signature.direction1, signature.get_destination()[1], signature.direction2] for signature in partition_sample])
+            data = np.array( [[signature.get_source()[1], 1 if signature.direction1 == 'fwd' else 0, signature.get_destination()[1], 1 if signature.direction2 == 'fwd' else 0] for signature in partition_sample])
             Z = linkage(data, method = "average", metric = span_position_distance_translocations)
 
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))

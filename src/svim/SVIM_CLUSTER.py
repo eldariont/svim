@@ -55,8 +55,10 @@ def write_signature_clusters_bed(working_dir, clusters):
         bed_entries = cluster.get_bed_entries()
         print(bed_entries[0], file=insertion_from_signature_output)
         print(bed_entries[1], file=insertion_from_signature_output)
-    for translocation in translocation_signature_clusters:
-        print("{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(translocation.contig1, translocation.pos1, translocation.pos1+1, ">{0}:{1}".format(translocation.contig2, translocation.pos2), translocation.signature, translocation.read), file=translocation_signature_output)
+    for cluster in translocation_signature_clusters:
+        bed_entries = cluster.get_bed_entries()
+        print(bed_entries[0], file=translocation_signature_output)
+        print(bed_entries[1], file=translocation_signature_output)
 
     deletion_signature_output.close()
     insertion_signature_output.close()

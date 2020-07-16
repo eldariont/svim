@@ -675,7 +675,7 @@ class CandidateBreakend(Candidate):
                     samples="{gt}:{dp}:{ref},{alt}".format(gt=self.genotype, dp=dp_string, ref=self.ref_reads if self.ref_reads != None else ".", alt=self.alt_reads if self.alt_reads != None else "."))
 
 
-def get_vcf_entry_reverse(self, read_names = False, zmws = False):
+    def get_vcf_entry_reverse(self, read_names = False, zmws = False):
         source_contig, source_start = self.get_destination()
         dest_contig, dest_start = self.get_source()
         if (self.source_direction == 'rev') and (self.dest_direction == 'rev'):
