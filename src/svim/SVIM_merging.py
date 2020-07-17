@@ -67,21 +67,21 @@ def calculate_score_insertion(main_score, translocation_distances, translocation
 
     #scale translocation std to [0, 1] range
     if translocation_stds[0] == None:
-        ts0 = 0
+        ts0 = 1
     else:
         ts0 = max(0, 100 - translocation_stds[0]) / 100
     if translocation_stds[1] == None:
-        ts1 = 0
+        ts1 = 1
     else:
         ts1 = max(0, 100 - translocation_stds[1]) / 100
 
     #scale destination stds to [0, 1] range
     if destination_stds[0] == None:
-        ds0 = 0
+        ds0 = 1
     else:
         ds0 = max(0, 100 - destination_stds[0]) / 100
     if destination_stds[1] == None:
-        ds1 = 0
+        ds1 = 1
     else:
         ds1 = max(0, 100 - destination_stds[1]) / 100
 
@@ -113,6 +113,10 @@ def merge_translocations_at_insertions(translocation_signature_clusters, inserti
             translocation_partitions_fwdfwd_dict[cluster.source_contig].append(cluster)
         elif cluster.direction1 == 'rev' and cluster.direction2 == 'rev':
             translocation_partitions_revrev_dict[cluster.source_contig].append(cluster)
+    for contig in translocation_partitions_fwdfwd_dict.keys():
+        translocation_partitions_fwdfwd_dict[contig] = sorted(translocation_partitions_fwdfwd_dict[contig], key=lambda cluster: cluster.get_key())
+    for contig in translocation_partitions_revrev_dict.keys():
+        translocation_partitions_revrev_dict[contig] = sorted(translocation_partitions_revrev_dict[contig], key=lambda cluster: cluster.get_key())
 
     translocation_partition_means_fwdfwd_dict = {}
     translocation_partition_stds_fwdfwd_dict = {}
