@@ -57,6 +57,7 @@ Installation
 
 Changelog
 ---------
+- **v1.4.1**: improve clustering of translocation breakpoints (BNDs), improve --all_bnds mode, bugfixes
 - **v1.4.0**: fix and improve clustering of insertions, add option --all_bnds to output all SV classes in breakend notation, update default value of --partition_max_distance to avoid very large partitions, bugfixes
 - **v1.3.1**: small changes to partitioning and clustering algorithm, add two new command-line options to output duplications as INS records in VCF, remove limit on number of supplementary alignments, remove q5 filter, bugfixes
 - **v1.3.0**: improve BND detection, add INFO:ZMWS tag with number of supporting PacBio wells, add sequence alleles for INS, add FORMAT:CN tag for tandem duplications, bugfixes
