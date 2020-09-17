@@ -61,7 +61,7 @@ class CandidateDeletion(Candidate):
     def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based start of the deletion (first deleted base)
-        self.source_start = source_start
+        self.source_start = max(0, source_start)
         #0-based end of the deletion (one past the last deleted base)
         self.source_end = source_end
 
@@ -114,7 +114,7 @@ class CandidateDeletion(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=max(1, start),
                     id="PLACEHOLDERFORID",
                     ref=ref_allele,
                     alt=alt_allele,
@@ -129,7 +129,7 @@ class CandidateInversion(Candidate):
     def __init__(self, source_contig, source_start, source_end, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based start of the inversion (first inverted base)
-        self.source_start = source_start
+        self.source_start = max(0, source_start)
         #0-based end of the inversion (one past the last inverted base)
         self.source_end = source_end
 
@@ -198,7 +198,7 @@ class CandidateNovelInsertion(Candidate):
     def __init__(self, dest_contig, dest_start, dest_end, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.dest_contig = dest_contig
         #0-based start of the insertion (base after the insertion)
-        self.dest_start = dest_start
+        self.dest_start = max(0, dest_start)
         #0-based start of the insertion (base after the insertion) + length of the insertion
         self.dest_end = dest_end
 
@@ -261,7 +261,7 @@ class CandidateNovelInsertion(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=max(1, start),
                     id="PLACEHOLDERFORID",
                     ref=ref_allele,
                     alt=alt_allele,
@@ -276,7 +276,7 @@ class CandidateDuplicationTandem(Candidate):
     def __init__(self, source_contig, source_start, source_end, copies, fully_covered, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based start of the region (first copied base)
-        self.source_start = source_start
+        self.source_start = max(0, source_start)
         #0-based end of the region (one past the last copied base)
         self.source_end = source_end
         
@@ -357,7 +357,7 @@ class CandidateDuplicationTandem(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=max(1, start),
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt="<" + svtype + ">",
@@ -406,7 +406,7 @@ class CandidateDuplicationTandem(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=start+1,
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt="<" + svtype + ">",
@@ -421,13 +421,13 @@ class CandidateDuplicationInterspersed(Candidate):
     def __init__(self, source_contig, source_start, source_end, dest_contig, dest_start, dest_end, members, score, std_span, std_pos, cutpaste=False, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based start of the region (first copied base)
-        self.source_start = source_start
+        self.source_start = max(0, source_start)
         #0-based end of the region (one past the last copied base)
         self.source_end = source_end
 
         self.dest_contig = dest_contig
         #0-based start of the insertion (base after the insertion)
-        self.dest_start = dest_start
+        self.dest_start = max(0, dest_start)
         #0-based end of the insertion (base after the insertion) + length of the insertion
         self.dest_end = dest_end
 
@@ -502,7 +502,7 @@ class CandidateDuplicationInterspersed(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=max(1, start),
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt="<" + svtype + ">",
@@ -547,7 +547,7 @@ class CandidateDuplicationInterspersed(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=contig,
-                    pos=start,
+                    pos=start+1,
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt="<" + svtype + ">",
@@ -562,12 +562,12 @@ class CandidateBreakend(Candidate):
     def __init__(self, source_contig, source_start, source_direction, dest_contig, dest_start, dest_direction, members, score, std_pos1, std_pos2, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.source_contig = source_contig
         #0-based source of the translocation (first base before the translocation)
-        self.source_start = source_start
+        self.source_start = max(0, source_start)
         self.source_direction = source_direction
 
         self.dest_contig = dest_contig
         #0-based destination of the translocation (first base after the translocation)
-        self.dest_start = dest_start
+        self.dest_start = max(0, dest_start)
         self.dest_direction = dest_direction
 
         self.members = members
@@ -629,13 +629,13 @@ class CandidateBreakend(Candidate):
         source_contig, source_start = self.get_source()
         dest_contig, dest_start = self.get_destination()
         if (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
-            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start)
+            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'fwd') and (self.dest_direction == 'rev'):
-            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start)
+            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'rev') and (self.dest_direction == 'rev'):
-            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start)
+            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'rev') and (self.dest_direction == 'fwd'):
-            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start)
+            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start+1)
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
@@ -664,7 +664,7 @@ class CandidateBreakend(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=source_contig,
-                    pos=source_start,
+                    pos=source_start+1,
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt=alt_string,
@@ -679,13 +679,13 @@ class CandidateBreakend(Candidate):
         source_contig, source_start = self.get_destination()
         dest_contig, dest_start = self.get_source()
         if (self.source_direction == 'rev') and (self.dest_direction == 'rev'):
-            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start)
+            alt_string = "N[{contig}:{start}[".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'fwd') and (self.dest_direction == 'rev'):
-            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start)
+            alt_string = "N]{contig}:{start}]".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'fwd') and (self.dest_direction == 'fwd'):
-            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start)
+            alt_string = "]{contig}:{start}]N".format(contig = dest_contig, start = dest_start+1)
         elif (self.source_direction == 'rev') and (self.dest_direction == 'fwd'):
-            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start)
+            alt_string = "[{contig}:{start}[N".format(contig = dest_contig, start = dest_start+1)
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
         else:
@@ -714,7 +714,7 @@ class CandidateBreakend(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=source_contig,
-                    pos=source_start,
+                    pos=source_start+1,
                     id="PLACEHOLDERFORID",
                     ref="N",
                     alt=alt_string,
