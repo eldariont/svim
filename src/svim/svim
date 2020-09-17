@@ -94,7 +94,7 @@ def main():
                 try:
                     aln_file.check_index()
                 except ValueError:
-                    logging.warning("Input BAM file is missing a valid index. Please generate with 'samtools faidx'. Continuing without genotyping for now..")
+                    logging.warning("Input BAM file is missing a valid index. Please generate with 'samtools index'. Continuing without genotyping for now..")
                     options.skip_genotyping = True
                 except AttributeError:
                     logging.warning("pysam's .check_index raised an Attribute error. Something is wrong with the input BAM file.")
