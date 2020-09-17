@@ -54,8 +54,11 @@ def retrieve_other_alignments(main_alignment, bam):
     # For each other alignment encoded in the SA tag
     for element in sa_tag:
         # Read information from the tag
+        if element == "":
+            continue
         fields = element.split(",")
         if len(fields) != 6:
+            logging.warning('SA tag does not consist of 6 fields. This could be a sign of invalid characters (e.g. commas or semicolons) in a chromosome name of the reference genome.')
             continue
         rname = fields[0]
         pos = int(fields[1])
