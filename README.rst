@@ -14,8 +14,9 @@ SVIM - Structural variant identification using long reads
     :target: https://doi.org/10.1093/bioinformatics/btz041
 
 SVIM (pronounced *SWIM*) is a structural variant caller for long sequencing reads.
-It is able to detect, classify and genotype five different classes of structural variants.
-Unlike existing methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and simple insertions.
+It is able to detect and classify the following six classes of structural variation: deletions, insertions, inversions, tandem duplications, interspersed duplications and translocations.
+SVIM also estimates the genotypes of deletions, insertions, inversions and interspersed duplications.
+Unlike other methods, SVIM integrates information from across the genome to precisely distinguish similar events, such as tandem and interspersed duplications and simple insertions.
 In our experiments on simulated data and real datasets from PacBio and Nanopore sequencing machines, SVIM reached consistently better results than competing methods.
 
 **Note!** To analyze haploid or diploid genome assemblies or contigs, please use our other method `SVIM-asm <https://github.com/eldariont/svim-asm>`_.
@@ -27,7 +28,7 @@ Background on Structural Variants and Long Reads
     :align: center
 
 Structural variants (SVs) are typically defined as genomic variants larger than 50bps (e.g. deletions, duplications, inversions).
-Studies have shown that they affect more bases in an average genome than SNPs and small Indels together.
+Studies have shown that they affect more bases in an average genome than SNPs or small Indels.
 Consequently, they have a large impact on genes and regulatory regions.
 This is reflected in the large number of genetic disorders and other disease that are associated to SVs.
 
@@ -74,14 +75,13 @@ Input
 
 SVIM analyzes long reads given as a FASTA/FASTQ file (uncompressed or gzipped) or a file list.
 Alternatively, it can analyze an alignment file in BAM format.
-SVIM has been successfully tested on PacBio CLR, PacBio CCS and Oxford Nanopore data.
+SVIM has been successfully tested on PacBio CLR, PacBio CCS (HiFi) and Oxford Nanopore data.
 It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
 
 Output
 ------
 
-SVIM's main output file called `variants.vcf` (formerly final_results.vcf) is placed into the given working directory.
-For each of the five detected SV classes, SVIM also produces a BED file with the SV coordinates in the `candidates` subdirectory.
+SVIM's main output file called `variants.vcf` is placed into the given working directory.
 
 Usage
 ----------------------
