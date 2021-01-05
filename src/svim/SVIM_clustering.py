@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 import logging
 
-from random import sample
+from random import seed, sample
 from statistics import mean, stdev
 import numpy as np
 from scipy.cluster.hierarchy import linkage, fcluster
@@ -77,6 +77,8 @@ def clusters_from_partitions(partitions, options):
     Assumes that all signatures in the given partition are of the same type and on the same contig"""
     clusters_final = []
     large_partitions = 0
+    #initialize random number generator with fixed number to produce same output from same input
+    seed(1524)
     # Find clusters in each partition individually.
     for partition in partitions:
         if len(partition) == 1:
