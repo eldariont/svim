@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import sys
+import logging
 from statistics import mean
 
 from svim.SVSignature import SignatureDeletion, SignatureInsertion, SignatureInversion, SignatureTranslocation, SignatureDuplicationTandem, SignatureInsertionFrom
@@ -21,8 +22,12 @@ def analyze_read_segments(primary, supplementaries, bam, options):
     for alignment in alignments:
         #correct query coordinates for reversely mapped reads
         if alignment.is_reverse:
-            q_start = alignment.infer_read_length() - alignment.query_alignment_end
-            q_end = alignment.infer_read_length() - alignment.query_alignment_start
+            inferred_read_length = alignment.infer_read_length()
+            if inferred_read_length is None:
+                logging.warning('Skipping alignment because pysam was unable to infer length of read from CIGAR string (alignment.infer_read_length() returned None). Query name: {0}, CIGAR: {1}'.format(alignment.query_name, alignment.cigarstring))
+                continue
+            q_start = inferred_read_length - alignment.query_alignment_end
+            q_end = inferred_read_length - alignment.query_alignment_start
         else:
             q_start = alignment.query_alignment_start
             q_end = alignment.query_alignment_end
