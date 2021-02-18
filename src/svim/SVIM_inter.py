@@ -9,7 +9,13 @@ from svim.SVIM_clustering import consolidate_clusters_bilocal, clusters_from_par
 
 
 def is_similar(chr1, start1, end1, chr2, start2, end2):
-    if chr1 == chr2 and abs(start1 - start2) < 20 and abs(end1 - end2) < 20:
+    span1 = end1 - start1
+    span2 = end2 - start2
+    center1 = (start1 + end1) // 2
+    center2 = (start2 + end2) // 2
+    position_distance = abs(center1 - center2) / 900
+    span_distance = abs(span1 - span2) / max(span1, span2)
+    if chr1 == chr2 and position_distance + span_distance < 0.3:
         return True
     else:
         return False

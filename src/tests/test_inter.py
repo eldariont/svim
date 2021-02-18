@@ -8,7 +8,7 @@ class TestSVIMInter(unittest.TestCase):
         self.assertFalse(is_similar("chrI", 0, 100, "chrII", 0, 100))
         self.assertTrue(is_similar("chrI", 0, 100, "chrI", 0, 100))
         self.assertTrue(is_similar("chrI", 0, 100, "chrI", 10, 90))
-        self.assertFalse(is_similar("chrI", 0, 100, "chrI", 21, 100))
+        self.assertFalse(is_similar("chrI", 100, 105, "chrI", 21, 100))
 
 if __name__ == '__main__':
     unittest.main()
