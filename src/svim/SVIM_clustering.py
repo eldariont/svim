@@ -27,45 +27,42 @@ def form_partitions(sv_signatures, max_distance):
     return partitions
 
 
-def span_position_distance(signature1, signature2):
-    distance_normalizer = signature1[2]
-    span1 = signature1[1] - signature1[0]
-    span2 = signature2[1] - signature2[0]
-    center1 = (signature1[0] + signature1[1]) // 2
-    center2 = (signature2[0] + signature2[1]) // 2
+def span_position_distance(signature1, signature2, distance_normalizer):
+    span1 = signature1.get_source()[2] - signature1.get_source()[1]
+    span2 = signature2.get_source()[2] - signature2.get_source()[1]
+    center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
+    center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
     position_distance = abs(center1 - center2) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance + span_distance
 
 
-def span_position_distance_insertions(signature1, signature2):
-    distance_normalizer = signature1[2]
-    span1 = signature1[1] - signature1[0]
-    span2 = signature2[1] - signature2[0]
-    center1 = signature1[0]
-    center2 = signature2[0]
+def span_position_distance_insertions(signature1, signature2, distance_normalizer):
+    span1 = signature1.get_source()[2] - signature1.get_source()[1]
+    span2 = signature2.get_source()[2] - signature2.get_source()[1]
+    center1 = signature1.get_source()[1]
+    center2 = signature2.get_source()[1]
     position_distance = abs(center1 - center2) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance + span_distance
 
 
-def span_position_distance_intdups(signature1, signature2):
+def span_position_distance_intdups(signature1, signature2, distance_normalizer):
     "Special span position distance function for interspersed duplication signatures"
-    distance_normalizer = signature1[3]
-    span1 = signature1[1] - signature1[0]
-    span2 = signature2[1] - signature2[0]
-    source_center1 = (signature1[0] + signature1[1]) // 2
-    source_center2 = (signature2[0] + signature2[1]) // 2
+    span1 = signature1.get_source()[2] - signature1.get_source()[1]
+    span2 = signature2.get_source()[2] - signature2.get_source()[1]
+    source_center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
+    source_center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
     position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
-    position_distance_destination = abs(signature1[2] - signature2[2]) / distance_normalizer
+    position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance_source + position_distance_destination + span_distance
 
 
 def span_position_distance_translocations(signature1, signature2):
-    dist1 = abs(signature1[0] - signature2[0])
-    dist2 = abs(signature1[2] - signature2[2])
-    if signature1[1] == signature2[1] and signature1[3] == signature2[3]:
+    dist1 = abs(signature1.get_source()[1] - signature2.get_source()[1])
+    dist2 = abs(signature1.get_destination()[1] - signature2.get_destination()[1])
+    if signature1.direction1 == signature2.direction1 and signature1.direction2 == signature2.direction2:
         position_distance = (dist1 + dist2) / 3000
     else:
         position_distance = 99999
@@ -90,18 +87,27 @@ def clusters_from_partitions(partitions, options):
         else:
             partition_sample = partition
         element_type = partition_sample[0].type
+        distances = []
         if element_type == "DEL" or element_type == "INV" or element_type == "DUP_TAN":
-            data = np.array( [[signature.get_source()[1], signature.get_source()[2], options.distance_normalizer] for signature in partition_sample])
-            Z = linkage(data, method = "average", metric = span_position_distance)
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    distances.append(span_position_distance(partition_sample[i], partition_sample[j], options.distance_normalizer))
+            Z = linkage(np.array(distances), method = "average")
         elif element_type == "INS":
-            data = np.array( [[signature.get_source()[1], signature.get_source()[2], options.distance_normalizer] for signature in partition_sample])
-            Z = linkage(data, method = "average", metric = span_position_distance_insertions)
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    distances.append(span_position_distance_insertions(partition_sample[i], partition_sample[j], options.distance_normalizer))
+            Z = linkage(np.array(distances), method = "average")
         elif element_type == "DUP_INT":
-            data = np.array( [[signature.get_source()[1], signature.get_source()[2], signature.get_destination()[1], options.distance_normalizer] for signature in partition_sample])
-            Z = linkage(data, method = "average", metric = span_position_distance_intdups)
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    distances.append(span_position_distance_intdups(partition_sample[i], partition_sample[j], options.distance_normalizer))
+            Z = linkage(np.array(distances), method = "average")
         elif element_type == "BND":
-            data = np.array( [[signature.get_source()[1], 1 if signature.direction1 == 'fwd' else 0, signature.get_destination()[1], 1 if signature.direction2 == 'fwd' else 0] for signature in partition_sample])
-            Z = linkage(data, method = "average", metric = span_position_distance_translocations)
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    distances.append(span_position_distance_translocations(partition_sample[i], partition_sample[j]))
+            Z = linkage(np.array(distances), method = "average")
 
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
         new_clusters = [[] for i in range(max(cluster_indices))]

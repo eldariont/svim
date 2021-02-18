@@ -234,7 +234,6 @@ class CandidateNovelInsertion(Candidate):
         else:
             ref_allele = "N"
             alt_allele = "<" + self.type + ">"
-        info_template="SVTYPE={0};END={1};SUPPORT={2};STD_SPAN={3};STD_POS={4}"
         info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
         info_string = info_template.format(self.type, 
                                            start, 
