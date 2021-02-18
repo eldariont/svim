@@ -34,21 +34,76 @@ def span_position_distance(signature1, signature2, distance_normalizer):
     center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
     position_distance = abs(center1 - center2) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
+    if signature1.read != signature2.read:
+        return position_distance + span_distance
+    else:
+        return 99999
+
+
+def span_position_distance_inversions(signature1, signature2, distance_normalizer):
+    "Span position distance function for inversions signatures (two signatures from same read can be clustered together)"
+    span1 = signature1.get_source()[2] - signature1.get_source()[1]
+    span2 = signature2.get_source()[2] - signature2.get_source()[1]
+    center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
+    center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
+    position_distance = abs(center1 - center2) / distance_normalizer
+    span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance + span_distance
 
 
 def span_position_distance_insertions(signature1, signature2, distance_normalizer):
+    "Span position distance function for insertion signatures"
     span1 = signature1.get_source()[2] - signature1.get_source()[1]
     span2 = signature2.get_source()[2] - signature2.get_source()[1]
     center1 = signature1.get_source()[1]
     center2 = signature2.get_source()[1]
     position_distance = abs(center1 - center2) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
-    return position_distance + span_distance
+    if signature1.read != signature2.read:
+        return position_distance + span_distance
+    else:
+        return 99999
 
 
 def span_position_distance_intdups(signature1, signature2, distance_normalizer):
-    "Special span position distance function for interspersed duplication signatures"
+    "Span position distance function for interspersed duplication signatures"
+    span1 = signature1.get_source()[2] - signature1.get_source()[1]
+    span2 = signature2.get_source()[2] - signature2.get_source()[1]
+    source_center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
+    source_center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
+    position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
+    position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
+    span_distance = abs(span1 - span2) / max(span1, span2)
+    if signature1.read != signature2.read:
+        return position_distance_source + position_distance_destination + span_distance
+    else:
+        return 99999
+
+
+def span_position_distance_translocations(signature1, signature2):
+    "Span position distance function for translocation signatures"
+    dist1 = abs(signature1.get_source()[1] - signature2.get_source()[1])
+    dist2 = abs(signature1.get_destination()[1] - signature2.get_destination()[1])
+    if signature1.direction1 == signature2.direction1 and signature1.direction2 == signature2.direction2 and signature1.read != signature2.read:
+        position_distance = (dist1 + dist2) / 3000
+    else:
+        position_distance = 99999
+    return position_distance
+
+
+def span_position_distance_clusters(cluster1, cluster2, distance_normalizer):
+    "Span position distance function for merging clusters"
+    span1 = cluster1.get_source()[2] - cluster1.get_source()[1]
+    span2 = cluster2.get_source()[2] - cluster2.get_source()[1]
+    center1 = (cluster1.get_source()[1] + cluster1.get_source()[2]) // 2
+    center2 = (cluster2.get_source()[1] + cluster2.get_source()[2]) // 2
+    position_distance = abs(center1 - center2) / distance_normalizer
+    span_distance = abs(span1 - span2) / max(span1, span2)    
+    return position_distance + span_distance
+
+
+def span_position_distance_intdup_candidates(signature1, signature2, distance_normalizer):
+    "Span position distance function for clustering candidates"
     span1 = signature1.get_source()[2] - signature1.get_source()[1]
     span2 = signature2.get_source()[2] - signature2.get_source()[1]
     source_center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
@@ -57,16 +112,6 @@ def span_position_distance_intdups(signature1, signature2, distance_normalizer):
     position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance_source + position_distance_destination + span_distance
-
-
-def span_position_distance_translocations(signature1, signature2):
-    dist1 = abs(signature1.get_source()[1] - signature2.get_source()[1])
-    dist2 = abs(signature1.get_destination()[1] - signature2.get_destination()[1])
-    if signature1.direction1 == signature2.direction1 and signature1.direction2 == signature2.direction2:
-        position_distance = (dist1 + dist2) / 3000
-    else:
-        position_distance = 99999
-    return position_distance
 
 
 def clusters_from_partitions(partitions, options):
@@ -88,10 +133,15 @@ def clusters_from_partitions(partitions, options):
             partition_sample = partition
         element_type = partition_sample[0].type
         distances = []
-        if element_type == "DEL" or element_type == "INV" or element_type == "DUP_TAN":
+        if element_type == "DEL" or element_type == "DUP_TAN":
             for i in range(len(partition_sample)-1):
                 for j in range(i+1, len(partition_sample)):
                     distances.append(span_position_distance(partition_sample[i], partition_sample[j], options.distance_normalizer))
+            Z = linkage(np.array(distances), method = "average")
+        elif element_type == "INV":
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    distances.append(span_position_distance_inversions(partition_sample[i], partition_sample[j], options.distance_normalizer))
             Z = linkage(np.array(distances), method = "average")
         elif element_type == "INS":
             for i in range(len(partition_sample)-1):
@@ -245,7 +295,35 @@ def consolidate_clusters_bilocal(clusters):
 
 def partition_and_cluster_candidates(candidates, options, type):
     partitions = form_partitions(candidates, options.partition_max_distance)
-    clusters = clusters_from_partitions(partitions, options)
+    clusters = []
+    large_partitions = 0
+    #initialize random number generator with fixed number to produce same output from same input
+    seed(1524)
+    # Find clusters in each partition individually.
+    for partition in partitions:
+        if len(partition) == 1:
+            clusters.append([partition[0]])
+            continue
+        elif len(partition) > 100:
+            partition_sample = sample(partition, 100)
+            large_partitions += 1
+        else:
+            partition_sample = partition
+        element_type = partition_sample[0].type
+        distances = []
+        for i in range(len(partition_sample)-1):
+            for j in range(i+1, len(partition_sample)):
+                distances.append(span_position_distance_intdup_candidates(partition_sample[i], partition_sample[j], options.distance_normalizer))
+        Z = linkage(np.array(distances), method = "average")
+
+        cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
+        new_clusters = [[] for i in range(max(cluster_indices))]
+        for signature_index, cluster_index in enumerate(cluster_indices):
+            new_clusters[cluster_index-1].append(partition_sample[signature_index])
+        clusters.extend(new_clusters)
+    if len(partitions) > 0:
+        if len(partitions[0]) > 0:
+            logging.debug("%d out of %d partitions for %s exceeded 100 elements." % (large_partitions, len(partitions), partitions[0][0].type))
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
 
     final_candidates = []

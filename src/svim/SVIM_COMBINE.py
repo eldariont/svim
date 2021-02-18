@@ -13,14 +13,6 @@ from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, Can
 from svim.SVIM_merging import flag_cutpaste_candidates, merge_translocations_at_insertions
 
 
-def cluster_sv_candidates(int_duplication_candidates, options):
-    """Cluster SVCandidates to remove redundancy"""
-
-    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, options, "interspersed duplication candidates")
-
-    return final_int_duplication_candidates
-
-
 def write_candidates(working_dir, candidates):
     int_duplication_candidates, inversion_candidates, tan_duplication_candidates, deletion_candidates, novel_insertion_candidates, breakend_candidates = candidates
 
@@ -339,6 +331,6 @@ def combine_clusters(signature_clusters, options):
     # Cluster candidates #
     ######################
     logging.info("Cluster interspersed duplication candidates one more time..")
-    final_int_duplication_candidates = cluster_sv_candidates(int_duplication_candidates, options)
+    final_int_duplication_candidates = partition_and_cluster_candidates(int_duplication_candidates, options, "interspersed duplication candidates")
 
     return (deletion_candidates, inversion_candidates, final_int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, breakend_candidates)
