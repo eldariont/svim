@@ -8,14 +8,14 @@ from svim.SVSignature import SignatureDeletion, SignatureInsertion, SignatureInv
 from svim.SVIM_clustering import consolidate_clusters_bilocal, clusters_from_partitions
 
 
-def is_similar(chr1, start1, end1, chr2, start2, end2):
+def is_similar(chr1, start1, end1, chr2, start2, end2, span_position_treshold = 0.3):
     span1 = end1 - start1
     span2 = end2 - start2
     center1 = (start1 + end1) // 2
     center2 = (start2 + end2) // 2
     position_distance = abs(center1 - center2) / 900
     span_distance = abs(span1 - span2) / max(span1, span2)
-    if chr1 == chr2 and position_distance + span_distance < 0.3:
+    if chr1 == chr2 and position_distance + span_distance < span_position_treshold:
         return True
     else:
         return False
@@ -284,7 +284,7 @@ def analyze_read_segments(primary, supplementaries, bam, options):
             #Same direction at destination and origin
             if before_dir1 == this_dir2 and before_dir2 == this_dir1:
                 #Same position at destination
-                if is_similar(before_chr1, before_pos1, 0, this_chr2, this_pos2, 0):
+                if is_similar(before_chr1, before_pos1, before_pos1+1, this_chr2, this_pos2, this_pos2+1, span_position_treshold=0.1):
                     #Same chromosome for origin
                     if before_chr2 == this_chr1:
                         #INS_DUP candidate
