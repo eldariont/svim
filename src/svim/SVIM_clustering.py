@@ -35,10 +35,7 @@ def span_position_distance(signature1, signature2, signature_type, distance_norm
         center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
         position_distance = abs(center1 - center2) / distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
-        if signature1.read != signature2.read:
-            return position_distance + span_distance
-        else:
-            return 99999
+        return position_distance + span_distance
     elif signature_type == "INV": #two signatures from same read can be clustered together"
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
@@ -54,10 +51,7 @@ def span_position_distance(signature1, signature2, signature_type, distance_norm
         center2 = signature2.get_source()[1]
         position_distance = abs(center1 - center2) / distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
-        if signature1.read != signature2.read:
-            return position_distance + span_distance
-        else:
-            return 99999
+        return position_distance + span_distance
     elif signature_type == "DUP_INT": #position distance is computed for source and destination
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
@@ -66,14 +60,11 @@ def span_position_distance(signature1, signature2, signature_type, distance_norm
         position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
         position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
-        if signature1.read != signature2.read:
-            return position_distance_source + position_distance_destination + span_distance
-        else:
-            return 99999
+        return position_distance_source + position_distance_destination + span_distance
     elif signature_type == "BND": #only position distance is computed
         dist1 = abs(signature1.get_source()[1] - signature2.get_source()[1])
         dist2 = abs(signature1.get_destination()[1] - signature2.get_destination()[1])
-        if signature1.direction1 == signature2.direction1 and signature1.direction2 == signature2.direction2 and signature1.read != signature2.read:
+        if signature1.direction1 == signature2.direction1 and signature1.direction2 == signature2.direction2:
             position_distance = (dist1 + dist2) / 3000
         else:
             position_distance = 99999
@@ -110,33 +101,59 @@ def clusters_from_partitions(partitions, options):
     Assumes that all signatures in the given partition are of the same type and on the same contig"""
     clusters_final = []
     large_partitions = 0
+    duplicate_signatures = 0
     #initialize random number generator with fixed number to produce same output from same input
     seed(1524)
     # Find clusters in each partition individually.
     for partition in partitions:
-        if len(partition) == 1:
-            clusters_final.append([partition[0]])
-            continue
-        elif len(partition) > 100:
+        if len(partition) > 100:
             partition_sample = sample(partition, 100)
             large_partitions += 1
         else:
             partition_sample = partition
         element_type = partition_sample[0].type
-        distances = []
         assert(element_type in ["DEL", "DUP_TAN", "INV", "INS", "DUP_INT", "BND"])
-        for i in range(len(partition_sample)-1):
-            for j in range(i+1, len(partition_sample)):
-                distances.append(span_position_distance(partition_sample[i], partition_sample[j], element_type, options.distance_normalizer))
+
+        #remove similar signatures coming from the same read
+        if element_type == "INV":
+            #no duplication removal for inversions because they consist of two complementary signatures from the same read
+            partition_sample_without_duplicates = partition_sample
+        else:
+            duplicates_from_same_read = set()
+            for i in range(len(partition_sample)-1):
+                for j in range(i+1, len(partition_sample)):
+                    if partition_sample[i].read == partition_sample[j].read and span_position_distance(partition_sample[i], partition_sample[j], element_type, options.distance_normalizer) <= options.cluster_max_distance:
+                        duplicates_from_same_read.add(j)
+            duplicate_signatures += len(duplicates_from_same_read)
+            partition_sample_without_duplicates = [partition_sample[i] for i in range(len(partition_sample)) if i not in duplicates_from_same_read]
+
+        if len(partition_sample_without_duplicates) == 1:
+            clusters_final.append([partition_sample_without_duplicates[0]])
+            continue
+
+        #compute pairwise distances
+        distances = []
+        if element_type == "INV":
+            for i in range(len(partition_sample_without_duplicates)-1):
+                for j in range(i+1, len(partition_sample_without_duplicates)):
+                    distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, options.distance_normalizer))
+        else:
+            for i in range(len(partition_sample_without_duplicates)-1):
+                for j in range(i+1, len(partition_sample_without_duplicates)):
+                    if partition_sample_without_duplicates[i].read == partition_sample_without_duplicates[j].read:
+                        distances.append(99999)
+                    else:
+                        distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, options.distance_normalizer))
         Z = linkage(np.array(distances), method = "average")
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
         new_clusters = [[] for i in range(max(cluster_indices))]
         for signature_index, cluster_index in enumerate(cluster_indices):
-            new_clusters[cluster_index-1].append(partition_sample[signature_index])
+            new_clusters[cluster_index-1].append(partition_sample_without_duplicates[signature_index])
         clusters_final.extend(new_clusters)
     if len(partitions) > 0:
         if len(partitions[0]) > 0:
             logging.debug("%d out of %d partitions for %s exceeded 100 elements." % (large_partitions, len(partitions), partitions[0][0].type))
+            logging.debug("%d %s signatures were removed due to similarity to another signature from the same read." % (duplicate_signatures, partitions[0][0].type))
     return clusters_final
 
 
