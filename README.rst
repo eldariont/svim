@@ -58,6 +58,7 @@ Installation
 
 Changelog
 ---------
+- **v1.5.0**: prevent signatures from same read to be clustered together, bugfixes
 - **v1.4.2**: fix invalid start coordinates in VCF output, issue warning for invalid characters in contig names 
 - **v1.4.1**: improve clustering of translocation breakpoints (BNDs), improve --all_bnds mode, bugfixes
 - **v1.4.0**: fix and improve clustering of insertions, add option --all_bnds to output all SV classes in breakend notation, update default value of --partition_max_distance to avoid very large partitions, bugfixes
