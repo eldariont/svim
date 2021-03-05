@@ -7,8 +7,8 @@ import argparse
 def parse_arguments(program_version, arguments = sys.argv[1:]):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
                                      description="""SVIM (pronounced SWIM) is a structural variant caller for long reads. 
-It discriminates five different variant classes: deletions, tandem and interspersed duplications, 
-inversions and insertions. SVIM is unique in its capability of extracting both the genomic origin and 
+It discriminates six different variant classes: deletions, tandem and interspersed duplications, 
+inversions, insertions and translocations. SVIM is unique in its capability of extracting both the genomic origin and 
 destination of duplications.
 
 SVIM consists of four major steps:
@@ -219,7 +219,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
-                                              If enabled, ALT alleles of insertions are obtained from the sequence of a random read that supports the variant.')
+                                              If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
     group_fasta_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
@@ -422,7 +422,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         action='store_true',
                                         help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
-                                              If enabled, ALT alleles of insertions are obtained from the sequence of a random read that supports the variant.')
+                                              If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
     group_bam_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \

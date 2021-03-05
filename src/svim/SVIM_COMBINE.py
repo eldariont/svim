@@ -7,6 +7,7 @@ from math import pow, sqrt
 import time
 from statistics import mean, stdev
 from pysam import FastaFile
+from spoa import poa
 
 from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
 from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion, CandidateBreakend
@@ -183,6 +184,47 @@ def write_final_vcf(int_duplication_candidates,
 
     vcf_output.close()
 
+def generate_insertion_consensus(ins_cluster, reference, window_padding = 100, allowed_size_deviation = 1.3):
+    #compute window containing all members of cluster
+    member_pos = [member.start for member in ins_cluster.members]
+    window_start = min(member_pos) - window_padding
+    window_end = max(member_pos) + window_padding
+
+    #construct haplotype sequences from all reads
+    haplotypes = []
+    for member in ins_cluster.members:
+        haplotype_sequence = reference.fetch(ins_cluster.contig, max(0, window_start), max(0, member.start)).upper()
+        haplotype_sequence += member.sequence.upper()
+        haplotype_sequence += reference.fetch(ins_cluster.contig, max(0, member.start), max(0, window_end)).upper()
+        haplotypes.append(haplotype_sequence)
+
+    #compute consensus of all reads using SPOA
+    consensus_reads, msa_reads = poa(haplotypes, algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+
+    #re-align consensus sequence to reference sequence in the window
+    ref_sequence = reference.fetch(ins_cluster.contig, max(0, window_start), max(0, window_end)).upper()
+    consensus_reads_ref, msa_reads_ref = poa([consensus_reads, ref_sequence], algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+
+    #locate insertion relative to reference and check whether size is close to expected size
+    expected_size = ins_cluster.end - ins_cluster.start
+    good_matches = []
+    for match in re.finditer(r'-+', msa_reads_ref[1]):
+        match_size = match.end() - match.start()
+        if max(match_size, expected_size) / min(match_size, expected_size) < allowed_size_deviation:
+            good_matches.append((match.start(), match_size))
+
+    if len(good_matches) == 0:
+        logging.info("Consensus failure (no suitable insertion found in realignment step). Expected size: {0}; Ref: {1}; Consensus: {2}".format(expected_size, msa_reads_ref[1], msa_reads_ref[0]))
+        return None
+    elif len(good_matches) == 1:
+        realigned_insertion_start = max(0, window_start) + good_matches[0][0]
+        realigned_insertion_size = good_matches[0][1]
+        insertion_consensus = msa_reads_ref[0][good_matches[0][0]:good_matches[0][0]+good_matches[0][1]]
+        logging.debug("Consensus success. Expected size: {0}; Consensus size: {1}; Consensus insertion: {2}".format(expected_size, realigned_insertion_size, insertion_consensus))
+        return (realigned_insertion_start, realigned_insertion_size, insertion_consensus)
+    else:
+        logging.info("Consensus failure (multiple insertions found in realignment step). Expected size: {0}; Ref: {1}; Consensus: {2}".format(expected_size, msa_reads_ref[1], msa_reads_ref[0]))
+        return None
 
 def combine_clusters(signature_clusters, options):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = signature_clusters
@@ -322,10 +364,25 @@ def combine_clusters(signature_clusters, options):
     #####################################
     # Create novel insertion candidates #
     #####################################
-    novel_insertion_candidates = []
-    for ins_cluster in insertion_signature_clusters:
-        if ins_cluster.score > 0:
-            novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
+    logging.info("Generating and realigning consensus sequence for insertions..")
+    with FastaFile(options.genome) as reference:
+        novel_insertion_candidates = []
+        consensus_successful = 0
+        consensus_failed = 0
+        for ins_cluster in insertion_signature_clusters:
+            if ins_cluster.score > 0:
+                if len(ins_cluster.members) < 3:
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members[0].sequence, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
+                    continue
+                consensus_result = generate_insertion_consensus(ins_cluster, reference)
+                if consensus_result:
+                    consensus_successful += 1
+                    realigned_insertion_start, realigned_insertion_size, insertion_consensus = consensus_result
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, realigned_insertion_start, realigned_insertion_start + realigned_insertion_size, insertion_consensus, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
+                else:
+                    consensus_failed += 1
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
+    logging.info("Generated and realigned consensus sequences for {0} insertions ({1} failed).".format(consensus_successful, consensus_failed))
 
     ######################
     # Cluster candidates #

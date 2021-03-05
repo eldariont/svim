@@ -36,5 +36,5 @@ setup(name='svim',
       package_dir = {"": "src"},
       data_files = [("", ["LICENSE"])],
       zip_safe=False,
-      install_requires=['pysam', 'numpy', 'scipy', 'matplotlib', 'edlib'],
+      install_requires=['pysam', 'numpy', 'scipy', 'matplotlib', 'edlib', 'pyspoa'],
       scripts=['src/svim/svim'])

@@ -195,12 +195,13 @@ class CandidateInversion(Candidate):
 
 
 class CandidateNovelInsertion(Candidate):
-    def __init__(self, dest_contig, dest_start, dest_end, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
+    def __init__(self, dest_contig, dest_start, dest_end, sequence, members, score, std_span, std_pos, support_fraction = ".", genotype = "./.", ref_reads = None, alt_reads = None):
         self.dest_contig = dest_contig
         #0-based start of the insertion (base after the insertion)
         self.dest_start = max(0, dest_start)
         #0-based start of the insertion (base after the insertion) + length of the insertion
         self.dest_end = dest_end
+        self.sequence = sequence
 
         self.members = members
         self.score = score
@@ -227,10 +228,9 @@ class CandidateNovelInsertion(Candidate):
         filters = []
         if self.genotype == "0/0":
             filters.append("hom_ref")
-        if sequence_alleles:
+        if sequence_alleles and self.sequence != "":
             ref_allele = reference.fetch(contig, max(0, start-1), max(0, start-1) + 1).upper()
-            #Use insertion sequence of a random read
-            alt_allele = ref_allele + self.members[0].sequence.upper()
+            alt_allele = ref_allele + self.sequence
         else:
             ref_allele = "N"
             alt_allele = "<" + self.type + ">"
