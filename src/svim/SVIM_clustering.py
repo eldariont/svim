@@ -7,6 +7,7 @@ from random import seed, sample
 from statistics import mean, stdev
 import numpy as np
 from scipy.cluster.hierarchy import linkage, fcluster
+from edlib import align
 
 from svim.SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
 from svim.SVCandidate import CandidateDuplicationInterspersed
@@ -49,9 +50,10 @@ def span_position_distance(signature1, signature2, signature_type, distance_norm
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         center1 = signature1.get_source()[1]
         center2 = signature2.get_source()[1]
+        edit_distance = align(signature1.sequence, signature2.sequence)["editDistance"]
+        sequence_distance = edit_distance / max(span1, span2)
         position_distance = abs(center1 - center2) / distance_normalizer
-        span_distance = abs(span1 - span2) / max(span1, span2)
-        return position_distance + span_distance
+        return position_distance + sequence_distance
     elif signature_type == "DUP_INT": #position distance is computed for source and destination
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
