@@ -8,6 +8,7 @@ from statistics import mean, stdev
 import numpy as np
 from scipy.cluster.hierarchy import linkage, fcluster
 from edlib import align
+from pysam import FastaFile
 
 from svim.SVSignature import SignatureClusterUniLocal, SignatureClusterBiLocal
 from svim.SVCandidate import CandidateDuplicationInterspersed
@@ -28,7 +29,22 @@ def form_partitions(sv_signatures, max_distance):
     return partitions
 
 
-def span_position_distance(signature1, signature2, signature_type, distance_normalizer):
+def compute_haplotype_edit_distance(signature1, signature2, reference, window_padding = 100):
+    window_start = min(signature1.start, signature2.start) - window_padding
+    window_end = max(signature1.start, signature2.start) + window_padding
+
+    #construct haplotype sequences for both signatures
+    haplotype1 = reference.fetch(signature1.contig, max(0, window_start), max(0, signature1.start)).upper()
+    haplotype1 += signature1.sequence.upper()
+    haplotype1 += reference.fetch(signature1.contig, max(0, signature1.start), max(0, window_end)).upper()
+
+    haplotype2 = reference.fetch(signature2.contig, max(0, window_start), max(0, signature2.start)).upper()
+    haplotype2 += signature2.sequence.upper()
+    haplotype2 += reference.fetch(signature2.contig, max(0, signature2.start), max(0, window_end)).upper()
+
+    return align(haplotype1, haplotype2)["editDistance"]
+
+def span_position_distance(signature1, signature2, signature_type, reference, distance_normalizer, cluster_max_distance):
     if signature_type == "DEL" or signature_type == "DUP_TAN":
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
@@ -50,10 +66,15 @@ def span_position_distance(signature1, signature2, signature_type, distance_norm
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         center1 = signature1.get_source()[1]
         center2 = signature2.get_source()[1]
-        edit_distance = align(signature1.sequence, signature2.sequence)["editDistance"]
-        sequence_distance = edit_distance / max(span1, span2)
         position_distance = abs(center1 - center2) / distance_normalizer
-        return position_distance + sequence_distance
+        if position_distance > 2*cluster_max_distance:
+            #do not compute edit distance if insertions are too distant
+            span_distance = abs(span1 - span2) / max(span1, span2)
+            return position_distance + span_distance
+        else:
+            edit_distance = compute_haplotype_edit_distance(signature1, signature2, reference)
+            sequence_distance = edit_distance / max(span1, span2) / 2
+            return position_distance + sequence_distance
     elif signature_type == "DUP_INT": #position distance is computed for source and destination
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
@@ -98,7 +119,7 @@ def span_position_distance_intdup_candidates(signature1, signature2, distance_no
     return position_distance_source + position_distance_destination + span_distance
 
 
-def clusters_from_partitions(partitions, options):
+def clusters_from_partitions(partitions, reference, options):
     """Finds clusters in partitions using span-position distance and hierarchical clustering. 
     Assumes that all signatures in the given partition are of the same type and on the same contig"""
     clusters_final = []
@@ -124,7 +145,7 @@ def clusters_from_partitions(partitions, options):
             duplicates_from_same_read = set()
             for i in range(len(partition_sample)-1):
                 for j in range(i+1, len(partition_sample)):
-                    if partition_sample[i].read == partition_sample[j].read and span_position_distance(partition_sample[i], partition_sample[j], element_type, options.distance_normalizer) <= options.cluster_max_distance:
+                    if partition_sample[i].read == partition_sample[j].read and span_position_distance(partition_sample[i], partition_sample[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance) <= options.cluster_max_distance:
                         duplicates_from_same_read.add(j)
             duplicate_signatures += len(duplicates_from_same_read)
             partition_sample_without_duplicates = [partition_sample[i] for i in range(len(partition_sample)) if i not in duplicates_from_same_read]
@@ -138,14 +159,14 @@ def clusters_from_partitions(partitions, options):
         if element_type == "INV":
             for i in range(len(partition_sample_without_duplicates)-1):
                 for j in range(i+1, len(partition_sample_without_duplicates)):
-                    distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, options.distance_normalizer))
+                    distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance))
         else:
             for i in range(len(partition_sample_without_duplicates)-1):
                 for j in range(i+1, len(partition_sample_without_duplicates)):
                     if partition_sample_without_duplicates[i].read == partition_sample_without_duplicates[j].read:
                         distances.append(99999)
                     else:
-                        distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, options.distance_normalizer))
+                        distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance))
         Z = linkage(np.array(distances), method = "average")
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
         new_clusters = [[] for i in range(max(cluster_indices))]
@@ -353,7 +374,8 @@ def partition_and_cluster_candidates(candidates, options, type):
 
 def partition_and_cluster(signatures, options, type):
     partitions = form_partitions(signatures, options.partition_max_distance)
-    clusters = clusters_from_partitions(partitions, options)
+    with FastaFile(options.genome) as reference:
+        clusters = clusters_from_partitions(partitions, reference, options)
     logging.info("Clustered {0}: {1} partitions and {2} clusters".format(type, len(partitions), len(clusters)))
     if type == "deleted regions" or type == "inserted regions" or type == "inverted regions":
         return sorted(consolidate_clusters_unilocal(clusters), key=lambda cluster: (cluster.contig, (cluster.end + cluster.start) / 2))
