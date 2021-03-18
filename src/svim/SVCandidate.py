@@ -279,6 +279,7 @@ class CandidateDuplicationTandem(Candidate):
         #0-based end of the region (one past the last copied base)
         self.source_end = source_end
         
+        #number of copies inserted after end of the region (in tandem)
         self.copies = copies
 
         self.members = members
@@ -319,10 +320,9 @@ class CandidateDuplicationTandem(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self, read_names = False, zmws = False):
-        contig = self.source_contig
-        start = self.source_end
-        end = self.source_end + self.copies * (self.source_end - self.source_start)
+    def get_vcf_entry_as_ins(self, sequence_alleles = False, reference = None, read_names = False, zmws = False):
+        source_contig, source_start, source_end = self.get_source()
+        dest_contig, dest_start, dest_end = self.get_destination()
         svtype = "INS"
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -331,14 +331,20 @@ class CandidateDuplicationTandem(Candidate):
         filters = []
         if self.genotype == "0/0":
             filters.append("hom_ref")
-        if not(self.fully_covered):
+        if not self.fully_covered:
             filters.append("not_fully_covered")
+        if sequence_alleles:
+            ref_allele = reference.fetch(source_contig, source_start, source_end).upper()
+            alt_allele = ref_allele * (self.copies + 1)
+        else:
+            ref_allele = "N"
+            alt_allele = "<" + self.type + ">"
         info_template="SVTYPE={0};END={1};SVLEN={2};SUPPORT={3};STD_SPAN={4};STD_POS={5}"
-        info_string = info_template.format(svtype, 
-                                           start, 
-                                           end - start, 
-                                           len(set([sig.read for sig in self.members])), 
-                                           self.get_std_span(), 
+        info_string = info_template.format(svtype,
+                                           source_end,
+                                           dest_end - dest_start,
+                                           len(set([sig.read for sig in self.members])),
+                                           self.get_std_span(),
                                            self.get_std_pos())
         read_ids = [member.read for member in self.members]
         if read_names:
@@ -355,11 +361,11 @@ class CandidateDuplicationTandem(Candidate):
             if valid_pacbio_names:
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
-                    chrom=contig,
-                    pos=max(1, start),
+                    chrom=source_contig,
+                    pos=max(1, dest_start),
                     id="PLACEHOLDERFORID",
-                    ref="N",
-                    alt="<" + svtype + ">",
+                    ref=ref_allele,
+                    alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info=info_string,
@@ -467,8 +473,9 @@ class CandidateDuplicationInterspersed(Candidate):
         return (source_entry, dest_entry)
 
 
-    def get_vcf_entry_as_ins(self, read_names = False, zmws = False):
-        contig, start, end = self.get_destination()
+    def get_vcf_entry_as_ins(self, sequence_alleles = False, reference = None, read_names = False, zmws = False):
+        source_contig, source_start, source_end = self.get_source()
+        dest_contig, dest_start, dest_end = self.get_destination()
         svtype = "INS"
         if self.ref_reads != None and self.alt_reads != None:
             dp_string = str(self.ref_reads + self.alt_reads)
@@ -477,13 +484,19 @@ class CandidateDuplicationInterspersed(Candidate):
         filters = []
         if self.genotype == "0/0":
             filters.append("hom_ref")
+        if sequence_alleles:
+            ref_allele = reference.fetch(dest_contig, max(0, dest_start-1), max(0, dest_start-1) + 1).upper()
+            alt_allele = ref_allele + reference.fetch(source_contig, source_start, source_end).upper()
+        else:
+            ref_allele = "N"
+            alt_allele = "<" + self.type + ">"
         info_template="SVTYPE={0};{1}END={2};SVLEN={3};SUPPORT={4};STD_SPAN={5};STD_POS={6}"
-        info_string = info_template.format(svtype, 
-                                           "CUTPASTE;" if self.cutpaste else "", 
-                                           start, 
-                                           end - start, 
-                                           len(set([sig.read for sig in self.members])), 
-                                           self.get_std_span(), 
+        info_string = info_template.format(svtype,
+                                           "CUTPASTE;" if self.cutpaste else "",
+                                           dest_start,
+                                           dest_end - dest_start,
+                                           len(set([sig.read for sig in self.members])),
+                                           self.get_std_span(),
                                            self.get_std_pos())
         read_ids = [member.read for member in self.members]
         if read_names:
@@ -500,11 +513,11 @@ class CandidateDuplicationInterspersed(Candidate):
             if valid_pacbio_names:
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
-                    chrom=contig,
-                    pos=max(1, start),
+                    chrom=dest_contig,
+                    pos=max(1, dest_start),
                     id="PLACEHOLDERFORID",
-                    ref="N",
-                    alt="<" + svtype + ">",
+                    ref=ref_allele,
+                    alt=alt_allele,
                     qual=int(self.score),
                     filter="PASS" if len(filters) == 0 else ";".join(filters),
                     info=info_string,

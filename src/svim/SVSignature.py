@@ -166,6 +166,7 @@ class SignatureDuplicationTandem(Signature):
         #0-based end of the region (one past the last copied base)
         self.end = end
 
+        #number of copies inserted after end of the region (in tandem)
         self.copies = copies
         self.fully_covered = fully_covered
 

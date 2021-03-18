@@ -153,7 +153,7 @@ def write_final_vcf(int_duplication_candidates,
     if options.tandem_duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in tandem_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(sequence_alleles, reference, options.read_names, options.zmws), "INS"))
     else:
         if "DUP:TANDEM" in types_to_output:
             for candidate in tandem_duplication_candidates:
@@ -161,7 +161,7 @@ def write_final_vcf(int_duplication_candidates,
     if options.interspersed_duplications_as_insertions:
         if "INS" in types_to_output:
             for candidate in int_duplication_candidates:
-                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(options.read_names, options.zmws), "INS"))
+                vcf_entries.append((candidate.get_destination(), candidate.get_vcf_entry_as_ins(sequence_alleles, reference, options.read_names, options.zmws), "INS"))
     else:
         if "DUP:INT" in types_to_output:
             for candidate in int_duplication_candidates:
