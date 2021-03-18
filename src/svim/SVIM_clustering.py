@@ -44,13 +44,13 @@ def compute_haplotype_edit_distance(signature1, signature2, reference, window_pa
 
     return align(haplotype1, haplotype2)["editDistance"]
 
-def span_position_distance(signature1, signature2, signature_type, reference, distance_normalizer, cluster_max_distance):
+def span_position_distance(signature1, signature2, signature_type, reference, position_distance_normalizer, edit_distance_normalizer, cluster_max_distance):
     if signature_type == "DEL" or signature_type == "DUP_TAN":
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
         center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
-        position_distance = abs(center1 - center2) / distance_normalizer
+        position_distance = abs(center1 - center2) / position_distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
         return position_distance + span_distance
     elif signature_type == "INV": #two signatures from same read can be clustered together"
@@ -58,7 +58,7 @@ def span_position_distance(signature1, signature2, signature_type, reference, di
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
         center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
-        position_distance = abs(center1 - center2) / distance_normalizer
+        position_distance = abs(center1 - center2) / position_distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
         return position_distance + span_distance
     elif signature_type == "INS": #center is the insertion location
@@ -66,22 +66,22 @@ def span_position_distance(signature1, signature2, signature_type, reference, di
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         center1 = signature1.get_source()[1]
         center2 = signature2.get_source()[1]
-        position_distance = abs(center1 - center2) / distance_normalizer
+        position_distance = abs(center1 - center2) / position_distance_normalizer
         if position_distance > 2*cluster_max_distance:
             #do not compute edit distance if insertions are too distant
             span_distance = abs(span1 - span2) / max(span1, span2)
             return position_distance + span_distance
         else:
             edit_distance = compute_haplotype_edit_distance(signature1, signature2, reference)
-            sequence_distance = edit_distance / max(span1, span2) / 2
+            sequence_distance = edit_distance / max(span1, span2) / edit_distance_normalizer
             return position_distance + sequence_distance
     elif signature_type == "DUP_INT": #position distance is computed for source and destination
         span1 = signature1.get_source()[2] - signature1.get_source()[1]
         span2 = signature2.get_source()[2] - signature2.get_source()[1]
         source_center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
         source_center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
-        position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
-        position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
+        position_distance_source = abs(source_center1 - source_center2) / position_distance_normalizer
+        position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / position_distance_normalizer
         span_distance = abs(span1 - span2) / max(span1, span2)
         return position_distance_source + position_distance_destination + span_distance
     elif signature_type == "BND": #only position distance is computed
@@ -96,25 +96,25 @@ def span_position_distance(signature1, signature2, signature_type, reference, di
         return None
 
 
-def span_position_distance_clusters(cluster1, cluster2, distance_normalizer):
+def span_position_distance_clusters(cluster1, cluster2, position_distance_normalizer):
     "Span position distance function for merging clusters"
     span1 = cluster1.get_source()[2] - cluster1.get_source()[1]
     span2 = cluster2.get_source()[2] - cluster2.get_source()[1]
     center1 = (cluster1.get_source()[1] + cluster1.get_source()[2]) // 2
     center2 = (cluster2.get_source()[1] + cluster2.get_source()[2]) // 2
-    position_distance = abs(center1 - center2) / distance_normalizer
+    position_distance = abs(center1 - center2) / position_distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)    
     return position_distance + span_distance
 
 
-def span_position_distance_intdup_candidates(signature1, signature2, distance_normalizer):
+def span_position_distance_intdup_candidates(signature1, signature2, position_distance_normalizer):
     "Span position distance function for clustering candidates"
     span1 = signature1.get_source()[2] - signature1.get_source()[1]
     span2 = signature2.get_source()[2] - signature2.get_source()[1]
     source_center1 = (signature1.get_source()[1] + signature1.get_source()[2]) // 2
     source_center2 = (signature2.get_source()[1] + signature2.get_source()[2]) // 2
-    position_distance_source = abs(source_center1 - source_center2) / distance_normalizer
-    position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / distance_normalizer
+    position_distance_source = abs(source_center1 - source_center2) / position_distance_normalizer
+    position_distance_destination = abs(signature1.get_destination()[1] - signature2.get_destination()[1]) / position_distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance_source + position_distance_destination + span_distance
 
@@ -145,7 +145,7 @@ def clusters_from_partitions(partitions, reference, options):
             duplicates_from_same_read = set()
             for i in range(len(partition_sample)-1):
                 for j in range(i+1, len(partition_sample)):
-                    if partition_sample[i].read == partition_sample[j].read and span_position_distance(partition_sample[i], partition_sample[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance) <= options.cluster_max_distance:
+                    if partition_sample[i].read == partition_sample[j].read and span_position_distance(partition_sample[i], partition_sample[j], element_type, reference, options.position_distance_normalizer, options.edit_distance_normalizer, options.cluster_max_distance) <= options.cluster_max_distance:
                         duplicates_from_same_read.add(j)
             duplicate_signatures += len(duplicates_from_same_read)
             partition_sample_without_duplicates = [partition_sample[i] for i in range(len(partition_sample)) if i not in duplicates_from_same_read]
@@ -159,14 +159,14 @@ def clusters_from_partitions(partitions, reference, options):
         if element_type == "INV":
             for i in range(len(partition_sample_without_duplicates)-1):
                 for j in range(i+1, len(partition_sample_without_duplicates)):
-                    distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance))
+                    distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.position_distance_normalizer, options.edit_distance_normalizer, options.cluster_max_distance))
         else:
             for i in range(len(partition_sample_without_duplicates)-1):
                 for j in range(i+1, len(partition_sample_without_duplicates)):
                     if partition_sample_without_duplicates[i].read == partition_sample_without_duplicates[j].read:
                         distances.append(99999)
                     else:
-                        distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.distance_normalizer, options.cluster_max_distance))
+                        distances.append(span_position_distance(partition_sample_without_duplicates[i], partition_sample_without_duplicates[j], element_type, reference, options.position_distance_normalizer, options.edit_distance_normalizer, options.cluster_max_distance))
         Z = linkage(np.array(distances), method = "average")
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))
         new_clusters = [[] for i in range(max(cluster_indices))]
@@ -323,7 +323,7 @@ def partition_and_cluster_candidates(candidates, options, type):
         distances = []
         for i in range(len(partition_sample)-1):
             for j in range(i+1, len(partition_sample)):
-                distances.append(span_position_distance_intdup_candidates(partition_sample[i], partition_sample[j], options.distance_normalizer))
+                distances.append(span_position_distance_intdup_candidates(partition_sample[i], partition_sample[j], options.position_distance_normalizer))
         Z = linkage(np.array(distances), method = "average")
 
         cluster_indices = list(fcluster(Z, options.cluster_max_distance, criterion='distance'))

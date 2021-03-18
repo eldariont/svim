@@ -120,7 +120,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               determines the maximum distance between two subsequent signatures in the same partition. \
                                               If the distance between two subsequent signatures \
                                               is larger than this parameter, they are distributed into separate partitions.')
-    group_fasta_cluster.add_argument('--distance_normalizer',
+    group_fasta_cluster.add_argument('--position_distance_normalizer',
                                         type=int,
                                         default=900,
                                         help='Distance normalizer used for span-position distance (default: %(default)s). \
@@ -135,6 +135,21 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               A smaller distance normalizer leads to a higher position distance and as a \
                                               consequence increases the importance of the position distance in the \
                                               span-position distance relative to the span distance.')
+    group_fasta_cluster.add_argument('--edit_distance_normalizer',
+                                      type=float,
+                                      default=2.0,
+                                      help='Distance normalizer used specifically for insertions (default: %(default)s). \
+                                            SVIM clusters insertion signatures using an hierarchical clustering approach and a \
+                                            special distance metric for insertions. This distance is the sum of two \
+                                            components, position distance and edit distance between the insertion sequences. \
+                                            The edit distance is normalized (i.e. divided) by the product of the span of the \
+                                            longer insertion and this normalizer. The position distance is the difference in \
+                                            position between signatures normalized by the position distance normalizer \
+                                            (another parameter). A smaller edit distance normalizer leads to a larger \
+                                            edit distance and as a consequence increases the importance of the edit distance \
+                                            in the clustering process so that only insertions with very similar sequences \
+                                            are clustered together. A larger edit distance normalizer diminishes the importance \
+                                            of the insertion sequences in the clustering process.')
     group_fasta_cluster.add_argument('--cluster_max_distance',
                                         type=float,
                                         default=0.3,
@@ -299,7 +314,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             determines the maximum distance between two subsequent signatures in the same partition. \
                                             If the distance between two subsequent signatures \
                                             is larger than this parameter, they are distributed into separate partitions.')
-    group_bam_cluster.add_argument('--distance_normalizer',
+    group_bam_cluster.add_argument('--position_distance_normalizer',
                                       type=int,
                                       default=900,
                                       help='Distance normalizer used for span-position distance (default: %(default)s). \
@@ -314,6 +329,21 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             A smaller distance normalizer leads to a higher position distance and as a \
                                             consequence increases the importance of the position distance in the \
                                             span-position distance relative to the span distance.')
+    group_bam_cluster.add_argument('--edit_distance_normalizer',
+                                      type=float,
+                                      default=2.0,
+                                      help='Distance normalizer used specifically for insertions (default: %(default)s). \
+                                            SVIM clusters insertion signatures using an hierarchical clustering approach and a \
+                                            special distance metric for insertions. This distance is the sum of two \
+                                            components, position distance and edit distance between the insertion sequences. \
+                                            The edit distance is normalized (i.e. divided) by the product of the span of the \
+                                            longer insertion and this normalizer. The position distance is the difference in \
+                                            position between signatures normalized by the position distance normalizer \
+                                            (another parameter). A smaller edit distance normalizer leads to a larger \
+                                            edit distance and as a consequence increases the importance of the edit distance \
+                                            in the clustering process so that only insertions with very similar sequences \
+                                            are clustered together. A larger edit distance normalizer diminishes the importance \
+                                            of the insertion sequences in the clustering process.')
     group_bam_cluster.add_argument('--cluster_max_distance',
                                       type=float,
                                       default=0.3,

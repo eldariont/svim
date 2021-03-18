@@ -6,7 +6,7 @@ from svim.SVIM_inter import analyze_read_segments
 from svim.SVIM_COLLECT import retrieve_other_alignments
 
 
-def span_position_distance(candidate, signature, distance_normalizer):
+def span_position_distance(candidate, signature, position_distance_normalizer):
     if candidate.type == "INS" or candidate.type == "DUP_INT":
         c_contig, c_start, c_end = candidate.get_destination()
     else:
@@ -26,7 +26,7 @@ def span_position_distance(candidate, signature, distance_normalizer):
     span2 = s_end - s_start
     center1 = (c_start + c_end) // 2
     center2 = (s_start + s_end) // 2
-    position_distance = min(abs(c_start - s_start), abs(c_end - s_end), abs(center1 - center2)) / distance_normalizer
+    position_distance = min(abs(c_start - s_start), abs(c_end - s_end), abs(center1 - center2)) / position_distance_normalizer
     span_distance = abs(span1 - span2) / max(span1, span2)
     return position_distance + span_distance
 

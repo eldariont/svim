@@ -36,7 +36,7 @@ class TestInputParsing(unittest.TestCase):
         self.assertEqual(type(options.segment_gap_tolerance), int)
         self.assertEqual(type(options.segment_overlap_tolerance), int)
         self.assertEqual(type(options.partition_max_distance), int)
-        self.assertEqual(type(options.distance_normalizer), int)
+        self.assertEqual(type(options.position_distance_normalizer), int)
         self.assertEqual(type(options.cluster_max_distance), float)
         self.assertEqual(type(options.del_ins_dup_max_distance), float)
         self.assertEqual(type(options.trans_sv_max_distance), int)
