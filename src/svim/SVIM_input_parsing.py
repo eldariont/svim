@@ -169,6 +169,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         type=int,
                                         default=500,
                                         help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
+    group_fasta_combine.add_argument('--max_consensus_length',
+                                        type=int,
+                                        default=10000,
+                                        help='Maximum size of insertion sequences for consensus computation. (default: %(default)s)\
+                                              For insertions longer than this threshold, no consensus is computed to save memory.')
     group_fasta_genotype = parser_fasta.add_argument_group('GENOTYPE')
     group_fasta_genotype.add_argument('--skip_genotyping',
                                         action='store_true',
@@ -372,6 +377,11 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       type=int,
                                       default=500,
                                       help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
+    group_bam_combine.add_argument('--max_consensus_length',
+                                        type=int,
+                                        default=10000,
+                                        help='Maximum size of insertion sequences for consensus computation. (default: %(default)s)\
+                                              For insertions longer than this threshold, no consensus is computed to save memory.')
     group_bam_genotype = parser_bam.add_argument_group('GENOTYPE')
     group_bam_genotype.add_argument('--skip_genotyping',
                                         action='store_true',
