@@ -203,11 +203,25 @@ def generate_insertion_consensus(ins_cluster, reference, window_padding = 100, m
         return (1, ())
 
     #compute consensus of all reads using SPOA
-    consensus_reads, msa_reads = poa(haplotypes, algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+    try:
+        consensus_reads, msa_reads = poa(haplotypes, algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+    except MemoryError:
+        logging.warning("Error: spoa ran out of memory while computing a consensus sequence for a cluster of insertion signatures (size = {0}, maximum haplotype length = {1}).".format(ins_cluster.size, largest_haplotype_length))
+        return (2, ())
+    except ValueError as ve:
+        logging.warning("Error: spoa failed while computing a consensus sequence for a cluster of insertion signatures (size = {0}, maximum haplotype length = {1}): {2}".format(ins_cluster.size, largest_haplotype_length, ve))
+        return (2, ())
 
     #re-align consensus sequence to reference sequence in the window
     ref_sequence = reference.fetch(ins_cluster.contig, max(0, window_start), max(0, window_end)).upper()
-    consensus_reads_ref, msa_reads_ref = poa([consensus_reads, ref_sequence], algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+    try:
+        consensus_reads_ref, msa_reads_ref = poa([consensus_reads, ref_sequence], algorithm=1, m=2, n=-4, g=-4, e=-2, q=-24, c=-1)
+    except MemoryError:
+        logging.warning("Error: spoa ran out of memory while aligning the consensus sequence for a cluster of insertion signatures (size = {0}, maximum haplotype length = {1}).".format(ins_cluster.size, largest_haplotype_length))
+        return (2, ())
+    except ValueError as ve:
+        logging.warning("Error: spoa failed while aligning the consensus sequence for a cluster of insertion signatures (size = {0}, maximum haplotype length = {1}): {2}".format(ins_cluster.size, largest_haplotype_length, ve))
+        return (2, ())
 
     #locate insertion relative to reference and check whether size is close to expected size
     expected_size = ins_cluster.end - ins_cluster.start
@@ -223,7 +237,7 @@ def generate_insertion_consensus(ins_cluster, reference, window_padding = 100, m
                                                                                              "/".join([str(m[1]) for m in matches]),
                                                                                              msa_reads_ref[1],
                                                                                              msa_reads_ref[0]))
-        return (2, ())
+        return (3, ())
     elif len(good_matches) == 1:
         realigned_insertion_start = max(0, window_start) + good_matches[0][0]
         realigned_insertion_size = good_matches[0][1]
@@ -236,7 +250,7 @@ def generate_insertion_consensus(ins_cluster, reference, window_padding = 100, m
                                                                                              "/".join([str(m[1]) for m in matches]),
                                                                                              msa_reads_ref[1],
                                                                                              msa_reads_ref[0]))
-        return (3, ())
+        return (4, ())
 
 def combine_clusters(signature_clusters, options):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = signature_clusters
@@ -381,6 +395,7 @@ def combine_clusters(signature_clusters, options):
         novel_insertion_candidates = []
         consensus_successful = 0
         consensus_skipped = 0
+        consensus_failed = 0
         consensus_none = 0
         consensus_multiple = 0
         for ins_cluster in insertion_signature_clusters:
@@ -397,12 +412,16 @@ def combine_clusters(signature_clusters, options):
                     consensus_skipped += 1
                     novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
                 elif status == 2:
+                    consensus_failed += 1
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
+                elif status == 3:
                     consensus_none += 1
                     novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
                 else:
+                    assert status == 4
                     consensus_multiple += 1
                     novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-    logging.info("Generated and realigned consensus sequences for {0} insertions ({1} skipped, {2} failed with no consensus, {3} failed with multiple consensuses).".format(consensus_successful, consensus_skipped, consensus_none, consensus_multiple))
+    logging.info("Generated and realigned consensus sequences for {0} insertions ({1} skipped, {2} failed with an error, {3} failed with no consensus, {4} failed with multiple consensuses).".format(consensus_successful, consensus_skipped, consensus_failed, consensus_none, consensus_multiple))
 
     ######################
     # Cluster candidates #
