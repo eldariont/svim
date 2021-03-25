@@ -3,7 +3,8 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
+  - "3.9"
 install:
-  - pip install pysam numpy scipy matplotlib
+  - pip install pysam numpy scipy matplotlib edlib pyspoa
 script:
   - python3 -m unittest discover -s src/
