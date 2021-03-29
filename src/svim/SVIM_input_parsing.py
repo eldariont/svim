@@ -137,7 +137,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               span-position distance relative to the span distance.')
     group_fasta_cluster.add_argument('--edit_distance_normalizer',
                                       type=float,
-                                      default=2.0,
+                                      default=1.0,
                                       help='Distance normalizer used specifically for insertions (default: %(default)s). \
                                             SVIM clusters insertion signatures using an hierarchical clustering approach and a \
                                             special distance metric for insertions. This distance is the sum of two \
@@ -152,7 +152,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             of the insertion sequences in the clustering process.')
     group_fasta_cluster.add_argument('--cluster_max_distance',
                                         type=float,
-                                        default=0.3,
+                                        default=0.5,
                                         help='Maximum span-position distance between SVs in a cluster (default: %(default)s). \
                                               This is the most important parameter because it determines the strictness \
                                               of clustering. Choosing a large value leads to fewer but larger clusters with larger \
@@ -222,7 +222,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               DUP:INT (interspersed duplications), BND (breakends).')
     group_fasta_output.add_argument('--sequence_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
+                                        help='Use nucleotide sequences for alleles of deletions, inversions, insertions and duplications \
+                                              in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
                                               If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
     group_fasta_output.add_argument('--insertion_sequences',
@@ -336,7 +337,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             span-position distance relative to the span distance.')
     group_bam_cluster.add_argument('--edit_distance_normalizer',
                                       type=float,
-                                      default=2.0,
+                                      default=1.0,
                                       help='Distance normalizer used specifically for insertions (default: %(default)s). \
                                             SVIM clusters insertion signatures using an hierarchical clustering approach and a \
                                             special distance metric for insertions. This distance is the sum of two \
@@ -351,7 +352,7 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                             of the insertion sequences in the clustering process.')
     group_bam_cluster.add_argument('--cluster_max_distance',
                                       type=float,
-                                      default=0.3,
+                                      default=0.5,
                                       help='Maximum span-position distance between SVs in a cluster (default: %(default)s). \
                                             This is the most important parameter because it determines the strictness \
                                             of clustering. Choosing a large value leads to fewer but larger clusters with larger \
@@ -430,7 +431,8 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               DUP:INT (interspersed duplications), BND (breakends).')
     group_bam_output.add_argument('--sequence_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions, inversions and insertions in output VCF (default: %(default)s). \
+                                        help='Use nucleotide sequences for alleles of deletions, inversions, insertions and duplications \
+                                              in output VCF (default: %(default)s). \
                                               By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
                                               If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
     group_bam_output.add_argument('--insertion_sequences',
