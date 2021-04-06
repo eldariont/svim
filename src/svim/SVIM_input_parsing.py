@@ -169,6 +169,14 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                         type=int,
                                         default=500,
                                         help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
+    group_fasta_combine.add_argument('--skip_consensus',
+                                        action='store_true',
+                                        help='Disable consensus computation for insertions (default: %(default)s). \
+                                              Consensus computation requires a modern CPU with the SSE 4.1 instruction set. \
+                                              For older CPUs missing this instruction set, consensus computation is \
+                                              automatically disabled. Consensus computation can also be disabled \
+                                              to reduce the time and memory consumption of SVIM if consensus sequences \
+                                              are not needed.')
     group_fasta_combine.add_argument('--max_consensus_length',
                                         type=int,
                                         default=10000,
@@ -378,6 +386,14 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                       type=int,
                                       default=500,
                                       help='Maximum distance in bp between a translocation breakpoint and an SV signature to be combined (default: %(default)s)')
+    group_bam_combine.add_argument('--skip_consensus',
+                                    action='store_true',
+                                    help='Disable consensus computation for insertions (default: %(default)s). \
+                                          Consensus computation requires a modern CPU with the SSE 4.1 instruction set. \
+                                          For older CPUs missing this instruction set, consensus computation is \
+                                          automatically disabled. Consensus computation can also be disabled \
+                                          to reduce the time and memory consumption of SVIM if consensus sequences \
+                                          are not needed.')
     group_bam_combine.add_argument('--max_consensus_length',
                                         type=int,
                                         default=10000,

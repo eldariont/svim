@@ -8,6 +8,7 @@ import time
 from statistics import mean, stdev
 from pysam import FastaFile
 from spoa import poa
+from cpuinfo import get_cpu_info
 
 from svim.SVIM_clustering import form_partitions, partition_and_cluster_candidates, calculate_score
 from svim.SVCandidate import CandidateInversion, CandidateDuplicationTandem, CandidateDeletion, CandidateNovelInsertion, CandidateBreakend
@@ -252,6 +253,82 @@ def generate_insertion_consensus(ins_cluster, reference, window_padding = 100, m
                                                                                              msa_reads_ref[0]))
         return (4, ())
 
+
+def prepare_insertion_candidates(insertion_signature_clusters, options):
+    novel_insertion_candidates = []
+    if options.skip_consensus or ("sse4_1" not in get_cpu_info()["flags"]):
+        if options.skip_consensus:
+            logging.info("Skipping computation of insertion consensus sequences because of --skip_consensus flag.")
+        else:
+            logging.warning("Skipping computation of insertion consensus sequences "
+                            "because CPU does not support SSE 4.1 instruction set.")
+        for ins_cluster in insertion_signature_clusters:
+            if ins_cluster.score > 0:
+                novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig,
+                                                                              ins_cluster.start,
+                                                                              ins_cluster.end,
+                                                                              "",
+                                                                              ins_cluster.members,
+                                                                              ins_cluster.score,
+                                                                              ins_cluster.std_span,
+                                                                              ins_cluster.std_pos))
+        return novel_insertion_candidates
+    logging.info("Generating and realigning consensus sequence for insertions..")
+    with FastaFile(options.genome) as reference:
+        # 0-successful, 1-skipped, 2-failed, 3-no consensus, 4-multiple consensuses
+        status_counter = [0, 0, 0, 0, 0]
+        for ins_cluster in insertion_signature_clusters:
+            if ins_cluster.score > 0:
+                if len(ins_cluster.members) < 3:
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig,
+                                                                              ins_cluster.start,
+                                                                              ins_cluster.end,
+                                                                              ins_cluster.members[0].sequence,
+                                                                              ins_cluster.members,
+                                                                              ins_cluster.score,
+                                                                              ins_cluster.std_span,
+                                                                              ins_cluster.std_pos))
+                    continue
+                status, consensus_result = generate_insertion_consensus(ins_cluster,
+                                                                        reference,
+                                                                        maximum_haplotype_length=options.max_consensus_length)
+                try:
+                    status_counter[status] += 1
+                except KeyError:
+                    logging.error("Unknown status {0} returned by consensus computation.".format(status))
+                    continue
+                # Successful
+                if status == 0:
+                    realigned_insertion_start, realigned_insertion_size, insertion_consensus = consensus_result
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig,
+                                                                              realigned_insertion_start,
+                                                                              realigned_insertion_start + realigned_insertion_size,
+                                                                              insertion_consensus,
+                                                                              ins_cluster.members,
+                                                                              ins_cluster.score,
+                                                                              ins_cluster.std_span,
+                                                                              ins_cluster.std_pos))
+                #Unsuccessful
+                else:
+                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig,
+                                                                              ins_cluster.start,
+                                                                              ins_cluster.end,
+                                                                              "",
+                                                                              ins_cluster.members,
+                                                                              ins_cluster.score,
+                                                                              ins_cluster.std_span,
+                                                                              ins_cluster.std_pos))
+    message = ("Generated and realigned consensus sequences for {0} insertions "
+               "({1} skipped, {2} failed with an error, {3} failed with no "
+               "consensus, {4} failed with multiple consensuses).")
+    logging.info(message.format(status_counter[0],
+                                status_counter[1],
+                                status_counter[2],
+                                status_counter[3],
+                                status_counter[4]))
+    return novel_insertion_candidates
+
+
 def combine_clusters(signature_clusters, options):
     deletion_signature_clusters, insertion_signature_clusters, inversion_signature_clusters, tandem_duplication_signature_clusters, insertion_from_signature_clusters, translocation_signature_clusters = signature_clusters
 
@@ -390,38 +467,7 @@ def combine_clusters(signature_clusters, options):
     #####################################
     # Create novel insertion candidates #
     #####################################
-    logging.info("Generating and realigning consensus sequence for insertions..")
-    with FastaFile(options.genome) as reference:
-        novel_insertion_candidates = []
-        consensus_successful = 0
-        consensus_skipped = 0
-        consensus_failed = 0
-        consensus_none = 0
-        consensus_multiple = 0
-        for ins_cluster in insertion_signature_clusters:
-            if ins_cluster.score > 0:
-                if len(ins_cluster.members) < 3:
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, ins_cluster.members[0].sequence, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-                    continue
-                status, consensus_result = generate_insertion_consensus(ins_cluster, reference, maximum_haplotype_length=options.max_consensus_length)
-                if status == 0:
-                    consensus_successful += 1
-                    realigned_insertion_start, realigned_insertion_size, insertion_consensus = consensus_result
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, realigned_insertion_start, realigned_insertion_start + realigned_insertion_size, insertion_consensus, ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-                elif status == 1:
-                    consensus_skipped += 1
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-                elif status == 2:
-                    consensus_failed += 1
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-                elif status == 3:
-                    consensus_none += 1
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-                else:
-                    assert status == 4
-                    consensus_multiple += 1
-                    novel_insertion_candidates.append(CandidateNovelInsertion(ins_cluster.contig, ins_cluster.start, ins_cluster.end, "", ins_cluster.members, ins_cluster.score, ins_cluster.std_span, ins_cluster.std_pos))
-    logging.info("Generated and realigned consensus sequences for {0} insertions ({1} skipped, {2} failed with an error, {3} failed with no consensus, {4} failed with multiple consensuses).".format(consensus_successful, consensus_skipped, consensus_failed, consensus_none, consensus_multiple))
+    novel_insertion_candidates = prepare_insertion_candidates(insertion_signature_clusters, options)
 
     ######################
     # Cluster candidates #
