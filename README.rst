@@ -56,15 +56,24 @@ Installation
     cd svim
     pip install .
 
+Dependencies
+------------
+- *edlib* for edit distance computation
+- *matplotlib>=3.3.0* for plotting
+- *numpy* and *scipy* for hierarchical clustering
+- *pysam* (>=0.15.2) for SAM/BAM file processing
+- *pyspoa* (>=0.0.6) for consensus sequence computation
+- *py-cpuinfo* (>=7.0.0) for CPU info retrieval (checking for SIMD capabilities)
+
 Changelog
 ---------
-- **v1.5.0**: prevent signatures from same read to be clustered together, bugfixes
-- **v1.4.2**: fix invalid start coordinates in VCF output, issue warning for invalid characters in contig names 
-- **v1.4.1**: improve clustering of translocation breakpoints (BNDs), improve --all_bnds mode, bugfixes
-- **v1.4.0**: fix and improve clustering of insertions, add option --all_bnds to output all SV classes in breakend notation, update default value of --partition_max_distance to avoid very large partitions, bugfixes
-- **v1.3.1**: small changes to partitioning and clustering algorithm, add two new command-line options to output duplications as INS records in VCF, remove limit on number of supplementary alignments, remove q5 filter, bugfixes
-- **v1.3.0**: improve BND detection, add INFO:ZMWS tag with number of supporting PacBio wells, add sequence alleles for INS, add FORMAT:CN tag for tandem duplications, bugfixes
-- **v1.2.0**: add 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
+- **v2.0.0**: adds consensus sequence computation for insertions, improves clustering step (considers sequence similarity when clustering insertions and prevents signatures from same read to be clustered together), outputs sequence alleles for all SV types except BNDs and DUPs by default, updates default parameters, bugfixes
+- **v1.4.2**: fixes invalid start coordinates in VCF output, issues warning for invalid characters in contig names 
+- **v1.4.1**: improves clustering of translocation breakpoints (BNDs), improves --all_bnds mode, bugfixes
+- **v1.4.0**: fixes and improves clustering of insertions, adds option --all_bnds to output all SV classes in breakend notation, updates default value of --partition_max_distance to avoid very large partitions, bugfixes
+- **v1.3.1**: small changes to partitioning and clustering algorithm, adds two new command-line options to output duplications as INS records in VCF, removes limit on number of supplementary alignments, removes q5 filter, bugfixes
+- **v1.3.0**: improves BND detection, adds INFO:ZMWS tag with number of supporting PacBio wells, adds sequence alleles for INS, adds FORMAT:CN tag for tandem duplications, bugfixes
+- **v1.2.0**: adds 3 more VCF output options: output sequence instead of symbolic alleles in VCF, output names of supporting reads, output insertion sequences of supporting reads
 - **v1.1.0**: outputs BNDs in VCF, detects large tandem duplications, allows skipping genotyping, makes VCF output more flexible, adds genotype scatter plot
 - **v1.0.0**: adds genotyping of deletions, inversions, insertions and interspersed duplications, produces plots of SV length distribution, improves help descriptions
 - **v0.5.0**: replaces graph-based clustering with hierarchical clustering, modifies scoring function, improves partitioning prior to clustering, improves calling from coordinate-sorted SAM/BAM files, improves VCF output
@@ -77,7 +86,7 @@ Input
 SVIM analyzes long reads given as a FASTA/FASTQ file (uncompressed or gzipped) or a file list.
 Alternatively, it can analyze an alignment file in BAM format.
 SVIM has been successfully tested on PacBio CLR, PacBio CCS (HiFi) and Oxford Nanopore data.
-It works best for alignment files produced by `NGMLR <https://github.com/philres/ngmlr>`_ but also supports the faster read mapper `minimap2 <https://github.com/lh3/minimap2>`_.
+It has been tested on alignment files produced by the read aligners `minimap2 <https://github.com/lh3/minimap2>`_, `pbmm2 <https://github.com/PacificBiosciences/pbmm2/>`_  and `NGMLR <https://github.com/philres/ngmlr>`_.
 
 Output
 ------
