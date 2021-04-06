@@ -5,6 +5,6 @@ python:
   - "3.8"
   - "3.9"
 install:
-  - pip install pysam numpy scipy matplotlib edlib pyspoa
+  - pip install pysam numpy scipy matplotlib edlib pyspoa py-cpuinfo
 script:
   - python3 -m unittest discover -s src/
