@@ -172,11 +172,13 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_fasta_combine.add_argument('--skip_consensus',
                                         action='store_true',
                                         help='Disable consensus computation for insertions (default: %(default)s). \
-                                              Consensus computation requires a modern CPU with the SSE 4.1 instruction set. \
-                                              For older CPUs missing this instruction set, consensus computation is \
-                                              automatically disabled. Consensus computation can also be disabled \
-                                              to reduce the time and memory consumption of SVIM if consensus sequences \
-                                              are not needed.')
+                                              This reduces the time and memory consumption of SVIM and might be \
+                                              useful if consensus sequences are not needed. With this option, \
+                                              insertion calls are represented by symbolic alleles (<INS>) instead \
+                                              of sequence alles in the output VCF. \
+                                              Consensus computation requires a modern CPU with the SSE 4.1 \
+                                              instruction set. For older CPUs missing this instruction set, \
+                                              consensus computation is automatically disabled.')
     group_fasta_combine.add_argument('--max_consensus_length',
                                         type=int,
                                         default=10000,
@@ -228,17 +230,14 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
                                               INS (novel insertions), INV (inversions), DUP:TANDEM (tandem duplications), \
                                               DUP:INT (interspersed duplications), BND (breakends).')
-    group_fasta_output.add_argument('--sequence_alleles',
+    group_fasta_output.add_argument('--symbolic_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions, inversions, insertions and duplications \
-                                              in output VCF (default: %(default)s). \
-                                              By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
-                                              If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
+                                        help='Use symbolic alleles, such as <DEL> or <INV> in output VCF (default: %(default)s). \
+                                              By default, all SV alleles are represented by nucleotide sequences.')
     group_fasta_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
-                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
-                                              However, the insertion sequences are not combined into a consensus sequence.')
+                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads.')
     group_fasta_output.add_argument('--tandem_duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem duplications as insertions in output VCF (default: %(default)s). \
@@ -389,11 +388,13 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
     group_bam_combine.add_argument('--skip_consensus',
                                     action='store_true',
                                     help='Disable consensus computation for insertions (default: %(default)s). \
-                                          Consensus computation requires a modern CPU with the SSE 4.1 instruction set. \
-                                          For older CPUs missing this instruction set, consensus computation is \
-                                          automatically disabled. Consensus computation can also be disabled \
-                                          to reduce the time and memory consumption of SVIM if consensus sequences \
-                                          are not needed.')
+                                          This reduces the time and memory consumption of SVIM and might be \
+                                          useful if consensus sequences are not needed. With this option, \
+                                          insertion calls are represented by symbolic alleles (<INS>) instead \
+                                          of sequence alles in the output VCF. \
+                                          Consensus computation requires a modern CPU with the SSE 4.1 \
+                                          instruction set. For older CPUs missing this instruction set, \
+                                          consensus computation is automatically disabled.')
     group_bam_combine.add_argument('--max_consensus_length',
                                         type=int,
                                         default=10000,
@@ -445,17 +446,14 @@ Alternatively, it can detect SVs from existing reads alignments in SAM/BAM forma
                                               Give a comma-separated list of SV types. The possible SV types are: DEL (deletions), \
                                               INS (novel insertions), INV (inversions), DUP:TANDEM (tandem duplications), \
                                               DUP:INT (interspersed duplications), BND (breakends).')
-    group_bam_output.add_argument('--sequence_alleles',
+    group_bam_output.add_argument('--symbolic_alleles',
                                         action='store_true',
-                                        help='Use nucleotide sequences for alleles of deletions, inversions, insertions and duplications \
-                                              in output VCF (default: %(default)s). \
-                                              By default, all SVs are represented by symbolic alleles, such as <DEL>, <INV> or <INS>. \
-                                              If enabled, ALT alleles of insertions represent a consensus from all reads supporting the variant.')
+                                        help='Use symbolic alleles, such as <DEL> or <INV> in output VCF (default: %(default)s). \
+                                              By default, all SV alleles are represented by nucleotide sequences.')
     group_bam_output.add_argument('--insertion_sequences',
                                         action='store_true',
                                         help='Output insertion sequences in INFO tag of VCF (default: %(default)s). \
-                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads. \
-                                              However, the insertion sequences are not combined into a consensus sequence.')
+                                              If enabled, the INFO/SEQS tag contains a list of insertion sequences from the supporting reads.')
     group_bam_output.add_argument('--tandem_duplications_as_insertions',
                                         action='store_true',
                                         help='Represent tandem duplications as insertions in output VCF (default: %(default)s). \

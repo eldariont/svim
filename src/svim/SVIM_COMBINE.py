@@ -127,7 +127,7 @@ def write_final_vcf(int_duplication_candidates,
     print("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t" + options.sample, file=vcf_output)
 
     # Open reference genome sequence file
-    sequence_alleles = options.sequence_alleles
+    sequence_alleles = not options.symbolic_alleles
     if sequence_alleles:
         try:
             reference = FastaFile(options.genome)
