@@ -206,9 +206,14 @@ def main():
                         types_to_output,
                         options)
     logging.info("Draw plots..")
+    rootLogger.setLevel(logging.WARNING)
     plot_sv_lengths(deletion_candidates, inversion_candidates, int_duplication_candidates, tan_dup_candidates, novel_insertion_candidates, options)
     if not options.skip_genotyping:
         plot_sv_alleles(deletion_candidates + inversion_candidates + int_duplication_candidates + novel_insertion_candidates, options)
+    if options.verbose:
+        rootLogger.setLevel(logging.DEBUG)
+    else:
+        rootLogger.setLevel(logging.INFO)
     logging.info("Done.")
 
 if __name__ == "__main__":
