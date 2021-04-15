@@ -362,7 +362,7 @@ class CandidateDuplicationTandem(Candidate):
                 info_string += ";ZMWS={0}".format(len(zmw_list))
         return "{chrom}\t{pos}\t{id}\t{ref}\t{alt}\t{qual}\t{filter}\t{info}\t{format}\t{samples}".format(
                     chrom=source_contig,
-                    pos=max(1, dest_start),
+                    pos=source_start + 1,
                     id="PLACEHOLDERFORID",
                     ref=ref_allele,
                     alt=alt_allele,
